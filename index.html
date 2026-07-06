@@ -792,6 +792,74 @@
             min-width: 0;
         }
 
+        .simple-card-list {
+            display: none;
+            gap: 14px;
+            padding: 14px;
+        }
+
+        .simple-card {
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background: var(--surface);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            padding: 16px;
+        }
+
+        .simple-card-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start;
+            margin-bottom: 14px;
+        }
+
+        .simple-card-title {
+            font-weight: 800;
+            font-size: 16px;
+            color: var(--text-dark);
+        }
+
+        .simple-card-subtitle {
+            margin-top: 4px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .simple-card-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .simple-card-field {
+            background: rgba(148, 163, 184, 0.08);
+            border-radius: 14px;
+            padding: 10px 12px;
+        }
+
+        .simple-card-field small {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .simple-card-field span {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .simple-card-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 14px;
+        }
+
         /* Footer */
         .footer {
             text-align: center;
@@ -858,6 +926,9 @@
             .input-action-btn { width: 100%; min-width: 0; }
             #devices .card table { display: none; }
             .device-card-list { display: grid; }
+            .simple-card-list { display: grid; }
+            #classes .card table,
+            #teachers .card table { display: none; }
         }
 
         /* Modal */
@@ -1990,6 +2061,7 @@
                         </thead>
                         <tbody id="classes-table"></tbody>
                     </table>
+                    <div id="classes-cards" class="simple-card-list"></div>
                 </div>
             </div>
         </div>
@@ -2056,6 +2128,7 @@
                         </thead>
                         <tbody id="teachers-table"></tbody>
                     </table>
+                    <div id="teachers-cards" class="simple-card-list"></div>
                 </div>
             </div>
         </div>
@@ -2762,7 +2835,9 @@
             updateDevicesTable();
             updateDevicesCards();
             updateClassesList();
+            updateClassesCards();
             updateTeachersList();
+            updateTeachersCards();
             updateReturnSelect();
         }
 
@@ -3051,6 +3126,41 @@
             document.getElementById('classes-table').innerHTML = html;
         }
 
+        function updateClassesCards() {
+            const container = document.getElementById('classes-cards');
+            if (!container) return;
+
+            let html = '';
+            if (data.classes.length === 0) {
+                html = '<div class="simple-card"><div style="text-align:center; color: var(--text-muted); font-weight: 600;">Nenhuma turma cadastrada</div></div>';
+            } else {
+                data.classes.forEach(c => {
+                    html += `
+                        <div class="simple-card">
+                            <div class="simple-card-header">
+                                <div>
+                                    <div class="simple-card-title"><i class="fas fa-door-open"></i> ${c.name}</div>
+                                    <div class="simple-card-subtitle">${c.shift}</div>
+                                </div>
+                                <span class="badge green">${c.students || '-'} alunos</span>
+                            </div>
+                            <div class="simple-card-actions">
+                                <button class="btn btn-primary btn-small" onclick="editClass(${c.id})">
+                                    <i class="fas fa-edit"></i>
+                                    Editar
+                                </button>
+                                <button class="btn btn-danger btn-small" onclick="deleteClass(${c.id})">
+                                    <i class="fas fa-trash"></i>
+                                    Remover
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            container.innerHTML = html;
+        }
+
         function updateTeachersList() {
             let html = '';
             if (data.teachers.length === 0) {
@@ -3072,6 +3182,40 @@
                 });
             }
             document.getElementById('teachers-table').innerHTML = html;
+        }
+
+        function updateTeachersCards() {
+            const container = document.getElementById('teachers-cards');
+            if (!container) return;
+
+            let html = '';
+            if (data.teachers.length === 0) {
+                html = '<div class="simple-card"><div style="text-align:center; color: var(--text-muted); font-weight: 600;">Nenhum professor cadastrado</div></div>';
+            } else {
+                data.teachers.forEach(t => {
+                    html += `
+                        <div class="simple-card">
+                            <div class="simple-card-header">
+                                <div>
+                                    <div class="simple-card-title"><i class="fas fa-chalkboard-teacher"></i> ${t.name}</div>
+                                    <div class="simple-card-subtitle">${t.subject || 'Sem disciplina informada'}</div>
+                                </div>
+                            </div>
+                            <div class="simple-card-actions">
+                                <button class="btn btn-primary btn-small" onclick="editTeacher(${t.id})">
+                                    <i class="fas fa-edit"></i>
+                                    Editar
+                                </button>
+                                <button class="btn btn-danger btn-small" onclick="deleteTeacher(${t.id})">
+                                    <i class="fas fa-trash"></i>
+                                    Remover
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            container.innerHTML = html;
         }
 
         // --- Funções de Turma ---
