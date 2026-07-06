@@ -1,0 +1,3374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escola Percio - Controle de Dispositivos de Tecnologia</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="icon" href="./icon.png" type="image/png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        :root {
+            --primary: #1e40af;
+            --primary-light: #3b82f6;
+            --secondary: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --sidebar-bg: #0f172a;
+        }
+
+        /* Modo Escuro */
+        body.dark-mode {
+            --background: #020617;
+            --surface: #0f172a;
+            --text-dark: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: #1e293b;
+            --sidebar-bg: #000000;
+        }
+
+        /* Transição suave para modo escuro */
+        * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--text-dark);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Tela de Login */
+        .login-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 9999;
+            transition: all 0.3s ease;
+        }
+
+        .login-box {
+            background: var(--surface);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 420px;
+        }
+
+        /* Modo Escuro - Tela de Login */
+        body.dark-mode .login-container {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+
+        .login-logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-logo i {
+            font-size: 48px;
+            color: var(--primary);
+        }
+
+        .login-logo h1 {
+            margin-top: 10px;
+            font-size: 24px;
+            color: var(--text-dark);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--text-dark);
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .form-group select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 18px;
+            padding-right: 44px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+            background: var(--surface);
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: #94a3b8;
+        }
+
+        .input-with-action {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .input-with-action .form-input {
+            flex: 1;
+        }
+
+        .input-action-btn {
+            white-space: nowrap;
+            min-width: 118px;
+            height: 48px;
+        }
+
+        /* Estilo para inputs do login/registro */
+        .login-container input[type="email"],
+        .login-container input[type="password"],
+        .login-container input[type="text"] {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--text-dark);
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .login-container input[type="email"]:focus,
+        .login-container input[type="password"]:focus,
+        .login-container input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+        }
+
+        .login-container input::placeholder {
+            color: #94a3b8;
+        }
+
+        /* Modo Escuro - Select com ícone */
+        body.dark-mode .form-group select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary-light);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary);
+        }
+
+        .btn-success {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e1;
+        }
+
+        .login-toggle {
+            text-align: center;
+            margin-top: 20px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .login-toggle:hover {
+            color: var(--primary-light);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--sidebar-bg);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 0;
+            position: fixed;
+            height: 100vh;
+            transition: all 0.3s;
+        }
+
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(2px);
+            z-index: 999;
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 1100;
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.2);
+        }
+
+        .sidebar-header {
+            padding: 0 24px 32px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .dark-mode-toggle {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+
+        .dark-mode-toggle:hover {
+            background: rgba(255,255,255,0.2);
+            transform: rotate(20deg);
+        }
+
+        .school-name {
+            font-size: 14px;
+            color: #94a3b8;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .system-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .nav-menu {
+            flex: 1;
+            padding: 24px 12px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 4px;
+            transition: all 0.2s;
+            color: #cbd5e1;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .nav-item.active {
+            background: var(--primary-light);
+            color: white;
+        }
+
+        .nav-item i {
+            width: 20px;
+            font-size: 16px;
+        }
+
+        .sidebar-footer {
+            padding: 24px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            background: var(--primary-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        .user-details {
+            flex: 1;
+        }
+
+        .user-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .user-email {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            flex: 1;
+            padding: 32px;
+        }
+
+        /* Page Header */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .stat-icon.blue { background: #dbeafe; color: #1e40af; }
+        .stat-icon.green { background: #d1fae5; color: #065f46; }
+        .stat-icon.yellow { background: #fef3c7; color: #92400e; }
+        .stat-icon.purple { background: #ede9fe; color: #5b21b6; }
+
+        /* Modo Escuro - Stat Icons */
+        body.dark-mode .stat-icon.blue { background: rgba(30,64,175,0.3); color: #60a5fa; }
+        body.dark-mode .stat-icon.green { background: rgba(16,185,129,0.3); color: #34d399; }
+        body.dark-mode .stat-icon.yellow { background: rgba(245,158,11,0.3); color: #fbbf24; }
+        body.dark-mode .stat-icon.purple { background: rgba(124,58,237,0.3); color: #a78bfa; }
+
+        .stat-content {
+            flex: 1;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-dark);
+            line-height: 1.2;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Content Grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        /* Alerts */
+        .alert-item {
+            display: flex;
+            gap: 12px;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .alert-item:last-child { margin-bottom: 0; }
+
+        .alert-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .alert-icon.danger { background: #fee2e2; color: #dc2626; }
+        .alert-icon.warning { background: #fef3c7; color: #d97706; }
+        .alert-icon.info { background: #dbeafe; color: #2563eb; }
+
+        /* Modo Escuro - Alertas */
+        body.dark-mode .alert-icon.danger { background: rgba(239,68,68,0.2); color: #fca5a5; }
+        body.dark-mode .alert-icon.warning { background: rgba(245,158,11,0.2); color: #fbbf24; }
+        body.dark-mode .alert-icon.info { background: rgba(59,130,246,0.2); color: #93c5fd; }
+
+        .alert-content {
+            flex: 1;
+        }
+
+        .alert-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .alert-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .quick-action {
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .quick-action:hover {
+            transform: translateY(-2px);
+        }
+
+        .quick-action.primary { background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; }
+        .quick-action.success { background: linear-gradient(135deg, #065f46, #10b981); color: white; }
+        .quick-action.purple { background: linear-gradient(135deg, #5b21b6, #8b5cf6); color: white; }
+
+        .quick-action i {
+            font-size: 24px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .quick-action span {
+            font-size: 13px;
+            font-weight: 600;
+            display: block;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            background: #f8fafc;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        tr:last-child td { border-bottom: none; }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge.green { background: #d1fae5; color: #065f46; }
+        .badge.yellow { background: #fef3c7; color: #92400e; }
+        .badge.red { background: #fee2e2; color: #991b1b; }
+
+        /* Modo Escuro - Table e Badges */
+        body.dark-mode th {
+            background: #020617;
+        }
+
+        body.dark-mode .badge.green { background: rgba(16,185,129,0.2); color: #34d399; }
+        body.dark-mode .badge.yellow { background: rgba(245,158,11,0.2); color: #fbbf24; }
+        body.dark-mode .badge.red { background: rgba(239,68,68,0.2); color: #fca5a5; }
+
+        /* Form Grid */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .form-group.full { grid-column: 1 / -1; }
+
+        /* Loan Type Toggle */
+        .loan-type-toggle {
+            display: flex;
+            gap: 8px;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .loan-type-option {
+            flex: 1;
+            padding: 10px 16px;
+            text-align: center;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .loan-type-option.active {
+            background: var(--surface);
+            color: var(--text-dark);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        /* Modo Escuro - Loan Type Toggle */
+        body.dark-mode .loan-type-toggle {
+            background: #1e293b;
+        }
+
+        /* Two Columns */
+        .two-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-top: 40px;
+        }
+
+        /* Screen Management */
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* Hidden Class */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading i {
+            font-size: 48px;
+            color: var(--primary-light);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .content-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-toggle { display: flex; }
+            .sidebar { transform: translateX(-100%); z-index: 1001; width: 88vw; max-width: 320px; }
+            body.sidebar-open .sidebar { transform: translateX(0); }
+            body.sidebar-open .sidebar-backdrop { display: block; }
+            .main-content { margin-left: 0; padding: 76px 16px 28px; }
+            .page-header { flex-direction: column; align-items: stretch; gap: 14px; padding: 18px; }
+            .page-header .btn { width: 100%; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .two-cards, .form-grid { grid-template-columns: 1fr; }
+            .quick-actions { grid-template-columns: 1fr; }
+            .card-body { overflow-x: auto; }
+            table { min-width: 760px; }
+            .modal-overlay { padding: 12px; align-items: flex-end; }
+            .modal { width: 100%; max-height: 92vh; border-radius: 20px 20px 0 0; }
+            .modal-header, .modal-body { padding-left: 18px; padding-right: 18px; }
+            .input-with-action { flex-direction: column; align-items: stretch; }
+            .input-action-btn { width: 100%; min-width: 0; }
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            overflow-y: auto;
+            padding: 24px 16px;
+            z-index: 99999;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--surface);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-height: calc(100vh - 48px);
+            overflow-y: auto;
+        }
+
+        .app-alert-overlay {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(2, 6, 23, 0.58);
+            backdrop-filter: blur(12px);
+            z-index: 100000;
+        }
+
+        .app-alert-overlay.active {
+            display: flex;
+            animation: fadeIn 0.18s ease;
+        }
+
+        .app-alert {
+            width: min(100%, 520px);
+            border-radius: 28px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background:
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 34%),
+                radial-gradient(circle at top left, rgba(168, 85, 247, 0.12), transparent 28%),
+                rgba(15, 23, 42, 0.96);
+            color: #fff;
+            box-shadow: 0 24px 80px rgba(15, 23, 42, 0.45);
+            overflow: hidden;
+            transform: translateY(8px);
+            animation: alertPop 0.2s ease forwards;
+        }
+
+        .app-alert-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 26px 26px 14px;
+        }
+
+        .app-alert-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.10);
+            color: #fff;
+        }
+
+        .app-alert-title {
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        .app-alert-message {
+            padding: 0 26px 24px 92px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.88);
+        }
+
+        .app-alert-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 0 26px 26px;
+        }
+
+        .app-alert .btn {
+            min-width: 108px;
+            box-shadow: none;
+        }
+
+        .app-alert.success .app-alert-icon { background: rgba(16, 185, 129, 0.18); color: #6ee7b7; }
+        .app-alert.error .app-alert-icon { background: rgba(239, 68, 68, 0.18); color: #fca5a5; }
+        .app-alert.warning .app-alert-icon { background: rgba(245, 158, 11, 0.18); color: #fcd34d; }
+        .app-alert.info .app-alert-icon { background: rgba(59, 130, 246, 0.18); color: #93c5fd; }
+
+        @keyframes alertPop {
+            from { opacity: 0; transform: translateY(16px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        body.alert-open {
+            overflow: hidden;
+        }
+
+        /* Modo Escuro - Modal */
+        body.dark-mode .modal-overlay {
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .field-hint {
+            display: block;
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .loan-note {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .choice-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .choice-button {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px 16px;
+            background: rgba(248, 250, 252, 0.96);
+            color: var(--text-dark);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+
+        .choice-button small {
+            display: block;
+            margin-top: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .choice-button.active {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.06));
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
+        }
+
+        body.dark-mode .choice-button {
+            background: rgba(15, 23, 42, 0.94);
+            border-color: rgba(51, 65, 85, 0.85);
+        }
+
+        body.dark-mode .choice-button small {
+            color: #94a3b8;
+        }
+
+        .device-fixed-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.08);
+            color: var(--text-dark);
+            font-size: 12px;
+            font-weight: 700;
+            margin-left: 8px;
+        }
+
+        .device-type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(59, 130, 246, 0.12);
+            color: #1d4ed8;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .table-wrap {
+            overflow: hidden;
+            border-radius: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #f8fafc;
+            color: #334155;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 16px 20px;
+            text-align: left;
+        }
+
+        td {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            color: var(--text-dark);
+            vertical-align: top;
+        }
+
+        tr:hover td {
+            background: rgba(59, 130, 246, 0.03);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(59, 130, 246, 0.14), transparent 34%),
+                radial-gradient(circle at top right, rgba(16, 185, 129, 0.10), transparent 28%),
+                linear-gradient(180deg, #eef2ff 0%, #f8fafc 36%, #eef2f7 100%);
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+            background-size: 32px 32px;
+            mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.20), transparent 75%);
+            opacity: 0.4;
+        }
+
+        .sidebar {
+            background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+            box-shadow: 16px 0 40px rgba(15, 23, 42, 0.15);
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .main-content {
+            position: relative;
+            padding: 28px 32px 40px;
+        }
+
+        .screen.active {
+            animation: screenFade 0.25s ease;
+        }
+
+        @keyframes screenFade {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-header {
+            padding: 22px 24px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(248,250,252,0.86));
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+            backdrop-filter: blur(14px);
+        }
+
+        .card, .stat-card, .login-box, .modal {
+            border-radius: 20px;
+            box-shadow: 0 14px 35px rgba(15, 23, 42, 0.07);
+        }
+
+        .card {
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: linear-gradient(180deg, rgba(248,250,252,0.9), rgba(255,255,255,0.96));
+        }
+
+        .stat-card {
+            background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.94));
+            border-color: rgba(226, 232, 240, 0.9);
+        }
+
+        .quick-action {
+            min-height: 156px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-end;
+            padding: 22px;
+            gap: 8px;
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            background: linear-gradient(180deg, rgba(248,250,252,0.98), rgba(241,245,249,0.92));
+            box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+        }
+
+        .quick-action i {
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(59, 130, 246, 0.10);
+            color: var(--primary);
+            font-size: 18px;
+        }
+
+        .quick-action.primary {
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.12), rgba(59, 130, 246, 0.06));
+        }
+
+        .quick-action.success {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(34, 197, 94, 0.06));
+        }
+
+        .quick-action.purple {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(168, 85, 247, 0.06));
+        }
+
+        .quick-action span:first-of-type {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .btn {
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-small {
+            padding: 10px 14px;
+            font-size: 13px;
+        }
+
+        .login-box {
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        body.dark-mode::before {
+            opacity: 0.12;
+        }
+
+        body.dark-mode {
+            background:
+                radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 28%),
+                radial-gradient(circle at top right, rgba(16, 185, 129, 0.10), transparent 24%),
+                linear-gradient(180deg, #020617 0%, #0f172a 100%);
+        }
+
+        body.dark-mode .page-header,
+        body.dark-mode .card,
+        body.dark-mode .stat-card,
+        body.dark-mode .login-box,
+        body.dark-mode .modal {
+            background: rgba(15, 23, 42, 0.92);
+            border-color: rgba(51, 65, 85, 0.85);
+        }
+
+        body.dark-mode .page-header {
+            box-shadow: 0 18px 45px rgba(2, 6, 23, 0.45);
+        }
+
+        body.dark-mode .card-header {
+            background: rgba(15, 23, 42, 0.96);
+            border-bottom-color: rgba(51, 65, 85, 0.85);
+        }
+
+        body.dark-mode .card-body {
+            background: rgba(15, 23, 42, 0.90);
+        }
+
+        body.dark-mode .footer {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .alert-item {
+            background: rgba(15, 23, 42, 0.92);
+            border-color: rgba(51, 65, 85, 0.85);
+        }
+
+        body.dark-mode .quick-action span,
+        body.dark-mode .quick-action i {
+            color: inherit;
+        }
+
+        body.dark-mode .quick-action.primary {
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.26), rgba(59, 130, 246, 0.12));
+        }
+
+        body.dark-mode .quick-action.success {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.24), rgba(34, 197, 94, 0.10));
+        }
+
+        body.dark-mode .quick-action.purple {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.24), rgba(168, 85, 247, 0.10));
+        }
+
+        body.dark-mode th {
+            background: rgba(15, 23, 42, 0.96);
+            color: #cbd5e1;
+        }
+
+        body.dark-mode td {
+            border-top-color: rgba(51, 65, 85, 0.85);
+        }
+
+        body.dark-mode table {
+            background: transparent;
+        }
+
+        body.dark-mode .sidebar-footer {
+            border-top-color: rgba(255, 255, 255, 0.08);
+        }
+
+        body.dark-mode tr:hover td {
+            background: rgba(59, 130, 246, 0.08);
+        }
+
+        body.dark-mode .quick-action {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.94));
+        }
+
+        body.dark-mode .device-fixed-badge,
+        body.dark-mode .device-type-badge {
+            background: rgba(148, 163, 184, 0.16);
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .loan-note,
+        body.dark-mode .field-hint {
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <!-- Tela de Login -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-box">
+            <div class="login-logo">
+                <i class="fas fa-laptop-code"></i>
+                <h1>Controle de Dispositivos</h1>
+            </div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" required placeholder="seu@email.com">
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" id="loginPassword" required placeholder="********">
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Entrar
+                </button>
+            </form>
+
+            <form id="registerForm" class="hidden">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" id="registerName" required placeholder="Seu nome completo">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="registerEmail" required placeholder="seu@email.com">
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" id="registerPassword" required placeholder="********" minlength="6">
+                </div>
+                <button type="submit" class="btn btn-success btn-full">
+                    <i class="fas fa-user-plus"></i>
+                    Criar Conta
+                </button>
+            </form>
+
+                        <form id="quickAccessForm" class="hidden">
+                <div class="form-group">
+                    <label>Nome Completo</label>
+                    <input type="text" id="quickAccessName" required placeholder="Seu nome completo">
+                </div>
+                <div class="form-group">
+                    <label>Quem vai usar?</label>
+                    <div class="choice-grid" id="quickAccessRoleChoices">
+                        <button type="button" class="choice-button" data-role="Aluno" onclick="setQuickAccessRole('Aluno')">
+                            Aluno
+                            <small>Uso em sala de aula</small>
+                        </button>
+                        <button type="button" class="choice-button" data-role="Funcionário" onclick="setQuickAccessRole('Funcionário')">
+                            Funcionário
+                            <small>Equipe da escola</small>
+                        </button>
+                    </div>
+                    <input type="hidden" id="quickAccessRole" value="">
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">
+                    <i class="fas fa-bolt"></i>
+                    Acessar o Sistema
+                </button>
+            </form>
+            <div class="login-toggle" id="loginToggle">
+                Não tem conta? <strong>Criar conta</strong>
+            </div>
+            <div class="login-toggle" id="quickAccessToggle">
+                Ou use o sistema <strong>Acesso Rápido</strong>
+            </div>
+            <div class="login-toggle hidden" id="backToLoginToggle">
+                Voltar para o <strong>Login</strong>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn btn-primary mobile-menu-toggle hidden" id="mobileMenuToggle" type="button" onclick="toggleSidebar()" aria-label="Abrir menu">
+        <i class="fas fa-bars"></i>
+    </button>
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar hidden" id="sidebar">
+        <div class="sidebar-header">
+            <div class="header-top">
+                <div>
+                    <div class="school-name">Escola Percio</div>
+                    <div class="system-name">Controle de Dispositivos</div>
+                </div>
+                <button class="dark-mode-toggle" id="darkModeToggle" onclick="toggleDarkMode()" title="Alternar Modo Escuro">
+                    <i class="fas fa-moon" id="darkModeIcon"></i>
+                </button>
+            </div>
+        </div>
+
+        <nav class="nav-menu">
+            <div class="nav-item active" onclick="showScreen('dashboard')" data-screen="dashboard">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </div>
+            <div class="nav-item" onclick="showScreen('loan')" data-screen="loan">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Novo Empréstimo</span>
+            </div>
+            <div class="nav-item" onclick="showScreen('return')" data-screen="return">
+                <i class="fas fa-sign-in-alt"></i>
+                <span>Registrar Devolução</span>
+            </div>
+            <div class="nav-item" onclick="showScreen('active')" data-screen="active">
+                <i class="fas fa-list"></i>
+                <span>Em Uso</span>
+            </div>
+            <div class="nav-item" onclick="showScreen('history')" data-screen="history">
+                <i class="fas fa-history"></i>
+                <span>Histórico</span>
+            </div>
+            <div class="nav-item" onclick="showScreen('devices')" data-screen="devices">
+                <i class="fas fa-laptop"></i>
+                <span>Dispositivos</span>
+            </div>
+            <div class="nav-item" onclick="showScreen('classes')" data-screen="classes">
+                <i class="fas fa-users"></i>
+                <span>Turmas</span>
+            </div>
+            <div class="nav-item" onclick="showScreen('teachers')" data-screen="teachers">
+                <i class="fas fa-user-tie"></i>
+                <span>Professores</span>
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-details">
+                    <div class="user-name" id="userName">Usuário</div>
+                    <div class="user-email" id="userEmail">email@exemplo.com</div>
+                </div>
+                <i class="fas fa-bell" style="cursor: pointer; color: #94a3b8;"></i>
+            </div>
+            <button class="btn btn-danger btn-full btn-small" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i>
+                Sair
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content hidden" id="mainContent">
+        <!-- Dashboard Screen -->
+        <div id="dashboard" class="screen active">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Dashboard</div>
+                    <div class="page-subtitle">Visão geral do controle de dispositivos</div>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon blue">
+                        <i class="fas fa-laptop"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="stat-available">0</div>
+                        <div class="stat-label">Disponíveis</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">
+                        <i class="fas fa-laptop"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="stat-inuse">0</div>
+                        <div class="stat-label">Em uso</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon yellow">
+                        <i class="fas fa-wrench"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="stat-maintenance">0</div>
+                        <div class="stat-label">Em manutenção</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="stat-total">0</div>
+                        <div class="stat-label">Total de dispositivos</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-grid">
+                <!-- In Use Now -->
+                <div class="card" id="dashboardInUseCard">
+                    <div class="card-header">
+                        <div class="card-title">Em uso no momento</div>
+                        <button class="btn btn-small" style="background: #f1f5f9; color: #475569;" onclick="showScreen('active')">Ver todos</button>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Turma</th>
+                                    <th>Professor</th>
+                                    <th>Tipo de saída</th>
+                                    <th>Quantidade</th>
+                                    <th>Retirada em</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="active-loans-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Alerts & Quick Actions -->
+                <div style="display: flex; flex-direction: column; gap: 24px;">
+                    <!-- Alerts -->
+                    <div class="card" id="dashboardAlertCard">
+                        <div class="card-header">
+                            <div class="card-title">Alertas</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert-item">
+                                <div class="alert-icon warning">
+                                    <i class="fas fa-info-circle"></i>
+                                </div>
+                                <div class="alert-content">
+                                    <div class="alert-title">Bem-vindo!</div>
+                                    <div class="alert-desc">Todos os dados são compartilhados entre as contas</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="card" id="dashboardActionsCard">
+                        <div class="card-header">
+                            <div class="card-title">Ações rápidas</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="quick-actions">
+                                <div class="quick-action primary" onclick="showScreen('loan')">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Novo Empréstimo</span>
+                                    <span style="font-size: 11px; opacity: 0.9; margin-top: 4px; display: block;">Registrar saída de dispositivos</span>
+                                </div>
+                                <div class="quick-action success" onclick="showScreen('return')">
+                                    <i class="fas fa-undo"></i>
+                                    <span>Registrar Devolução</span>
+                                    <span style="font-size: 11px; opacity: 0.9; margin-top: 4px; display: block;">Registrar devolução de dispositivos</span>
+                                </div>
+                                <div class="quick-action purple" onclick="showScreen('history')">
+                                    <i class="fas fa-history"></i>
+                                    <span>Ver Histórico</span>
+                                    <span style="font-size: 11px; opacity: 0.9; margin-top: 4px; display: block;">Acessar registros anteriores</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Latest Loans -->
+            <div class="card" style="margin-top: 24px;" id="latestLoansCard">
+                <div class="card-header">
+                    <div class="card-title">Últimos empréstimos registrados</div>
+                    <button class="btn btn-small" style="background: #f1f5f9; color: #475569;" onclick="showScreen('history')">Ver todos</button>
+                </div>
+                <div class="card-body" style="padding: 0;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Turma</th>
+                                <th>Professor</th>
+                                <th>Quantidade</th>
+                                <th>Data/Hora</th>
+                                <th>Responsável</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="latest-loans-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="footer">
+                © 2024 Escola Percio - Todos os direitos reservados
+            </div>
+        </div>
+
+        <!-- Novo Empréstimo Screen -->
+        <div id="loan" class="screen">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Novo Empréstimo</div>
+                    <div class="page-subtitle">Registrar a saída de dispositivos para uma turma</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <form id="loanForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Turma</label>
+                                <select id="loanClass" class="form-input" required>
+                                    <option value="">Selecione uma turma</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Professor Responsável</label>
+                                <select id="loanTeacher" class="form-input" required>
+                                    <option value="">Selecione um professor</option>
+                                </select>
+                            </div>
+                            <div class="form-group full">
+                                <label class="form-label">Tipo de Saída</label>
+                                <div class="loan-type-toggle">
+                                    <div class="loan-type-option active" data-type="quantity" onclick="setLoanType('quantity')">
+                                        <i class="fas fa-hashtag"></i> Quantidade Específica
+                                    </div>
+                                    <div class="loan-type-option" data-type="full" onclick="setLoanType('full')">
+                                        <i class="fas fa-box"></i> Base/Carrinho Completo
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group" id="quantityGroup">
+                                <label class="form-label">Quantidade de Dispositivos</label>
+                                <input type="number" id="loanQuantity" class="form-input" min="1" placeholder="Digite a quantidade">
+                            </div>
+                            <div class="form-group" id="groupGroup" style="display: none;">
+                                <label class="form-label">Selecionar Agrupamento</label>
+                                <select id="loanGroup" class="form-input">
+                                    <option value="">Selecione um agrupamento</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Tipo de Dispositivo</label>
+                                <select id="loanDeviceType" class="form-input" required>
+                                    <option value="Notebook">Notebook</option>
+                                    <option value="Tablet">Tablet</option>
+                                </select>
+                                <small class="loan-note">Desktops são fixos na sala de informática e não entram em empréstimo.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Responsável pela Liberação</label>
+                                <input type="text" id="loanReleaser" class="form-input" required placeholder="Seu nome">
+                            </div>
+                            <div class="form-group full">
+                                <label class="form-label">Observações (opcional)</label>
+                                <textarea id="loanObs" class="form-input" rows="3" placeholder="Digite observações importantes"></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg btn-full">
+                            <i class="fas fa-check"></i>
+                            Registrar Empréstimo
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Devolução Screen -->
+        <div id="return" class="screen">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Registrar Devolução</div>
+                    <div class="page-subtitle">Registrar a devolução de dispositivos</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">Selecione o Empréstimo</label>
+                        <select id="returnLoan" class="form-input" onchange="loadReturnDetails()">
+                            <option value="">Selecione um empréstimo ativo</option>
+                        </select>
+                    </div>
+                    <div id="returnDetails" style="display: none;">
+                        <div style="background: #f1f5f9; padding: 20px; border-radius: 10px; margin-bottom: 24px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                <div>
+                                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Turma</div>
+                                    <div style="font-weight: 600;" id="returnClassName">-</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Professor</div>
+                                    <div style="font-weight: 600;" id="returnTeacherName">-</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Quantidade Emprestada</div>
+                                    <div style="font-weight: 600;" id="returnQtyLoan">-</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Data da Retirada</div>
+                                    <div style="font-weight: 600;" id="returnDateLoan">-</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Quantidade Devolvida</label>
+                                <input type="number" id="returnQuantity" class="form-input" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Status da Devolução</label>
+                                <select id="returnStatus" class="form-input">
+                                    <option value="complete">Completa (todos os dispositivos)</option>
+                                    <option value="incomplete">Incompleta (faltam dispositivos)</option>
+                                    <option value="damaged">Com danos</option>
+                                </select>
+                            </div>
+                            <div class="form-group full">
+                                <label class="form-label">Observações</label>
+                                <textarea id="returnObs" class="form-input" rows="3" placeholder="Descreva o estado dos dispositivos, se houver danos, etc."></textarea>
+                            </div>
+                        </div>
+                        <button class="btn btn-success btn-lg btn-full" onclick="confirmReturn()">
+                            <i class="fas fa-check"></i>
+                            Confirmar Devolução
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Loans Screen -->
+        <div id="active" class="screen">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Em Uso no Momento</div>
+                    <div class="page-subtitle">Todos os empréstimos ativos</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body" style="padding: 0;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Turma</th>
+                                <th>Professor</th>
+                                <th>Tipo</th>
+                                <th>Quantidade</th>
+                                <th>Retirada em</th>
+                                <th>Responsável</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="all-active-loans"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Screen -->
+        <div id="history" class="screen">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Histórico de Empréstimos</div>
+                    <div class="page-subtitle">Todos os empréstimos realizados</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <input type="date" id="filterDate" class="form-input" style="width: auto;" onchange="filterHistory()">
+                        <select id="filterClass" class="form-input" style="width: auto;" onchange="filterHistory()">
+                            <option value="">Todas as turmas</option>
+                        </select>
+                        <select id="filterTeacher" class="form-input" style="width: auto;" onchange="filterHistory()">
+                            <option value="">Todos os professores</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body" style="padding: 0;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Turma</th>
+                                <th>Professor</th>
+                                <th>Quantidade</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Devices Screen -->
+        <div id="devices" class="screen">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Dispositivos</div>
+                    <div class="page-subtitle">Gerenciar todos os dispositivos cadastrados</div>
+                </div>
+                <button class="btn btn-primary" onclick="openDeviceModal()">
+                    <i class="fas fa-plus"></i>
+                    Novo Dispositivo
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-body" style="padding: 0;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Nº Série</th>
+                                <th>Patrimônio</th>
+                                <th>Nº Contador</th>
+                                <th>Agrupamento</th>
+                                <th>Estado</th>
+                                <th>Observações</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="devices-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para Editar/Criar Dispositivo -->
+        <div class="modal-overlay" id="deviceModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <div class="modal-title" id="modalTitle">Novo Dispositivo</div>
+                    <button class="btn btn-small" style="background: #f1f5f9; color: #475569;" onclick="closeDeviceModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="deviceForm">
+                        <input type="hidden" id="deviceId">
+                        <div class="form-group">
+                            <label class="form-label">Tipo</label>
+                            <select id="deviceType" class="form-input" required onchange="handleDeviceTypeChange()">
+                                <option value="Notebook">Notebook</option>
+                                <option value="Tablet">Tablet</option>
+                                <option value="Desktop">Desktop</option>
+                            </select>
+                            <small class="field-hint">Desktops ficam fixos na sala de informática e só usam manutenção.</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Número de Série</label>
+                            <div class="input-with-action">
+                                <input type="text" id="deviceSerial" class="form-input" placeholder="Ex: SN12345">
+                                <button type="button" class="btn btn-secondary input-action-btn" onclick="openScanner('deviceSerial')">
+                                    <i class="fas fa-camera"></i>
+                                    Escanear
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Patrimônio</label>
+                            <div class="input-with-action">
+                                <input type="text" id="devicePatrimony" class="form-input" placeholder="Ex: PAT001">
+                                <button type="button" class="btn btn-secondary input-action-btn" onclick="openScanner('devicePatrimony')">
+                                    <i class="fas fa-camera"></i>
+                                    Escanear
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Número Contador / S/N</label>
+                            <input type="text" id="deviceCounter" class="form-input" required placeholder="Ex: 01, 02, 50 ou s/n">
+                            <small class="field-hint">Obrigatório. Use o número de controle do equipamento ou informe s/n se ele não tiver um identificador.</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Agrupamento / Sala</label>
+                            <input type="text" id="deviceGroup" class="form-input" required list="deviceGroupSuggestions" placeholder="Ex: Base 1, Sala 17 ou Sala de Informática">
+                            <datalist id="deviceGroupSuggestions">
+                                <option value="Base 1"></option>
+                                <option value="Base 2"></option>
+                                <option value="Carrinho A"></option>
+                                <option value="Carrinho B"></option>
+                                <option value="Sala 17"></option>
+                                <option value="Sala de Informática"></option>
+                            </datalist>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Estado</label>
+                            <select id="deviceStatus" class="form-input" required>
+                                <option value="Disponível">Disponível</option>
+                                <option value="Em uso">Em uso</option>
+                                <option value="Manutenção">Manutenção</option>
+                            </select>
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label">Observações</label>
+                            <textarea id="deviceObservations" class="form-input" rows="3" placeholder="Descrição, estado, observações importantes..."></textarea>
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <button type="submit" class="btn btn-primary btn-full">
+                                <i class="fas fa-save"></i>
+                                Salvar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Classes Screen -->
+        <div id="classes" class="screen">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Turmas</div>
+                    <div class="page-subtitle">Gerenciar turmas cadastradas</div>
+                </div>
+                <button class="btn btn-primary" onclick="openClassModal()">
+                    <i class="fas fa-plus"></i>
+                    Nova Turma
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-body" style="padding: 0;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Turno</th>
+                                <th>Alunos</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="classes-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para Editar/Criar Turma -->
+        <div class="modal-overlay" id="classModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <div class="modal-title" id="classModalTitle">Nova Turma</div>
+                    <button class="btn btn-small" style="background: #f1f5f9; color: #475569;" onclick="closeClassModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="classForm">
+                        <input type="hidden" id="classId">
+                        <div class="form-group">
+                            <label class="form-label">Nome da Turma</label>
+                            <input type="text" id="className" class="form-input" required placeholder="Ex: 1ºA">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Turno</label>
+                            <select id="classShift" class="form-input" required>
+                                <option value="Matutino">Matutino</option>
+                                <option value="Vespertino">Vespertino</option>
+                                <option value="Noturno">Noturno</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Quantidade de Alunos (opcional)</label>
+                            <input type="number" id="classStudents" class="form-input" min="1">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full">
+                            <i class="fas fa-save"></i>
+                            Salvar Turma
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Teachers Screen -->
+        <div id="teachers" class="screen">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Professores</div>
+                    <div class="page-subtitle">Gerenciar professores cadastrados</div>
+                </div>
+                <button class="btn btn-primary" onclick="openTeacherModal()">
+                    <i class="fas fa-plus"></i>
+                    Novo Professor
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-body" style="padding: 0;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Disciplina</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teachers-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para Editar/Criar Professor -->
+        <div class="modal-overlay" id="teacherModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <div class="modal-title" id="teacherModalTitle">Novo Professor</div>
+                    <button class="btn btn-small" style="background: #f1f5f9; color: #475569;" onclick="closeTeacherModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="teacherForm">
+                        <input type="hidden" id="teacherId">
+                        <div class="form-group">
+                            <label class="form-label">Nome Completo</label>
+                            <input type="text" id="teacherName" class="form-input" required placeholder="Nome do professor">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Disciplina (opcional)</label>
+                            <input type="text" id="teacherSubject" class="form-input" placeholder="Ex: Matemática">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full">
+                            <i class="fas fa-save"></i>
+                            Salvar Professor
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Escaneamento -->
+        <div class="modal-overlay" id="scannerModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <div class="modal-title">Escanear com a câmera</div>
+                    <button class="btn btn-small" style="background: #f1f5f9; color: #475569;" onclick="closeScanner()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="scanner-frame" style="background: #0f172a; border-radius: 18px; overflow: hidden; position: relative; aspect-ratio: 4 / 3; margin-bottom: 16px;">
+                        <video id="scannerVideo" playsinline autoplay muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+                        <div style="position: absolute; inset: 0; border: 2px solid rgba(255,255,255,0.22); border-radius: 18px; pointer-events: none;"></div>
+                    </div>
+                    <div class="field-hint" id="scannerStatus">Aponte a câmera para um QR code ou código de barras.</div>
+                    <div class="form-group full" style="margin-top: 16px;">
+                        <label class="form-label">Valor detectado</label>
+                        <input type="text" id="scannerResult" class="form-input" placeholder="O valor escaneado vai aparecer aqui">
+                    </div>
+                    <div style="display: flex; gap: 12px; margin-top: 8px;">
+                        <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="useScannerValue()">
+                            <i class="fas fa-check"></i>
+                            Usar valor
+                        </button>
+                        <button type="button" class="btn btn-primary" style="flex: 1;" onclick="closeScanner()">
+                            Fechar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-alert-overlay" id="appAlertOverlay" aria-hidden="true">
+            <div class="app-alert info" id="appAlertBox" role="dialog" aria-modal="true" aria-labelledby="appAlertTitle">
+                <div class="app-alert-header">
+                    <div class="app-alert-icon" id="appAlertIcon">
+                        <i class="fas fa-circle-info"></i>
+                    </div>
+                    <div class="app-alert-title" id="appAlertTitle">Aviso</div>
+                </div>
+                <div class="app-alert-message" id="appAlertMessage">Mensagem</div>
+                <div class="app-alert-actions">
+                    <button class="btn btn-primary" id="appAlertOk" type="button">OK</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ------------------------------
+        // 1. Configuração do Supabase
+        // ------------------------------
+        const SUPABASE_URL = "https://gjahjvuptptjeenkssum.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqYWhqdnVwdHB0amVlbmtzc3VtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NDE0NDQsImV4cCI6MjA5NzQxNzQ0NH0.7WvbMzuf6V3BU1Bj7V9aciwbXsWqlMARo9uQD8RfwJw";
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ------------------------------
+        // 2. Estado do Sistema
+        // ------------------------------
+        let data = {
+            classes: [],
+            teachers: [],
+            devices: [],
+            loans: []
+        };
+        let currentLoanType = 'quantity';
+        let currentUser = null;
+        let isQuickAccess = false;
+        let currentAccessRole = 'Funcionário';
+        let appAlertResolver = null;
+        let appAlertReturnFocus = null;
+        let deviceSchemaReady = null;
+        let activeScannerField = null;
+        let scannerStream = null;
+        let scannerInterval = null;
+        let scannerDetector = null;
+        let scannerLastValue = '';
+
+        function inferAlertType(message) {
+            const text = (message || '').toLowerCase();
+            if (text.includes('erro')) return 'error';
+            if (text.includes('sucesso') || text.includes('criado') || text.includes('atualizado') || text.includes('removido') || text.includes('registrado')) return 'success';
+            if (text.includes('aten') || text.includes('preencha') || text.includes('nã') || text.includes('nao')) return 'warning';
+            return 'info';
+        }
+
+        function getAlertIcon(type) {
+            return {
+                success: 'fas fa-circle-check',
+                error: 'fas fa-triangle-exclamation',
+                warning: 'fas fa-circle-exclamation',
+                info: 'fas fa-circle-info'
+            }[type] || 'fas fa-circle-info';
+        }
+
+        function getAlertTitle(type) {
+            return {
+                success: 'Tudo certo',
+                error: 'Algo deu errado',
+                warning: 'Atenção',
+                info: 'Aviso'
+            }[type] || 'Aviso';
+        }
+
+        function closeAppAlert() {
+            const overlay = document.getElementById('appAlertOverlay');
+            const activeElement = document.activeElement;
+
+            if (activeElement && overlay.contains(activeElement)) {
+                activeElement.blur();
+            }
+
+            overlay.classList.remove('active');
+            overlay.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('alert-open');
+
+            if (appAlertResolver) {
+                const resolve = appAlertResolver;
+                appAlertResolver = null;
+                resolve();
+            }
+
+            if (appAlertReturnFocus && typeof appAlertReturnFocus.focus === 'function') {
+                appAlertReturnFocus.focus();
+            }
+            appAlertReturnFocus = null;
+        }
+
+        function showAppAlert(message, options = {}) {
+            const type = options.type || inferAlertType(message);
+            const title = options.title || getAlertTitle(type);
+            const overlay = document.getElementById('appAlertOverlay');
+            const box = document.getElementById('appAlertBox');
+            const icon = document.getElementById('appAlertIcon');
+            const titleNode = document.getElementById('appAlertTitle');
+            const messageNode = document.getElementById('appAlertMessage');
+
+            box.className = `app-alert ${type}`;
+            icon.innerHTML = `<i class="${getAlertIcon(type)}"></i>`;
+            titleNode.textContent = title;
+            messageNode.textContent = message;
+            overlay.classList.add('active');
+            overlay.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('alert-open');
+            appAlertReturnFocus = document.activeElement;
+            document.getElementById('appAlertOk').focus();
+
+            return new Promise(resolve => {
+                appAlertResolver = resolve;
+            });
+        }
+
+        window.alert = (message) => {
+            showAppAlert(message);
+        };
+
+        document.getElementById('appAlertOk').addEventListener('click', closeAppAlert);
+        document.getElementById('appAlertOverlay').addEventListener('click', (event) => {
+            if (event.target.id === 'appAlertOverlay') {
+                closeAppAlert();
+            }
+        });
+        document.getElementById('scannerModal').addEventListener('click', (event) => {
+            if (event.target.id === 'scannerModal') {
+                closeScanner();
+            }
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeSidebar();
+                if (document.getElementById('scannerModal').classList.contains('active')) {
+                    closeScanner();
+                }
+            }
+        });
+
+        // ------------------------------
+        // Modo Escuro
+        // ------------------------------
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark);
+            updateDarkModeIcon(isDark);
+        }
+
+        function updateDarkModeIcon(isDark) {
+            const icon = document.getElementById('darkModeIcon');
+            if (isDark) {
+                icon.className = 'fas fa-sun';
+            } else {
+                icon.className = 'fas fa-moon';
+            }
+        }
+
+        function loadDarkModePreference() {
+            const saved = localStorage.getItem('darkMode');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            if (saved === 'true' || (!saved && prefersDark)) {
+                document.body.classList.add('dark-mode');
+                updateDarkModeIcon(true);
+            } else {
+                document.body.classList.remove('dark-mode');
+                updateDarkModeIcon(false);
+            }
+        }
+
+        // ------------------------------
+        // 3. Inicialização
+        // ------------------------------
+        document.addEventListener('DOMContentLoaded', async () => {
+            loadDarkModePreference();
+            await checkAuth();
+            setupLoginForms();
+
+            // Registrar Service Worker para PWA
+            if (location.protocol !== 'file:' && 'serviceWorker' in navigator) {
+                try {
+                    await navigator.serviceWorker.register('./service-worker.js');
+                    console.log('Service Worker registrado com sucesso!');
+                } catch (error) {
+                    console.log('Erro ao registrar Service Worker:', error);
+                }
+            }
+        });
+
+        // ------------------------------
+        // 4. Autenticação
+        // ------------------------------
+        function showLogin() {
+            document.getElementById('loginContainer').classList.remove('hidden');
+            document.getElementById('sidebar').classList.add('hidden');
+            document.getElementById('mainContent').classList.add('hidden');
+            document.getElementById('mobileMenuToggle').classList.add('hidden');
+            document.body.classList.remove('sidebar-open');
+        }
+
+        function setQuickAccessRole(role) {
+            document.getElementById('quickAccessRole').value = role;
+            document.querySelectorAll('#quickAccessRoleChoices .choice-button').forEach(button => {
+                button.classList.toggle('active', button.dataset.role === role);
+            });
+        }
+
+        function normalizeRole(role) {
+            return (role || '').toString().trim().toLowerCase();
+        }
+
+        function isAlunoAccess() {
+            return normalizeRole(currentAccessRole) === 'aluno';
+        }
+
+        function applyRoleRestrictions() {
+            const hiddenForAluno = ['history', 'active', 'devices', 'classes', 'teachers'];
+            hiddenForAluno.forEach(screenId => {
+                const navItem = document.querySelector(`.nav-item[data-screen="${screenId}"]`);
+                if (navItem) {
+                    navItem.style.display = isAlunoAccess() ? 'none' : '';
+                }
+            });
+
+            document.getElementById('dashboardInUseCard').style.display = isAlunoAccess() ? 'none' : '';
+            document.getElementById('dashboardAlertCard').style.display = isAlunoAccess() ? 'none' : '';
+            document.getElementById('latestLoansCard').style.display = isAlunoAccess() ? 'none' : '';
+
+            const dashboardQuickActions = document.querySelectorAll('#dashboardActionsCard .quick-actions .quick-action');
+            dashboardQuickActions.forEach((action, index) => {
+                action.style.display = isAlunoAccess() && index === 2 ? 'none' : '';
+            });
+
+            const historyButtons = document.querySelectorAll('[onclick*="showScreen(\'history\')"]');
+            historyButtons.forEach(button => {
+                button.style.display = isAlunoAccess() ? 'none' : '';
+            });
+        }
+
+        function setupLoginForms() {
+            // Elementos
+            const loginToggle = document.getElementById('loginToggle');
+            const quickAccessToggle = document.getElementById('quickAccessToggle');
+            const backToLoginToggle = document.getElementById('backToLoginToggle');
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const quickAccessForm = document.getElementById('quickAccessForm');
+
+            // Função para resetar o estado dos formulários
+            function showLoginForm() {
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+                quickAccessForm.classList.add('hidden');
+                loginToggle.classList.remove('hidden');
+                quickAccessToggle.classList.remove('hidden');
+                backToLoginToggle.classList.add('hidden');
+                loginToggle.innerHTML = 'Não tem conta? <strong>Criar conta</strong>';
+                setQuickAccessRole('');
+            }
+
+            function showRegisterForm() {
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
+                quickAccessForm.classList.add('hidden');
+                loginToggle.classList.remove('hidden');
+                quickAccessToggle.classList.add('hidden');
+                backToLoginToggle.classList.remove('hidden');
+                loginToggle.innerHTML = 'Já tem conta? <strong>Entrar</strong>';
+            }
+
+            function showQuickAccessForm() {
+                loginForm.classList.add('hidden');
+                registerForm.classList.add('hidden');
+                quickAccessForm.classList.remove('hidden');
+                loginToggle.classList.add('hidden');
+                quickAccessToggle.classList.add('hidden');
+                backToLoginToggle.classList.remove('hidden');
+                if (!document.getElementById('quickAccessRole').value) {
+                    setQuickAccessRole('Aluno');
+                }
+            }
+
+            // Event listeners
+            loginToggle.addEventListener('click', () => {
+                if (loginForm.classList.contains('hidden')) {
+                    showLoginForm();
+                } else {
+                    showRegisterForm();
+                }
+            });
+
+            quickAccessToggle.addEventListener('click', showQuickAccessForm);
+            backToLoginToggle.addEventListener('click', showLoginForm);
+
+            // Login
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+
+                try {
+                    const { error } = await client.auth.signInWithPassword({ email, password });
+                    if (error) throw error;
+                    await checkAuth();
+                } catch (error) {
+                    alert('Erro ao entrar: ' + error.message);
+                }
+            });
+
+            // Cadastro
+            registerForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const name = document.getElementById('registerName').value;
+                const email = document.getElementById('registerEmail').value;
+                const password = document.getElementById('registerPassword').value;
+
+                try {
+                    const { error } = await client.auth.signUp({ 
+                        email, 
+                        password,
+                        options: {
+                            data: { name }
+                        }
+                    });
+                    if (error) throw error;
+                    alert('Conta criada com sucesso! Verifique seu email para confirmar o cadastro.');
+                } catch (error) {
+                    alert('Erro ao criar conta: ' + error.message);
+                }
+            });
+
+            // Acesso Rápido
+            quickAccessForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const name = document.getElementById('quickAccessName').value;
+                const role = document.getElementById('quickAccessRole').value;
+
+                if (!name || !role) {
+                    alert('Por favor, preencha todos os campos!');
+                    return;
+                }
+
+                // Salvar no localStorage
+                localStorage.setItem('quickAccessUser', JSON.stringify({ name, role }));
+                isQuickAccess = true;
+                currentUser = { name, role, email: '' }; // Simulação de usuário
+                currentAccessRole = role;
+                showApp();
+                await loadData();
+            });
+        }
+
+        async function logout() {
+            try {
+                // Se for acesso rápido, só limpar o localStorage
+                if (isQuickAccess) {
+                    localStorage.removeItem('quickAccessUser');
+                    isQuickAccess = false;
+                    currentUser = null;
+                    currentAccessRole = 'Funcionário';
+                    showLogin();
+                } else {
+                    await client.auth.signOut();
+                    currentUser = null;
+                    currentAccessRole = 'Funcionário';
+                    showLogin();
+                }
+            } catch (error) {
+                alert('Erro ao sair: ' + error.message);
+            }
+        }
+
+        // Atualiza checkAuth para verificar também o quickAccess
+        async function checkAuth() {
+            // Primeiro verifica se há usuário de acesso rápido
+            const savedQuickAccess = localStorage.getItem('quickAccessUser');
+            if (savedQuickAccess) {
+                const quickUser = JSON.parse(savedQuickAccess);
+                isQuickAccess = true;
+                currentUser = quickUser;
+                currentAccessRole = quickUser.role || 'Funcionário';
+                showApp();
+                await loadData();
+                return;
+            }
+
+            // Depois verifica o Supabase auth
+            const { data: { user } } = await client.auth.getUser();
+            if (user) {
+                currentUser = user;
+                isQuickAccess = false;
+                currentAccessRole = 'Funcionário';
+                showApp();
+                await loadData();
+            } else {
+                showLogin();
+            }
+        }
+
+        // Atualiza o showApp para exibir corretamente as informações do usuário
+        function showApp() {
+            document.getElementById('loginContainer').classList.add('hidden');
+            document.getElementById('sidebar').classList.remove('hidden');
+            document.getElementById('mainContent').classList.remove('hidden');
+            document.getElementById('mobileMenuToggle').classList.remove('hidden');
+            
+            // Atualiza informações do usuário
+            if (currentUser) {
+                if (isQuickAccess) {
+                    // Acesso rápido
+                    document.getElementById('userName').textContent = currentUser.name;
+                    document.getElementById('userEmail').textContent = currentUser.role;
+                } else {
+                    // Usuário do Supabase
+                    const email = currentUser.email || 'email@exemplo.com';
+                    const name = currentUser.user_metadata?.name || email.split('@')[0];
+                    document.getElementById('userName').textContent = name;
+                    document.getElementById('userEmail').textContent = email;
+                }
+            }
+
+            applyRoleRestrictions();
+            showScreen(isAlunoAccess() ? 'loan' : 'dashboard');
+        }
+
+        function toggleSidebar() {
+            document.body.classList.toggle('sidebar-open');
+        }
+
+        function closeSidebar() {
+            document.body.classList.remove('sidebar-open');
+        }
+
+        // ------------------------------
+        // 5. Carregamento de Dados
+        // ------------------------------
+        async function loadData() {
+            try {
+                // Carrega Turmas
+                const { data: classes, error: errorClasses } = await client.from('classes').select('*');
+                if (errorClasses) throw errorClasses;
+
+                // Carrega Professores
+                const { data: teachers, error: errorTeachers } = await client.from('teachers').select('*');
+                if (errorTeachers) throw errorTeachers;
+
+                // Carrega Dispositivos
+                const { data: devices, error: errorDevices } = await client.from('devices').select('*');
+                if (errorDevices) throw errorDevices;
+
+                // Carrega Empréstimos
+                const { data: loans, error: errorLoans } = await client.from('loans').select('*');
+                if (errorLoans) throw errorLoans;
+
+                // Atualiza a variável de dados
+                data = { classes, teachers, devices, loans };
+                updateAll();
+                await verifyDeviceSchema();
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                alert('Erro ao carregar dados: ' + error.message);
+            }
+        }
+
+        async function verifyDeviceSchema() {
+            const { error } = await client.from('devices').select('counter_number').limit(1);
+            deviceSchemaReady = !error;
+            return deviceSchemaReady;
+        }
+
+        function getScannerLabel(fieldId) {
+            return fieldId === 'devicePatrimony' ? 'patrimônio' : 'número de série';
+        }
+
+        function initScannerDetector() {
+            if (scannerDetector) return scannerDetector;
+            if (!('BarcodeDetector' in window)) return null;
+            try {
+                scannerDetector = new BarcodeDetector({
+                    formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'data_matrix', 'pdf417']
+                });
+            } catch (error) {
+                console.warn('BarcodeDetector indisponível:', error);
+                scannerDetector = null;
+            }
+            return scannerDetector;
+        }
+
+        async function openScanner(fieldId) {
+            activeScannerField = fieldId;
+            scannerLastValue = '';
+            document.getElementById('scannerResult').value = '';
+            document.getElementById('scannerStatus').textContent = `Aponte a câmera para o ${getScannerLabel(fieldId)}.`;
+            document.getElementById('scannerModal').classList.add('active');
+
+            if (!navigator.mediaDevices?.getUserMedia) {
+                document.getElementById('scannerStatus').textContent = 'Seu navegador nao suporta acesso a camera.';
+                return;
+            }
+
+            await startScanner();
+        }
+
+        async function startScanner() {
+            stopScanner();
+            const video = document.getElementById('scannerVideo');
+            const status = document.getElementById('scannerStatus');
+            const detector = initScannerDetector();
+
+            try {
+                scannerStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: { ideal: 'environment' }
+                    },
+                    audio: false
+                });
+
+                video.srcObject = scannerStream;
+                await video.play();
+
+                if (!detector) {
+                    status.textContent = 'A câmera foi aberta, mas seu navegador nao suporta leitura automática. Se precisar, digite o valor manualmente.';
+                    return;
+                }
+
+                status.textContent = 'Procurando código na imagem...';
+                scannerInterval = setInterval(scanScannerFrame, 450);
+            } catch (error) {
+                console.error('Erro ao abrir camera:', error);
+                status.textContent = 'Nao foi possivel abrir a camera. Verifique a permissao do navegador.';
+            }
+        }
+
+        async function scanScannerFrame() {
+            if (!scannerDetector || !scannerStream) return;
+            const video = document.getElementById('scannerVideo');
+            if (video.readyState < 2) return;
+
+            try {
+                const codes = await scannerDetector.detect(video);
+                if (!codes || !codes.length) return;
+                const value = (codes[0].rawValue || '').trim();
+                if (!value || value === scannerLastValue) return;
+                scannerLastValue = value;
+                document.getElementById('scannerResult').value = value;
+                document.getElementById('scannerStatus').textContent = `Detectado: ${value}`;
+            } catch (error) {
+                console.warn('Falha ao detectar codigo:', error);
+            }
+        }
+
+        function useScannerValue() {
+            const value = document.getElementById('scannerResult').value.trim();
+            if (!value) {
+                alert('Nenhum valor foi identificado ainda.');
+                return;
+            }
+
+            if (activeScannerField) {
+                const target = document.getElementById(activeScannerField);
+                target.value = value;
+                target.focus();
+            }
+            closeScanner();
+        }
+
+        function stopScanner() {
+            if (scannerInterval) {
+                clearInterval(scannerInterval);
+                scannerInterval = null;
+            }
+            if (scannerStream) {
+                scannerStream.getTracks().forEach(track => track.stop());
+                scannerStream = null;
+            }
+            const video = document.getElementById('scannerVideo');
+            if (video) {
+                video.srcObject = null;
+            }
+        }
+
+        function closeScanner() {
+            stopScanner();
+            document.getElementById('scannerModal').classList.remove('active');
+            activeScannerField = null;
+        }
+
+        // ------------------------------
+        // 6. Navegação
+        // ------------------------------
+        function showScreen(screenId) {
+            if (isAlunoAccess() && !['dashboard', 'loan', 'return'].includes(screenId)) {
+                screenId = 'loan';
+            }
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            const navItem = document.querySelector(`.nav-item[data-screen="${screenId}"]`);
+            if (navItem) navItem.classList.add('active');
+            closeSidebar();
+        }
+
+        // ------------------------------
+        // 7. Atualizações de UI
+        // ------------------------------
+        function updateAll() {
+            updateStats();
+            updateSelects();
+            updateActiveLoans();
+            updateLatestLoans();
+            updateHistoryTable();
+            updateDevicesTable();
+            updateClassesList();
+            updateTeachersList();
+            updateReturnSelect();
+        }
+
+        function updateStats() {
+            const available = data.devices.filter(d => d.status === 'Disponível').length;
+            const inUse = data.loans.filter(l => !l.returned).reduce((sum, l) => sum + l.quantity, 0);
+            const maintenance = data.devices.filter(d => d.status === 'Manutenção').length;
+            const total = data.devices.length;
+
+            document.getElementById('stat-available').textContent = available || 0;
+            document.getElementById('stat-inuse').textContent = inUse || 0;
+            document.getElementById('stat-maintenance').textContent = maintenance || 0;
+            document.getElementById('stat-total').textContent = total || 0;
+        }
+
+        function updateSelects() {
+            // Turmas
+            let classOptions = '<option value="">Selecione uma turma</option>';
+            data.classes.forEach(c => classOptions += `<option value="${c.id}">${c.name} (${c.shift})</option>`);
+            document.getElementById('loanClass').innerHTML = classOptions;
+            document.getElementById('filterClass').innerHTML = '<option value="">Todas as turmas</option>' + classOptions;
+
+            // Professores
+            let teacherOptions = '<option value="">Selecione um professor</option>';
+            data.teachers.forEach(t => teacherOptions += `<option value="${t.id}">${t.name}</option>`);
+            document.getElementById('loanTeacher').innerHTML = teacherOptions;
+            document.getElementById('filterTeacher').innerHTML = '<option value="">Todos os professores</option>' + teacherOptions;
+
+            // Grupos
+            const groups = [...new Set(data.devices
+                .filter(d => d.type !== 'Desktop')
+                .map(d => d.group)
+                .filter(Boolean)
+            )];
+            let groupOptions = '<option value="">Selecione um agrupamento</option>';
+            groups.forEach(g => groupOptions += `<option value="${g}">${g}</option>`);
+            document.getElementById('loanGroup').innerHTML = groupOptions;
+        }
+
+        function updateActiveLoans() {
+            const activeLoans = data.loans.filter(l => !l.returned);
+            let html = '';
+            
+            if (activeLoans.length === 0) {
+                html = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum empréstimo ativo no momento</td></tr>';
+            } else {
+                activeLoans.slice(0, 5).forEach(loan => {
+                    const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
+                    const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name || '-';
+                    const loanTypeLabel = loan.loan_type === 'full' ? 'Base completa' : 'Quantidade';
+                    
+                    html += `
+                        <tr>
+                            <td style="font-weight: 600;">${className}</td>
+                            <td>${teacherName}</td>
+                            <td>${loanTypeLabel}</td>
+                            <td style="font-weight: 600;">${loan.quantity}</td>
+                            <td>${loan.date_time}</td>
+                            <td><span class="badge yellow">Em uso</span></td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById('active-loans-table').innerHTML = html;
+
+            // Todos os empréstimos ativos
+            let allHtml = '';
+            if (activeLoans.length === 0) {
+                allHtml = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum empréstimo ativo no momento</td></tr>';
+            } else {
+                activeLoans.forEach(loan => {
+                    const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
+                    const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name || '-';
+                    const loanTypeLabel = loan.loan_type === 'full' ? 'Base completa' : 'Quantidade';
+                    
+                    allHtml += `
+                        <tr>
+                            <td style="font-weight: 600;">${className}</td>
+                            <td>${teacherName}</td>
+                            <td>${loanTypeLabel}</td>
+                            <td style="font-weight: 600;">${loan.quantity}</td>
+                            <td>${loan.date_time}</td>
+                            <td>${loan.releaser}</td>
+                            <td><button class="btn btn-small btn-primary" onclick="showScreen('return'); document.getElementById('returnLoan').value=${loan.id}; loadReturnDetails();">Devolver</button></td>
+                        </tr>
+                    `;
+                });
+            }
+            document.getElementById('all-active-loans').innerHTML = allHtml;
+        }
+
+        function updateLatestLoans() {
+            const latestLoans = [...data.loans].sort((a, b) => b.id - a.id).slice(0, 5);
+            let html = '';
+            
+            if (latestLoans.length === 0) {
+                html = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum empréstimo registrado</td></tr>';
+            } else {
+                latestLoans.forEach(loan => {
+                    const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
+                    const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name || '-';
+                    let badgeColor = 'yellow';
+                    let badgeText = 'Em uso';
+                    if (loan.returned) {
+                        badgeColor = loan.return_status === 'complete' ? 'green' : loan.return_status === 'incomplete' ? 'yellow' : 'red';
+                        badgeText = loan.return_status === 'complete' ? 'Devolvido' : loan.return_status === 'incomplete' ? 'Incompleto' : 'Com danos';
+                    }
+                    
+                    html += `
+                        <tr>
+                            <td style="font-weight: 600;">${className}</td>
+                            <td>${teacherName}</td>
+                            <td style="font-weight: 600;">${loan.quantity}</td>
+                            <td>${loan.date_time}</td>
+                            <td>${loan.releaser}</td>
+                            <td><span class="badge ${badgeColor}">${badgeText}</span></td>
+                        </tr>
+                    `;
+                });
+            }
+            
+            document.getElementById('latest-loans-table').innerHTML = html;
+        }
+
+        function updateReturnSelect() {
+            let options = '<option value="">Selecione um empréstimo ativo</option>';
+            data.loans.filter(l => !l.returned).forEach(loan => {
+                const className = data.classes.find(c => c.id === loan.class_id)?.name;
+                const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name;
+                options += `<option value="${loan.id}">${className} - ${teacherName} (${loan.date_time})</option>`;
+            });
+            document.getElementById('returnLoan').innerHTML = options;
+        }
+
+        function loadReturnDetails() {
+            const loanId = parseInt(document.getElementById('returnLoan').value);
+            if (!loanId) {
+                document.getElementById('returnDetails').style.display = 'none';
+                return;
+            }
+            const loan = data.loans.find(l => l.id === loanId);
+            if (!loan) return;
+
+            document.getElementById('returnClassName').textContent = data.classes.find(c => c.id === loan.class_id)?.name;
+            document.getElementById('returnTeacherName').textContent = data.teachers.find(t => t.id === loan.teacher_id)?.name;
+            document.getElementById('returnQtyLoan').textContent = loan.quantity + ' dispositivos';
+            document.getElementById('returnDateLoan').textContent = loan.date_time;
+            document.getElementById('returnQuantity').value = loan.quantity;
+            document.getElementById('returnDetails').style.display = 'block';
+        }
+
+        // ------------------------------
+        // 8. Tipo de Empréstimo
+        // ------------------------------
+        function setLoanType(type) {
+            currentLoanType = type;
+            document.querySelectorAll('.loan-type-option').forEach(opt => {
+                opt.classList.toggle('active', opt.dataset.type === type);
+            });
+            document.getElementById('quantityGroup').style.display = type === 'quantity' ? 'block' : 'none';
+            document.getElementById('groupGroup').style.display = type === 'full' ? 'block' : 'none';
+        }
+
+        // ------------------------------
+        // 9. Formulários
+        // ------------------------------
+        document.getElementById('loanForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const classId = parseInt(document.getElementById('loanClass').value);
+            const teacherId = parseInt(document.getElementById('loanTeacher').value);
+            const deviceType = document.getElementById('loanDeviceType').value;
+            const releaser = document.getElementById('loanReleaser').value;
+            const obs = document.getElementById('loanObs').value;
+            let quantity = 0;
+            let groupName = '';
+
+            if (deviceType === 'Desktop') {
+                alert('Desktops são fixos na sala de informática e não podem ser emprestados.');
+                return;
+            }
+
+            if (currentLoanType === 'quantity') {
+                quantity = parseInt(document.getElementById('loanQuantity').value);
+            } else {
+                groupName = document.getElementById('loanGroup').value;
+                const loanableDevices = data.devices.filter(d => d.group === groupName && d.type !== 'Desktop');
+                if (!loanableDevices.length) {
+                    alert('Esse agrupamento não possui dispositivos que possam ser emprestados.');
+                    return;
+                }
+                quantity = loanableDevices.filter(d => d.status === 'Disponível').length || loanableDevices.length;
+            }
+
+            const now = new Date();
+            const dateTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth()+1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+            const loan = {
+                class_id: classId,
+                teacher_id: teacherId,
+                device_type: deviceType,
+                quantity,
+                loan_type: currentLoanType,
+                group_name: groupName,
+                date_time: dateTime,
+                releaser,
+                observations: obs,
+                returned: false
+            };
+
+            try {
+                const { error } = await client.from('loans').insert(loan);
+                if (error) throw error;
+                await showAppAlert('Empréstimo registrado com sucesso!', { type: 'success' });
+                await loadData();
+                if (isAlunoAccess()) {
+                    await logout();
+                    return;
+                }
+                showScreen('dashboard');
+                this.reset();
+            } catch (error) {
+                console.error('Erro ao registrar empréstimo:', error);
+                alert('Erro ao registrar empréstimo: ' + error.message);
+            }
+        });
+
+        async function confirmReturn() {
+            const loanId = parseInt(document.getElementById('returnLoan').value);
+            if (!loanId) return;
+
+            const returnQty = parseInt(document.getElementById('returnQuantity').value);
+            const returnStatus = document.getElementById('returnStatus').value;
+            const returnObs = document.getElementById('returnObs').value;
+            const now = new Date();
+            const returnDateTime = now.toLocaleString('pt-BR');
+
+            try {
+                const { error } = await client.from('loans').update({
+                    returned: true,
+                    return_date_time: returnDateTime,
+                    return_quantity: returnQty,
+                    return_status: returnStatus,
+                    return_observations: returnObs
+                }).eq('id', loanId);
+
+                if (error) throw error;
+
+                await showAppAlert('Devolução registrada com sucesso!', { type: 'success' });
+                await loadData();
+                if (isAlunoAccess()) {
+                    await logout();
+                    return;
+                }
+                showScreen('dashboard');
+            } catch (error) {
+                console.error('Erro ao registrar devolução:', error);
+                alert('Erro ao registrar devolução: ' + error.message);
+            }
+        }
+
+        // ------------------------------
+        // 10. Listas e CRUD de Turmas e Professores
+        // ------------------------------
+        function updateClassesList() {
+            let html = '';
+            if (data.classes.length === 0) {
+                html = '<tr><td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhuma turma cadastrada</td></tr>';
+            } else {
+                data.classes.forEach(c => {
+                    html += `<tr>
+                        <td><i class="fas fa-door-open"></i> ${c.name}</td>
+                        <td>${c.shift}</td>
+                        <td>${c.students || '-'}</td>
+                        <td>
+                            <button class="btn btn-small btn-primary" onclick="editClass(${c.id})" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-small" style="background: #fee2e2; color: #991b1b;" onclick="deleteClass(${c.id})" title="Remover">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+            }
+            document.getElementById('classes-table').innerHTML = html;
+        }
+
+        function updateTeachersList() {
+            let html = '';
+            if (data.teachers.length === 0) {
+                html = '<tr><td colspan="3" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum professor cadastrado</td></tr>';
+            } else {
+                data.teachers.forEach(t => {
+                    html += `<tr>
+                        <td><i class="fas fa-chalkboard-teacher"></i> ${t.name}</td>
+                        <td>${t.subject || '-'}</td>
+                        <td>
+                            <button class="btn btn-small btn-primary" onclick="editTeacher(${t.id})" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-small" style="background: #fee2e2; color: #991b1b;" onclick="deleteTeacher(${t.id})" title="Remover">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+            }
+            document.getElementById('teachers-table').innerHTML = html;
+        }
+
+        // --- Funções de Turma ---
+        function openClassModal(classObj = null) {
+            const modal = document.getElementById('classModal');
+            const modalTitle = document.getElementById('classModalTitle');
+            const form = document.getElementById('classForm');
+            
+            if (classObj) {
+                modalTitle.textContent = 'Editar Turma';
+                document.getElementById('classId').value = classObj.id;
+                document.getElementById('className').value = classObj.name;
+                document.getElementById('classShift').value = classObj.shift;
+                document.getElementById('classStudents').value = classObj.students || '';
+            } else {
+                modalTitle.textContent = 'Nova Turma';
+                form.reset();
+                document.getElementById('classId').value = '';
+            }
+            
+            modal.classList.add('active');
+        }
+
+        function closeClassModal() {
+            document.getElementById('classModal').classList.remove('active');
+        }
+
+        function editClass(classId) {
+            const classObj = data.classes.find(c => c.id === classId);
+            if (classObj) {
+                openClassModal(classObj);
+            }
+        }
+
+        async function deleteClass(classId) {
+            if (!confirm('Tem certeza que deseja remover esta turma?')) return;
+
+            try {
+                const { error } = await client.from('classes').delete().eq('id', classId);
+                if (error) throw error;
+                await loadData();
+                alert('Turma removida com sucesso!');
+            } catch (error) {
+                console.error('Erro ao deletar turma:', error);
+                alert('Erro ao remover turma: ' + error.message);
+            }
+        }
+
+        document.getElementById('classForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const classId = document.getElementById('classId').value;
+            const classData = {
+                name: document.getElementById('className').value,
+                shift: document.getElementById('classShift').value,
+                students: parseInt(document.getElementById('classStudents').value) || null
+            };
+
+            try {
+                if (classId) {
+                    // Editar turma existente
+                    const { error } = await client.from('classes').update(classData).eq('id', parseInt(classId));
+                    if (error) throw error;
+                    alert('Turma atualizada com sucesso!');
+                } else {
+                    // Criar nova turma
+                    const { error } = await client.from('classes').insert(classData);
+                    if (error) throw error;
+                    alert('Turma criada com sucesso!');
+                }
+                
+                closeClassModal();
+                await loadData();
+                this.reset();
+            } catch (error) {
+                console.error('Erro ao salvar turma:', error);
+                alert('Erro ao salvar turma: ' + error.message);
+            }
+        });
+
+        // --- Funções de Professor ---
+        function openTeacherModal(teacher = null) {
+            const modal = document.getElementById('teacherModal');
+            const modalTitle = document.getElementById('teacherModalTitle');
+            const form = document.getElementById('teacherForm');
+            
+            if (teacher) {
+                modalTitle.textContent = 'Editar Professor';
+                document.getElementById('teacherId').value = teacher.id;
+                document.getElementById('teacherName').value = teacher.name;
+                document.getElementById('teacherSubject').value = teacher.subject || '';
+            } else {
+                modalTitle.textContent = 'Novo Professor';
+                form.reset();
+                document.getElementById('teacherId').value = '';
+            }
+            
+            modal.classList.add('active');
+        }
+
+        function closeTeacherModal() {
+            document.getElementById('teacherModal').classList.remove('active');
+        }
+
+        function editTeacher(teacherId) {
+            const teacher = data.teachers.find(t => t.id === teacherId);
+            if (teacher) {
+                openTeacherModal(teacher);
+            }
+        }
+
+        async function deleteTeacher(teacherId) {
+            if (!confirm('Tem certeza que deseja remover este professor?')) return;
+
+            try {
+                const { error } = await client.from('teachers').delete().eq('id', teacherId);
+                if (error) throw error;
+                await loadData();
+                alert('Professor removido com sucesso!');
+            } catch (error) {
+                console.error('Erro ao deletar professor:', error);
+                alert('Erro ao remover professor: ' + error.message);
+            }
+        }
+
+        document.getElementById('teacherForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const teacherId = document.getElementById('teacherId').value;
+            const teacherData = {
+                name: document.getElementById('teacherName').value,
+                subject: document.getElementById('teacherSubject').value || null
+            };
+
+            try {
+                if (teacherId) {
+                    // Editar professor existente
+                    const { error } = await client.from('teachers').update(teacherData).eq('id', parseInt(teacherId));
+                    if (error) throw error;
+                    alert('Professor atualizado com sucesso!');
+                } else {
+                    // Criar novo professor
+                    const { error } = await client.from('teachers').insert(teacherData);
+                    if (error) throw error;
+                    alert('Professor criado com sucesso!');
+                }
+                
+                closeTeacherModal();
+                await loadData();
+                this.reset();
+            } catch (error) {
+                console.error('Erro ao salvar professor:', error);
+                alert('Erro ao salvar professor: ' + error.message);
+            }
+        });
+
+        function updateDevicesTable() {
+            let html = '';
+            if (data.devices.length === 0) {
+                html = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum dispositivo cadastrado</td></tr>';
+            } else {
+                data.devices.forEach(d => {
+                    const badgeColor = d.status === 'Disponível' ? 'green' : d.status === 'Em uso' ? 'yellow' : 'red';
+                    const isDesktop = d.type === 'Desktop';
+                    const icon = d.type === 'Notebook' ? 'laptop' : d.type === 'Tablet' ? 'tablet-alt' : 'desktop';
+                    html += `<tr>
+                        <td>
+                            <i class="fas fa-${icon}"></i> ${d.type}
+                            ${isDesktop ? '<span class="device-fixed-badge"><i class="fas fa-building"></i> Fixo</span>' : ''}
+                        </td>
+                        <td>${d.serial_number || '-'}</td>
+                        <td>${d.patrimony || '-'}</td>
+                        <td>${d.counter_number || '-'}</td>
+                        <td>${d.group}</td>
+                        <td><span class="badge ${badgeColor}">${d.status}</span></td>
+                        <td>${d.observations ? d.observations.substring(0, 30) + (d.observations.length > 30 ? '...' : '') : '-'}</td>
+                        <td>
+                            <button class="btn btn-small btn-primary" onclick="editDevice(${d.id})" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            ${isDesktop ? `
+                                <button class="btn btn-small" style="background: #fef3c7; color: #92400e;" onclick="toggleMaintenance(${d.id})" title="Colocar/Retirar de Manutenção">
+                                    <i class="fas fa-wrench"></i>
+                                </button>
+                            ` : `
+                                <button class="btn btn-small" style="background: #fef3c7; color: #92400e;" onclick="toggleMaintenance(${d.id})" title="Colocar/Retirar de Manutenção">
+                                    <i class="fas fa-wrench"></i>
+                                </button>
+                                <button class="btn btn-small" style="background: #fee2e2; color: #991b1b;" onclick="deleteDevice(${d.id})" title="Remover">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            `}
+                        </td>
+                    </tr>`;
+                });
+            }
+            document.getElementById('devices-table').innerHTML = html;
+        }
+
+        function renderDeviceStatusOptions(type, selectedStatus = 'Disponível') {
+            const statusSelect = document.getElementById('deviceStatus');
+            const options = type === 'Desktop'
+                ? [
+                    { value: 'Disponível', label: 'Disponível' },
+                    { value: 'Manutenção', label: 'Manutenção' }
+                ]
+                : [
+                    { value: 'Disponível', label: 'Disponível' },
+                    { value: 'Em uso', label: 'Em uso' },
+                    { value: 'Manutenção', label: 'Manutenção' }
+                ];
+
+            statusSelect.innerHTML = options.map(option => `<option value="${option.value}">${option.label}</option>`).join('');
+            statusSelect.value = options.some(option => option.value === selectedStatus) ? selectedStatus : options[0].value;
+        }
+
+        function handleDeviceTypeChange(preferredStatus = null) {
+            const type = document.getElementById('deviceType').value;
+            const groupInput = document.getElementById('deviceGroup');
+            const currentStatus = preferredStatus || document.getElementById('deviceStatus').value;
+
+            groupInput.placeholder = type === 'Desktop'
+                ? 'Ex: Sala 17 ou Sala de Informática'
+                : 'Ex: Base 1, Carrinho A, Sala 17';
+            renderDeviceStatusOptions(type, currentStatus);
+        }
+
+        // Função para abrir o modal de novo dispositivo
+        function openDeviceModal(device = null) {
+            const modal = document.getElementById('deviceModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const form = document.getElementById('deviceForm');
+            
+            if (device) {
+                modalTitle.textContent = 'Editar Dispositivo';
+                document.getElementById('deviceId').value = device.id;
+                document.getElementById('deviceType').value = device.type;
+                document.getElementById('deviceSerial').value = device.serial_number || '';
+                document.getElementById('devicePatrimony').value = device.patrimony || '';
+                document.getElementById('deviceCounter').value = device.counter_number || 's/n';
+                document.getElementById('deviceGroup').value = device.group;
+                document.getElementById('deviceObservations').value = device.observations || '';
+            } else {
+                modalTitle.textContent = 'Novo Dispositivo';
+                form.reset();
+                document.getElementById('deviceId').value = '';
+                document.getElementById('deviceSerial').value = '';
+                document.getElementById('deviceCounter').value = 's/n';
+            }
+
+            document.getElementById('deviceType').value = device?.type || 'Notebook';
+            handleDeviceTypeChange(device?.type === 'Desktop' && device?.status === 'Em uso' ? 'Disponível' : (device?.status || 'Disponível'));
+            
+            modal.classList.add('active');
+        }
+
+        // Função para fechar o modal
+        function closeDeviceModal() {
+            document.getElementById('deviceModal').classList.remove('active');
+        }
+
+        // Função para editar dispositivo
+        function editDevice(deviceId) {
+            const device = data.devices.find(d => d.id === deviceId);
+            if (device) {
+                openDeviceModal(device);
+            }
+        }
+
+        // Função para alternar entre manutenção e disponível
+        async function toggleMaintenance(deviceId) {
+            const device = data.devices.find(d => d.id === deviceId);
+            if (!device) return;
+
+            const newStatus = device.status === 'Manutenção' ? 'Disponível' : 'Manutenção';
+
+            try {
+                const { error } = await client.from('devices').update({ status: newStatus }).eq('id', deviceId);
+                if (error) throw error;
+                await loadData();
+                alert(`Dispositivo ${newStatus === 'Manutenção' ? 'colocado em' : 'retirado de'} manutenção com sucesso!`);
+            } catch (error) {
+                console.error('Erro ao atualizar status:', error);
+                alert('Erro ao atualizar status: ' + error.message);
+            }
+        }
+
+        // Função para deletar dispositivo
+        async function deleteDevice(deviceId) {
+            if (!confirm('Tem certeza que deseja remover este dispositivo?')) return;
+
+            try {
+                const { error } = await client.from('devices').delete().eq('id', deviceId);
+                if (error) throw error;
+                await loadData();
+                alert('Dispositivo removido com sucesso!');
+            } catch (error) {
+                console.error('Erro ao deletar dispositivo:', error);
+                alert('Erro ao remover dispositivo: ' + error.message);
+            }
+        }
+
+        // Evento para salvar dispositivo (novo ou editado)
+        document.getElementById('deviceForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const deviceId = document.getElementById('deviceId').value;
+            const serialNumber = document.getElementById('deviceSerial').value.trim();
+            const counterNumber = document.getElementById('deviceCounter').value.trim();
+
+            if (!counterNumber) {
+                alert('Informe o numero contador ou S/N.');
+                document.getElementById('deviceCounter').focus();
+                return;
+            }
+            if (deviceSchemaReady === false || (deviceSchemaReady === null && !(await verifyDeviceSchema()))) {
+                alert('O banco ainda nao tem a coluna counter_number aplicada. Execute atualizar_tabela_devices.sql no Supabase e recarregue a pagina.');
+                return;
+            }
+
+            const deviceData = {
+                type: document.getElementById('deviceType').value,
+                serial_number: serialNumber || null,
+                patrimony: document.getElementById('devicePatrimony').value || null,
+                counter_number: counterNumber,
+                group: document.getElementById('deviceGroup').value,
+                status: document.getElementById('deviceStatus').value,
+                observations: document.getElementById('deviceObservations').value || null
+            };
+
+            if (deviceData.type === 'Desktop' && deviceData.status === 'Em uso') {
+                deviceData.status = 'Disponível';
+            }
+
+            try {
+                if (deviceId) {
+                    // Editar dispositivo existente
+                    const { error } = await client.from('devices').update(deviceData).eq('id', parseInt(deviceId));
+                    if (error) throw error;
+                    alert('Dispositivo atualizado com sucesso!');
+                } else {
+                    // Criar novo dispositivo
+                    const { error } = await client.from('devices').insert(deviceData);
+                    if (error) throw error;
+                    alert('Dispositivo criado com sucesso!');
+                }
+                
+                closeDeviceModal();
+                await loadData();
+                this.reset();
+            } catch (error) {
+                console.error('Erro ao salvar dispositivo:', error);
+                alert('Erro ao salvar dispositivo: ' + error.message);
+            }
+        });
+
+        function filterHistory() {
+            const date = document.getElementById('filterDate').value;
+            const classId = parseInt(document.getElementById('filterClass').value);
+            const teacherId = parseInt(document.getElementById('filterTeacher').value);
+
+            let filtered = [...data.loans];
+            if (classId) filtered = filtered.filter(l => l.class_id === classId);
+            if (teacherId) filtered = filtered.filter(l => l.teacher_id === teacherId);
+
+            updateHistoryTableWithData(filtered);
+        }
+
+        function updateHistoryTable() {
+            updateHistoryTableWithData(data.loans);
+        }
+
+        function updateHistoryTableWithData(loans) {
+            let html = '';
+            if (loans.length === 0) {
+                html = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum empréstimo registrado</td></tr>';
+            } else {
+                loans.sort((a, b) => b.id - a.id).forEach(loan => {
+                    const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
+                    const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name || '-';
+                    let badgeColor = 'yellow';
+                    let badgeText = 'Em uso';
+                    if (loan.returned) {
+                        badgeColor = loan.return_status === 'complete' ? 'green' : loan.return_status === 'incomplete' ? 'yellow' : 'red';
+                        badgeText = loan.return_status === 'complete' ? 'Devolvido' : loan.return_status === 'incomplete' ? 'Incompleto' : 'Com danos';
+                    }
+                    
+                    html += `
+                        <tr>
+                            <td>${loan.date_time}</td>
+                            <td style="font-weight: 600;">${className}</td>
+                            <td>${teacherName}</td>
+                            <td style="font-weight: 600;">${loan.quantity}</td>
+                            <td><span class="badge ${badgeColor}">${badgeText}</span></td>
+                        </tr>
+                    `;
+                });
+            }
+            document.getElementById('history-table').innerHTML = html;
+        }
+
+    </script>
+</body>
+</html>
+
