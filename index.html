@@ -797,6 +797,30 @@
             min-width: 0;
         }
 
+        .device-group-section {
+            display: grid;
+            gap: 12px;
+        }
+
+        .device-group-heading {
+            padding: 0 16px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .device-group-row td {
+            background: rgba(148, 163, 184, 0.08);
+            color: var(--text-dark);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 12px 16px;
+        }
+
         .simple-card-list {
             display: none;
             gap: 14px;
@@ -1892,6 +1916,8 @@
                                 <label class="form-label">Tipo de Dispositivo</label>
                                 <select id="loanDeviceType" class="form-input" required>
                                     <option value="Notebook">Notebook</option>
+                                    <option value="Notebook Positivo (Novos)">Notebook Positivo (Novos)</option>
+                                    <option value="Notebook Ultra">Notebook Ultra</option>
                                     <option value="Tablet">Tablet</option>
                                 </select>
                                 <small class="loan-note">Desktops são fixos na sala de informática e não entram em empréstimo.</small>
@@ -2099,6 +2125,8 @@
                             <label class="form-label">Tipo</label>
                             <select id="deviceType" class="form-input" required onchange="handleDeviceTypeChange()">
                                 <option value="Notebook">Notebook</option>
+                                <option value="Notebook Positivo (Novos)">Notebook Positivo (Novos)</option>
+                                <option value="Notebook Ultra">Notebook Ultra</option>
                                 <option value="Tablet">Tablet</option>
                                 <option value="Desktop">Desktop</option>
                             </select>
@@ -2123,6 +2151,17 @@
                                     Escanear
                                 </button>
                             </div>
+                        </div>
+                        <div class="form-group" id="deviceImeiGroup" style="display: none;">
+                            <label class="form-label">IMEI</label>
+                            <div class="input-with-action">
+                                <input type="text" id="deviceImei" class="form-input" placeholder="Ex: 356XXXXXXXXXXXX">
+                                <button type="button" class="btn btn-secondary input-action-btn" onclick="openScanner('deviceImei')">
+                                    <i class="fas fa-camera"></i>
+                                    Escanear
+                                </button>
+                            </div>
+                            <small class="field-hint">Somente para tablets. Use o IMEI do aparelho ou escaneie o código de barras.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Número Contador / S/N</label>
@@ -2865,13 +2904,15 @@
         }
 
         async function verifyDeviceSchema() {
-            const { error } = await client.from('devices').select('counter_number').limit(1);
+            const { error } = await client.from('devices').select('counter_number, imei').limit(1);
             deviceSchemaReady = !error;
             return deviceSchemaReady;
         }
 
         function getScannerLabel(fieldId) {
-            return fieldId === 'devicePatrimony' ? 'patrimônio' : 'número de série';
+            if (fieldId === 'devicePatrimony') return 'patrimônio';
+            if (fieldId === 'deviceImei') return 'IMEI';
+            return 'número de série';
         }
 
         function initScannerDetector() {
@@ -3054,6 +3095,79 @@
             let groupOptions = '<option value="">Selecione um agrupamento</option>';
             groups.forEach(g => groupOptions += `<option value="${g}">${g}</option>`);
             document.getElementById('loanGroup').innerHTML = groupOptions;
+        }
+
+        function getDeviceTypeOrder(type) {
+            const order = {
+                Notebook: 0,
+                'Notebook Positivo (Novos)': 1,
+                'Notebook Ultra': 2,
+                Tablet: 3,
+                Desktop: 4
+            };
+            return order[type] ?? 99;
+        }
+
+        function getDeviceIcon(type) {
+            if (type === 'Tablet') return 'tablet-alt';
+            if (type === 'Desktop') return 'desktop';
+            return 'laptop';
+        }
+
+        function isFixedDevice(type) {
+            return type === 'Desktop';
+        }
+
+        function getDeviceCounterSortKey(counterNumber) {
+            const raw = (counterNumber || '').toString().trim().toLowerCase();
+            if (!raw || raw === 's/n' || raw === 'sn') {
+                return { rank: 2, numeric: Number.MAX_SAFE_INTEGER, text: '' };
+            }
+
+            const numericMatch = raw.match(/\d+/);
+            if (numericMatch) {
+                return { rank: 0, numeric: parseInt(numericMatch[0], 10), text: raw };
+            }
+
+            return { rank: 1, numeric: Number.MAX_SAFE_INTEGER, text: raw };
+        }
+
+        function sortDevicesForDisplay(devices) {
+            return [...devices].sort((a, b) => {
+                const typeDiff = getDeviceTypeOrder(a.type) - getDeviceTypeOrder(b.type);
+                if (typeDiff !== 0) return typeDiff;
+
+                const aCounter = getDeviceCounterSortKey(a.counter_number);
+                const bCounter = getDeviceCounterSortKey(b.counter_number);
+
+                if (aCounter.rank !== bCounter.rank) return aCounter.rank - bCounter.rank;
+                if (aCounter.numeric !== bCounter.numeric) return aCounter.numeric - bCounter.numeric;
+
+                const textDiff = aCounter.text.localeCompare(bCounter.text, 'pt-BR', { numeric: true, sensitivity: 'base' });
+                if (textDiff !== 0) return textDiff;
+
+                return (a.id || 0) - (b.id || 0);
+            });
+        }
+
+        function groupDevicesByType(devices) {
+            const grouped = [];
+            const map = new Map();
+
+            devices.forEach(device => {
+                if (!map.has(device.type)) {
+                    const group = { type: device.type || 'Outros', devices: [] };
+                    map.set(device.type, group);
+                    grouped.push(group);
+                }
+                map.get(device.type).devices.push(device);
+            });
+
+            return grouped;
+        }
+
+        function getDeviceTypeLabel(type) {
+            return type || 'Outros';
         }
 
         function getLoanInfo(loan) {
@@ -3781,11 +3895,21 @@
         function handleDeviceTypeChange(preferredStatus = null) {
             const type = document.getElementById('deviceType').value;
             const groupInput = document.getElementById('deviceGroup');
+            const imeiGroup = document.getElementById('deviceImeiGroup');
+            const imeiInput = document.getElementById('deviceImei');
             const currentStatus = preferredStatus || document.getElementById('deviceStatus').value;
 
             groupInput.placeholder = type === 'Desktop'
                 ? 'Ex: Sala 17 ou Sala de Informática'
                 : 'Ex: Base 1, Carrinho A, Sala 17';
+            if (imeiGroup && imeiInput) {
+                const isTablet = type === 'Tablet';
+                imeiGroup.style.display = isTablet ? 'block' : 'none';
+                imeiInput.required = isTablet;
+                if (!isTablet) {
+                    imeiInput.value = '';
+                }
+            }
             renderDeviceStatusOptions(type, currentStatus);
         }
 
@@ -3801,6 +3925,7 @@
                 document.getElementById('deviceType').value = device.type;
                 document.getElementById('deviceSerial').value = device.serial_number || '';
                 document.getElementById('devicePatrimony').value = device.patrimony || '';
+                document.getElementById('deviceImei').value = device.imei || '';
                 document.getElementById('deviceCounter').value = device.counter_number || 's/n';
                 document.getElementById('deviceGroup').value = device.group;
                 document.getElementById('deviceObservations').value = device.observations || '';
@@ -3809,6 +3934,7 @@
                 form.reset();
                 document.getElementById('deviceId').value = '';
                 document.getElementById('deviceSerial').value = '';
+                document.getElementById('deviceImei').value = '';
                 document.getElementById('deviceCounter').value = 's/n';
             }
 
@@ -3869,6 +3995,7 @@
             e.preventDefault();
             const deviceId = document.getElementById('deviceId').value;
             const serialNumber = document.getElementById('deviceSerial').value.trim();
+            const imei = document.getElementById('deviceImei').value.trim();
             const counterNumber = document.getElementById('deviceCounter').value.trim();
 
             if (!counterNumber) {
@@ -3877,7 +4004,7 @@
                 return;
             }
             if (deviceSchemaReady === false || (deviceSchemaReady === null && !(await verifyDeviceSchema()))) {
-                alert('O banco ainda nao tem a coluna counter_number aplicada. Execute atualizar_tabela_devices.sql no Supabase e recarregue a pagina.');
+                alert('O banco ainda nao tem as colunas counter_number e/ou imei aplicadas. Execute atualizar_tabela_devices.sql no Supabase e recarregue a pagina.');
                 return;
             }
 
@@ -3885,6 +4012,7 @@
                 type: document.getElementById('deviceType').value,
                 serial_number: serialNumber || null,
                 patrimony: document.getElementById('devicePatrimony').value || null,
+                imei: document.getElementById('deviceType').value === 'Tablet' ? (imei || null) : null,
                 counter_number: counterNumber,
                 group: document.getElementById('deviceGroup').value,
                 status: document.getElementById('deviceStatus').value,
@@ -3973,6 +4101,166 @@
                 showReleaser: true,
                 emptyMessage: 'Nenhum empréstimo registrado'
             });
+        }
+
+        function updateDevicesTable() {
+            const tableBody = document.getElementById('devices-table');
+            const table = tableBody?.closest('table');
+            const headerRow = table?.querySelector('thead tr');
+            if (!tableBody) return;
+
+            if (headerRow && headerRow.children.length === 8) {
+                headerRow.innerHTML = `
+                    <th>Tipo</th>
+                    <th>Nº Série</th>
+                    <th>Patrimônio</th>
+                    <th>IMEI</th>
+                    <th>Nº Contador</th>
+                    <th>Agrupamento</th>
+                    <th>Estado</th>
+                    <th>Observações</th>
+                    <th>Ações</th>
+                `;
+            }
+
+            const sortedDevices = sortDevicesForDisplay(data.devices);
+            let html = '';
+
+            if (sortedDevices.length === 0) {
+                html = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum dispositivo cadastrado</td></tr>';
+            } else {
+                let lastType = null;
+                sortedDevices.forEach(d => {
+                    const badgeColor = d.status === 'Disponível' ? 'green' : d.status === 'Em uso' ? 'yellow' : 'red';
+                    const isDesktop = isFixedDevice(d.type);
+                    const icon = getDeviceIcon(d.type);
+
+                    if (d.type !== lastType) {
+                        lastType = d.type;
+                        html += `<tr class="device-group-row"><td colspan="9">${getDeviceTypeLabel(d.type)}</td></tr>`;
+                    }
+
+                    html += `<tr>
+                        <td>
+                            <i class="fas fa-${icon}"></i> ${d.type}
+                            ${isDesktop ? '<span class="device-fixed-badge"><i class="fas fa-building"></i> Fixo</span>' : ''}
+                        </td>
+                        <td>${d.serial_number || '-'}</td>
+                        <td>${d.patrimony || '-'}</td>
+                        <td>${d.type === 'Tablet' ? (d.imei || '-') : '-'}</td>
+                        <td>${d.counter_number || '-'}</td>
+                        <td>${d.group}</td>
+                        <td><span class="badge ${badgeColor}">${d.status}</span></td>
+                        <td>${d.observations ? d.observations.substring(0, 30) + (d.observations.length > 30 ? '...' : '') : '-'}</td>
+                        <td>
+                            <button class="btn btn-small btn-primary" onclick="editDevice(${d.id})" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            ${isDesktop ? `
+                                <button class="btn btn-small" style="background: #fef3c7; color: #92400e;" onclick="toggleMaintenance(${d.id})" title="Colocar/Retirar de Manutenção">
+                                    <i class="fas fa-wrench"></i>
+                                </button>
+                            ` : `
+                                <button class="btn btn-small" style="background: #fef3c7; color: #92400e;" onclick="toggleMaintenance(${d.id})" title="Colocar/Retirar de Manutenção">
+                                    <i class="fas fa-wrench"></i>
+                                </button>
+                                <button class="btn btn-small" style="background: #fee2e2; color: #991b1b;" onclick="deleteDevice(${d.id})" title="Remover">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            `}
+                        </td>
+                    </tr>`;
+                });
+            }
+
+            tableBody.innerHTML = html;
+        }
+
+        function updateDevicesCards() {
+            const container = document.getElementById('devices-cards');
+            if (!container) return;
+
+            const sortedDevices = sortDevicesForDisplay(data.devices);
+            const groupedDevices = groupDevicesByType(sortedDevices);
+            let html = '';
+
+            if (sortedDevices.length === 0) {
+                html = '<div class="device-card"><div style="text-align:center; color: var(--text-muted); font-weight: 600;">Nenhum dispositivo cadastrado</div></div>';
+            } else {
+                html = groupedDevices.map(group => `
+                    <section class="device-group-section">
+                        <div class="device-group-heading">${getDeviceTypeLabel(group.type)}</div>
+                        <div style="display: grid; gap: 14px;">
+                            ${group.devices.map(d => {
+                                const badgeColor = d.status === 'Disponível' ? 'green' : d.status === 'Em uso' ? 'yellow' : 'red';
+                                const icon = getDeviceIcon(d.type);
+                                const isDesktop = isFixedDevice(d.type);
+                                const deleteButton = isDesktop ? '' : `<button class="btn btn-danger btn-small" onclick="deleteDevice(${d.id})">
+                                    <i class="fas fa-trash"></i>
+                                    Remover
+                                </button>`;
+
+                                return `
+                                    <div class="device-card">
+                                        <div class="device-card-top">
+                                            <div class="device-card-title">
+                                                <i class="fas fa-${icon}"></i>
+                                                <span>${d.type}</span>
+                                            </div>
+                                            ${isDesktop ? '<span class="device-fixed-badge"><i class="fas fa-building"></i> Fixo</span>' : ''}
+                                        </div>
+                                        <div class="device-card-meta">
+                                            <div class="device-card-field">
+                                                <small>Nº série</small>
+                                                <span>${d.serial_number || '-'}</span>
+                                            </div>
+                                            <div class="device-card-field">
+                                                <small>Patrimônio</small>
+                                                <span>${d.patrimony || '-'}</span>
+                                            </div>
+                                            ${d.type === 'Tablet' ? `
+                                                <div class="device-card-field">
+                                                    <small>IMEI</small>
+                                                    <span>${d.imei || '-'}</span>
+                                                </div>
+                                            ` : ''}
+                                            <div class="device-card-field">
+                                                <small>Nº contador</small>
+                                                <span>${d.counter_number || '-'}</span>
+                                            </div>
+                                            <div class="device-card-field">
+                                                <small>Estado</small>
+                                                <span><span class="badge ${badgeColor}">${d.status}</span></span>
+                                            </div>
+                                            <div class="device-card-field" style="grid-column: 1 / -1;">
+                                                <small>Agrupamento</small>
+                                                <span>${d.group}</span>
+                                            </div>
+                                            <div class="device-card-field" style="grid-column: 1 / -1;">
+                                                <small>Observações</small>
+                                                <span>${d.observations ? d.observations.substring(0, 80) + (d.observations.length > 80 ? '...' : '') : '-'}</span>
+                                            </div>
+                                        </div>
+                                        <div class="device-card-actions">
+                                            <button class="btn btn-primary btn-small" onclick="editDevice(${d.id})">
+                                                <i class="fas fa-edit"></i>
+                                                Editar
+                                            </button>
+                                            <button class="btn btn-secondary btn-small" style="background: #fef3c7; color: #92400e;" onclick="toggleMaintenance(${d.id})">
+                                                <i class="fas fa-wrench"></i>
+                                                Manut.
+                                            </button>
+                                            ${deleteButton || '<span></span>'}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </section>
+                `).join('');
+            }
+
+            container.innerHTML = html;
         }
 
     </script>

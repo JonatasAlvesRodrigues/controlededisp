@@ -21,6 +21,7 @@ CREATE TABLE devices (
     type VARCHAR NOT NULL,
     serial_number TEXT,
     patrimony VARCHAR,
+    imei TEXT,
     counter_number TEXT NOT NULL DEFAULT 's/n',
     "group" VARCHAR NOT NULL,
     status VARCHAR NOT NULL DEFAULT 'DisponÃ­vel',
