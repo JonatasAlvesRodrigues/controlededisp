@@ -719,6 +719,79 @@
             margin-bottom: 24px;
         }
 
+        .device-card-list {
+            display: none;
+            gap: 14px;
+            padding: 14px;
+        }
+
+        .device-card {
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background: var(--surface);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            padding: 16px;
+        }
+
+        .device-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .device-card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 16px;
+            color: var(--text-dark);
+        }
+
+        .device-card-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .device-card-field {
+            background: rgba(148, 163, 184, 0.08);
+            border-radius: 14px;
+            padding: 10px 12px;
+            min-width: 0;
+        }
+
+        .device-card-field small {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .device-card-field span {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-dark);
+            word-break: break-word;
+        }
+
+        .device-card-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .device-card-actions .btn {
+            width: 100%;
+            padding: 12px 10px;
+            min-width: 0;
+        }
+
         /* Footer */
         .footer {
             text-align: center;
@@ -783,6 +856,8 @@
             .modal-header, .modal-body { padding-left: 18px; padding-right: 18px; }
             .input-with-action { flex-direction: column; align-items: stretch; }
             .input-action-btn { width: 100%; min-width: 0; }
+            #devices .card table { display: none; }
+            .device-card-list { display: grid; }
         }
 
         /* Modal */
@@ -1803,6 +1878,7 @@
                         </thead>
                         <tbody id="devices-table"></tbody>
                     </table>
+                    <div id="devices-cards" class="device-card-list"></div>
                 </div>
             </div>
         </div>
@@ -2684,6 +2760,7 @@
             updateLatestLoans();
             updateHistoryTable();
             updateDevicesTable();
+            updateDevicesCards();
             updateClassesList();
             updateTeachersList();
             updateReturnSelect();
@@ -3190,6 +3267,77 @@
                 });
             }
             document.getElementById('devices-table').innerHTML = html;
+        }
+
+        function updateDevicesCards() {
+            const container = document.getElementById('devices-cards');
+            if (!container) return;
+
+            let html = '';
+            if (data.devices.length === 0) {
+                html = '<div class="device-card"><div style="text-align:center; color: var(--text-muted); font-weight: 600;">Nenhum dispositivo cadastrado</div></div>';
+            } else {
+                data.devices.forEach(d => {
+                    const badgeColor = d.status === 'Disponível' ? 'green' : d.status === 'Em uso' ? 'yellow' : 'red';
+                    const icon = d.type === 'Notebook' ? 'laptop' : d.type === 'Tablet' ? 'tablet-alt' : 'desktop';
+                    const isDesktop = d.type === 'Desktop';
+                    const deleteButton = isDesktop ? '' : `<button class="btn btn-danger btn-small" onclick="deleteDevice(${d.id})">
+                        <i class="fas fa-trash"></i>
+                        Remover
+                    </button>`;
+
+                    html += `
+                        <div class="device-card">
+                            <div class="device-card-top">
+                                <div class="device-card-title">
+                                    <i class="fas fa-${icon}"></i>
+                                    <span>${d.type}</span>
+                                </div>
+                                ${isDesktop ? '<span class="device-fixed-badge"><i class="fas fa-building"></i> Fixo</span>' : ''}
+                            </div>
+                            <div class="device-card-meta">
+                                <div class="device-card-field">
+                                    <small>Nº série</small>
+                                    <span>${d.serial_number || '-'}</span>
+                                </div>
+                                <div class="device-card-field">
+                                    <small>Patrimônio</small>
+                                    <span>${d.patrimony || '-'}</span>
+                                </div>
+                                <div class="device-card-field">
+                                    <small>Nº contador</small>
+                                    <span>${d.counter_number || '-'}</span>
+                                </div>
+                                <div class="device-card-field">
+                                    <small>Estado</small>
+                                    <span><span class="badge ${badgeColor}">${d.status}</span></span>
+                                </div>
+                                <div class="device-card-field" style="grid-column: 1 / -1;">
+                                    <small>Agrupamento</small>
+                                    <span>${d.group}</span>
+                                </div>
+                                <div class="device-card-field" style="grid-column: 1 / -1;">
+                                    <small>Observações</small>
+                                    <span>${d.observations ? d.observations.substring(0, 80) + (d.observations.length > 80 ? '...' : '') : '-'}</span>
+                                </div>
+                            </div>
+                            <div class="device-card-actions">
+                                <button class="btn btn-primary btn-small" onclick="editDevice(${d.id})">
+                                    <i class="fas fa-edit"></i>
+                                    Editar
+                                </button>
+                                <button class="btn btn-secondary btn-small" style="background: #fef3c7; color: #92400e;" onclick="toggleMaintenance(${d.id})">
+                                    <i class="fas fa-wrench"></i>
+                                    Manut.
+                                </button>
+                                ${deleteButton || '<span></span>'}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            container.innerHTML = html;
         }
 
         function renderDeviceStatusOptions(type, selectedStatus = 'Disponível') {
