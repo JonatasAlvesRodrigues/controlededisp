@@ -22,6 +22,10 @@
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
         }
 
+        html {
+            -webkit-text-size-adjust: 100%;
+        }
+
         :root {
             --primary: #1e40af;
             --primary-light: #3b82f6;
@@ -56,6 +60,7 @@
             color: var(--text-dark);
             display: flex;
             min-height: 100vh;
+            overflow-x: hidden;
         }
 
         /* Tela de Login */
@@ -860,6 +865,76 @@
             margin-top: 14px;
         }
 
+        .loan-card-list {
+            display: none;
+            gap: 14px;
+            padding: 14px;
+        }
+
+        .loan-card {
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background: var(--surface);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            padding: 16px;
+        }
+
+        .loan-card-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start;
+            margin-bottom: 14px;
+        }
+
+        .loan-card-title {
+            font-weight: 800;
+            font-size: 16px;
+            color: var(--text-dark);
+        }
+
+        .loan-card-subtitle {
+            margin-top: 4px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .loan-card-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .loan-card-field {
+            background: rgba(148, 163, 184, 0.08);
+            border-radius: 14px;
+            padding: 10px 12px;
+            min-width: 0;
+        }
+
+        .loan-card-field small {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .loan-card-field span {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-dark);
+            word-break: break-word;
+        }
+
+        .loan-card-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 14px;
+        }
+
         /* Footer */
         .footer {
             text-align: center;
@@ -911,24 +986,74 @@
             .sidebar { transform: translateX(-100%); z-index: 1001; width: 88vw; max-width: 320px; }
             body.sidebar-open .sidebar { transform: translateX(0); }
             body.sidebar-open .sidebar-backdrop { display: block; }
-            .main-content { margin-left: 0; padding: 76px 16px 28px; }
-            .page-header { flex-direction: column; align-items: stretch; gap: 14px; padding: 18px; }
+            .main-content { margin-left: 0; padding: 76px 12px 24px; }
+            .page-header { flex-direction: column; align-items: stretch; gap: 12px; padding: 16px; margin-bottom: 20px; }
             .page-header .btn { width: 100%; }
-            .stats-grid { grid-template-columns: 1fr; }
-            .two-cards, .form-grid { grid-template-columns: 1fr; }
+            .page-title { font-size: 20px; }
+            .page-subtitle { font-size: 13px; }
+            .stats-grid { grid-template-columns: 1fr; gap: 16px; }
+            .stat-card { padding: 18px; }
+            .content-grid { gap: 16px; }
+            .two-cards, .form-grid { grid-template-columns: 1fr; gap: 16px; }
             .quick-actions { grid-template-columns: 1fr; }
-            .card-body { overflow-x: auto; }
-            table { min-width: 760px; }
+            .card-header { flex-direction: column; align-items: stretch; gap: 10px; padding: 16px; }
+            .card-body { overflow-x: auto; padding: 16px; -webkit-overflow-scrolling: touch; }
+            .card-body table { min-width: 640px; }
+            th, td { padding: 10px 12px; font-size: 13px; }
+            .device-card-list,
+            .simple-card-list { padding: 12px; }
+            .device-card,
+            .simple-card { padding: 14px; border-radius: 16px; }
+            .device-card-top,
+            .simple-card-header { flex-direction: column; align-items: flex-start; }
+            .device-card-meta,
+            .simple-card-body { grid-template-columns: 1fr; }
+            .device-card-actions,
+            .simple-card-actions,
+            .loan-card-actions { grid-template-columns: 1fr; }
+            .loan-card-body { grid-template-columns: 1fr; }
+            .input-with-action { flex-direction: column; align-items: stretch; }
+            .input-action-btn { width: 100%; min-width: 0; }
+            .card-header > div[style*="display: flex"] {
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .card-header .form-input {
+                width: 100% !important;
+            }
             .modal-overlay { padding: 12px; align-items: flex-end; }
             .modal { width: 100%; max-height: 92vh; border-radius: 20px 20px 0 0; }
             .modal-header, .modal-body { padding-left: 18px; padding-right: 18px; }
-            .input-with-action { flex-direction: column; align-items: stretch; }
-            .input-action-btn { width: 100%; min-width: 0; }
             #devices .card table { display: none; }
             .device-card-list { display: grid; }
             .simple-card-list { display: grid; }
+            .loan-card-list { display: grid; }
+            .card-body table { display: none; }
             #classes .card table,
             #teachers .card table { display: none; }
+        }
+
+        @media (max-width: 480px) {
+            .main-content { padding: 72px 10px 18px; }
+            .sidebar { width: 100vw; max-width: none; }
+            .mobile-menu-toggle { top: 12px; left: 12px; }
+            .login-box { padding: 28px 18px; }
+            .stat-value { font-size: 24px; }
+            .quick-action { padding: 16px; }
+            .device-card-title,
+            .simple-card-title { font-size: 15px; }
+            .device-card-field span,
+            .simple-card-field span { font-size: 13px; }
+            .device-card-actions .btn,
+            .simple-card-actions .btn,
+            .loan-card-actions .btn,
+            .page-header .btn,
+            .card-header .btn { width: 100%; }
+            .app-alert { border-radius: 22px; }
+            .app-alert-header { padding: 20px 20px 12px; }
+            .app-alert-message { padding: 0 20px 20px 84px; }
+            .app-alert-actions { padding: 0 20px 20px; }
         }
 
         /* Modal */
@@ -1636,6 +1761,7 @@
                             </thead>
                             <tbody id="active-loans-table"></tbody>
                         </table>
+                        <div id="active-loans-cards" class="loan-card-list"></div>
                     </div>
                 </div>
 
@@ -1707,6 +1833,7 @@
                         </thead>
                         <tbody id="latest-loans-table"></tbody>
                     </table>
+                    <div id="latest-loans-cards" class="loan-card-list"></div>
                 </div>
             </div>
 
@@ -1877,6 +2004,7 @@
                         </thead>
                         <tbody id="all-active-loans"></tbody>
                     </table>
+                    <div id="all-active-loans-cards" class="loan-card-list"></div>
                 </div>
             </div>
         </div>
@@ -1915,6 +2043,7 @@
                         </thead>
                         <tbody id="history-table"></tbody>
                     </table>
+                    <div id="history-cards" class="loan-card-list"></div>
                 </div>
             </div>
         </div>
@@ -2234,6 +2363,10 @@
         let appAlertResolver = null;
         let appAlertReturnFocus = null;
         let deviceSchemaReady = null;
+        let loadDataInProgress = false;
+        let loadDataQueued = false;
+        let loadDataRefreshTimer = null;
+        let devicesRealtimeChannel = null;
         let activeScannerField = null;
         let scannerStream = null;
         let scannerInterval = null;
@@ -2375,6 +2508,7 @@
         // ------------------------------
         document.addEventListener('DOMContentLoaded', async () => {
             loadDarkModePreference();
+            setupDevicesRealtime();
             await checkAuth();
             setupLoginForms();
 
@@ -2654,10 +2788,49 @@
             }
         }
 
+        function scheduleDataReload(delay = 250) {
+            if (loadDataRefreshTimer) {
+                clearTimeout(loadDataRefreshTimer);
+            }
+
+            loadDataRefreshTimer = setTimeout(() => {
+                loadDataRefreshTimer = null;
+                loadData();
+            }, delay);
+        }
+
+        function setupDevicesRealtime() {
+            if (devicesRealtimeChannel || !client?.channel) return;
+
+            devicesRealtimeChannel = client
+                .channel('devices-auto-refresh')
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'devices' },
+                    () => {
+                        scheduleDataReload(200);
+                    }
+                )
+                .subscribe();
+
+            window.addEventListener('focus', () => scheduleDataReload(150));
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    scheduleDataReload(150);
+                }
+            });
+        }
+
         // ------------------------------
         // 5. Carregamento de Dados
         // ------------------------------
         async function loadData() {
+            if (loadDataInProgress) {
+                loadDataQueued = true;
+                return;
+            }
+
+            loadDataInProgress = true;
             try {
                 // Carrega Turmas
                 const { data: classes, error: errorClasses } = await client.from('classes').select('*');
@@ -2682,6 +2855,12 @@
             } catch (error) {
                 console.error('Erro ao carregar dados:', error);
                 alert('Erro ao carregar dados: ' + error.message);
+            } finally {
+                loadDataInProgress = false;
+                if (loadDataQueued) {
+                    loadDataQueued = false;
+                    scheduleDataReload(50);
+                }
             }
         }
 
@@ -2877,6 +3056,101 @@
             document.getElementById('loanGroup').innerHTML = groupOptions;
         }
 
+        function getLoanInfo(loan) {
+            const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
+            const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name || '-';
+            const loanTypeLabel = loan.loan_type === 'full' ? 'Base completa' : 'Quantidade';
+            const statusColor = loan.returned
+                ? loan.return_status === 'complete'
+                    ? 'green'
+                    : loan.return_status === 'incomplete'
+                        ? 'yellow'
+                        : 'red'
+                : 'yellow';
+            const statusText = loan.returned
+                ? loan.return_status === 'complete'
+                    ? 'Devolvido'
+                    : loan.return_status === 'incomplete'
+                        ? 'Incompleto'
+                        : 'Com danos'
+                : 'Em uso';
+
+            return {
+                className,
+                teacherName,
+                loanTypeLabel,
+                statusColor,
+                statusText
+            };
+        }
+
+        function renderLoanCards(containerId, loans, options = {}) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const {
+                showReleaser = false,
+                showAction = false,
+                emptyMessage = 'Nenhum empréstimo registrado'
+            } = options;
+
+            if (!loans.length) {
+                container.innerHTML = `
+                    <div class="loan-card">
+                        <div style="text-align:center; color: var(--text-muted); font-weight: 600;">${emptyMessage}</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = loans.map(loan => {
+                const info = getLoanInfo(loan);
+                const actionButton = showAction
+                    ? `<button class="btn btn-primary btn-small" onclick="showScreen('return'); document.getElementById('returnLoan').value=${loan.id}; loadReturnDetails();">
+                            <i class="fas fa-undo"></i>
+                            Devolver
+                        </button>`
+                    : '';
+
+                return `
+                    <div class="loan-card">
+                        <div class="loan-card-header">
+                            <div>
+                                <div class="loan-card-title">${info.className}</div>
+                                <div class="loan-card-subtitle">${info.teacherName}</div>
+                            </div>
+                            <span class="badge ${info.statusColor}">${info.statusText}</span>
+                        </div>
+                        <div class="loan-card-body">
+                            <div class="loan-card-field">
+                                <small>Tipo</small>
+                                <span>${info.loanTypeLabel}</span>
+                            </div>
+                            <div class="loan-card-field">
+                                <small>Quantidade</small>
+                                <span>${loan.quantity}</span>
+                            </div>
+                            <div class="loan-card-field">
+                                <small>Data/Hora</small>
+                                <span>${loan.date_time}</span>
+                            </div>
+                            <div class="loan-card-field">
+                                <small>Responsável</small>
+                                <span>${loan.releaser || '-'}</span>
+                            </div>
+                            ${showReleaser ? `
+                                <div class="loan-card-field" style="grid-column: 1 / -1;">
+                                    <small>Observações</small>
+                                    <span>${loan.observations || '-'}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                        ${actionButton ? `<div class="loan-card-actions">${actionButton}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
         function updateActiveLoans() {
             const activeLoans = data.loans.filter(l => !l.returned);
             let html = '';
@@ -2928,6 +3202,8 @@
                 });
             }
             document.getElementById('all-active-loans').innerHTML = allHtml;
+            renderLoanCards('active-loans-cards', activeLoans.slice(0, 5), { emptyMessage: 'Nenhum empréstimo ativo no momento' });
+            renderLoanCards('all-active-loans-cards', activeLoans, { showAction: true, emptyMessage: 'Nenhum empréstimo ativo no momento' });
         }
 
         function updateLatestLoans() {
@@ -2961,6 +3237,7 @@
             }
             
             document.getElementById('latest-loans-table').innerHTML = html;
+            renderLoanCards('latest-loans-cards', latestLoans, { emptyMessage: 'Nenhum empréstimo registrado' });
         }
 
         function updateReturnSelect() {
@@ -3646,6 +3923,15 @@
             const teacherId = parseInt(document.getElementById('filterTeacher').value);
 
             let filtered = [...data.loans];
+            if (date) {
+                filtered = filtered.filter(loan => {
+                    const [loanDate] = (loan.date_time || '').split(' ');
+                    const [day, month, year] = loanDate ? loanDate.split('/') : [];
+                    if (!day || !month || !year) return false;
+                    const normalizedLoanDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                    return normalizedLoanDate === date;
+                });
+            }
             if (classId) filtered = filtered.filter(l => l.class_id === classId);
             if (teacherId) filtered = filtered.filter(l => l.teacher_id === teacherId);
 
@@ -3683,6 +3969,10 @@
                 });
             }
             document.getElementById('history-table').innerHTML = html;
+            renderLoanCards('history-cards', [...loans].sort((a, b) => b.id - a.id), {
+                showReleaser: true,
+                emptyMessage: 'Nenhum empréstimo registrado'
+            });
         }
 
     </script>
