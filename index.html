@@ -363,6 +363,144 @@
             color: #eff6ff;
         }
 
+        .custom-select {
+            position: relative;
+            width: 100%;
+        }
+
+        .custom-select-native {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .custom-select-trigger {
+            width: 100%;
+            min-width: 0;
+            min-height: 48px;
+            padding: 13px 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            background: rgba(255, 255, 255, 0.9);
+            color: var(--text-dark);
+            font: inherit;
+            font-weight: 700;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            text-align: left;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, background 0.2s ease;
+        }
+
+        .custom-select-trigger span {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .custom-select-trigger:hover {
+            border-color: rgba(59, 130, 246, 0.42);
+            transform: translateY(-1px);
+        }
+
+        .custom-select-trigger:focus {
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14), 0 10px 24px rgba(59, 130, 246, 0.10);
+        }
+
+        .custom-select-trigger i {
+            transition: transform 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .custom-select.open .custom-select-trigger i {
+            transform: rotate(180deg);
+        }
+
+        .custom-select-panel {
+            position: absolute;
+            top: calc(100% + 10px);
+            left: 0;
+            right: 0;
+            z-index: 70;
+            display: grid;
+            gap: 6px;
+            padding: 8px;
+            border-radius: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 24px 40px rgba(15, 23, 42, 0.14);
+            max-height: 300px;
+            overflow: auto;
+        }
+
+        .custom-select-option {
+            width: 100%;
+            border: none;
+            border-radius: 14px;
+            background: transparent;
+            color: var(--text-dark);
+            font: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 11px 12px;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+        }
+
+        .custom-select-option:hover {
+            background: rgba(59, 130, 246, 0.10);
+            color: var(--primary);
+            transform: translateX(2px);
+        }
+
+        .custom-select-option.active {
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.96), rgba(59, 130, 246, 0.96));
+            color: white;
+        }
+
+        .custom-select-option[hidden] {
+            display: none;
+        }
+
+        body.dark-mode .custom-select-trigger {
+            background: rgba(15, 23, 42, 0.84);
+            border-color: rgba(148, 163, 184, 0.18);
+            box-shadow: 0 10px 22px rgba(2, 6, 23, 0.18);
+        }
+
+        body.dark-mode .custom-select-trigger:hover {
+            border-color: rgba(96, 165, 250, 0.42);
+        }
+
+        body.dark-mode .custom-select-panel {
+            background: rgba(15, 23, 42, 0.98);
+            border-color: rgba(148, 163, 184, 0.18);
+            box-shadow: 0 24px 40px rgba(2, 6, 23, 0.42);
+        }
+
+        body.dark-mode .custom-select-option {
+            color: var(--text-dark);
+        }
+
+        body.dark-mode .custom-select-option:hover {
+            background: rgba(96, 165, 250, 0.12);
+            color: #dbeafe;
+        }
+
+        body.dark-mode .custom-select-option.active {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.96), rgba(96, 165, 250, 0.96));
+            color: #eff6ff;
+        }
+
         .form-group textarea {
             resize: vertical;
             min-height: 100px;
@@ -2962,10 +3100,14 @@
             if (!event.target.closest('.menu-select')) {
                 closeHistoryMenus();
             }
+            if (!event.target.closest('.custom-select')) {
+                closeCustomSelects();
+            }
         });
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
                 closeHistoryMenus();
+                closeCustomSelects();
                 closeSidebar();
                 if (document.getElementById('scannerModal').classList.contains('active')) {
                     closeScanner();
@@ -3017,6 +3159,7 @@
             setupDevicesRealtime();
             await checkAuth();
             setupLoginForms();
+            setupCustomSelects();
 
             // Registrar Service Worker para PWA
             if (location.protocol !== 'file:' && 'serviceWorker' in navigator) {
@@ -3610,6 +3753,155 @@
             }
         }
 
+        const customSelectRegistry = new Map();
+
+        function getCustomSelectLabel(select) {
+            if (!select) return '';
+            const selectedOption = select.options[select.selectedIndex];
+            if (selectedOption && selectedOption.value !== '') {
+                return selectedOption.textContent.trim();
+            }
+
+            const placeholder = select.querySelector('option[value=""]');
+            return placeholder ? placeholder.textContent.trim() : (selectedOption?.textContent?.trim() || 'Selecionar');
+        }
+
+        function syncCustomSelect(select) {
+            const state = customSelectRegistry.get(select);
+            if (!state) return;
+
+            const label = getCustomSelectLabel(select);
+            state.label.textContent = label || 'Selecionar';
+            state.options.forEach((button) => {
+                button.classList.toggle('active', button.dataset.value === select.value);
+            });
+        }
+
+        function rebuildCustomSelect(select) {
+            const state = customSelectRegistry.get(select);
+            if (!state) return;
+
+            state.panel.innerHTML = '';
+            state.options = [];
+
+            Array.from(select.options).forEach((option) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'custom-select-option';
+                button.dataset.value = option.value;
+                button.textContent = option.textContent;
+                if (option.hidden || option.disabled) {
+                    button.hidden = true;
+                }
+                button.classList.toggle('active', option.value === select.value);
+                button.addEventListener('click', () => {
+                    select.value = option.value;
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                    syncCustomSelect(select);
+                    closeCustomSelects();
+                });
+                state.panel.appendChild(button);
+                state.options.push(button);
+            });
+
+            syncCustomSelect(select);
+        }
+
+        function closeCustomSelects(exceptSelect = null) {
+            customSelectRegistry.forEach((state, select) => {
+                if (exceptSelect && select === exceptSelect) return;
+                state.wrapper.classList.remove('open');
+                state.panel.hidden = true;
+                state.trigger.setAttribute('aria-expanded', 'false');
+            });
+        }
+
+        function toggleCustomSelect(select) {
+            const state = customSelectRegistry.get(select);
+            if (!state) return;
+
+            const shouldOpen = state.panel.hidden;
+            closeCustomSelects(select);
+            state.wrapper.classList.toggle('open', shouldOpen);
+            state.panel.hidden = !shouldOpen;
+            state.trigger.setAttribute('aria-expanded', String(shouldOpen));
+        }
+
+        function enhanceCustomSelect(select) {
+            if (!select || customSelectRegistry.has(select) || select.closest('.menu-select')) return;
+            if (select.dataset.customSelectEnhanced === 'true') return;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'custom-select';
+            select.parentNode.insertBefore(wrapper, select);
+            wrapper.appendChild(select);
+            select.classList.add('custom-select-native');
+            select.dataset.customSelectEnhanced = 'true';
+            select.setAttribute('aria-hidden', 'true');
+            select.tabIndex = -1;
+
+            const trigger = document.createElement('button');
+            trigger.type = 'button';
+            trigger.className = 'custom-select-trigger';
+            trigger.setAttribute('aria-haspopup', 'listbox');
+            trigger.setAttribute('aria-expanded', 'false');
+
+            const label = document.createElement('span');
+            label.textContent = getCustomSelectLabel(select);
+
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-chevron-down';
+
+            trigger.appendChild(label);
+            trigger.appendChild(icon);
+
+            const panel = document.createElement('div');
+            panel.className = 'custom-select-panel';
+            panel.hidden = true;
+            panel.setAttribute('role', 'listbox');
+
+            wrapper.appendChild(trigger);
+            wrapper.appendChild(panel);
+
+            const state = {
+                wrapper,
+                trigger,
+                panel,
+                label,
+                options: []
+            };
+            customSelectRegistry.set(select, state);
+
+            trigger.addEventListener('click', (event) => {
+                event.preventDefault();
+                toggleCustomSelect(select);
+            });
+
+            rebuildCustomSelect(select);
+        }
+
+        function setupCustomSelects() {
+            document.querySelectorAll('select.form-input').forEach(enhanceCustomSelect);
+        }
+
+        function refreshCustomSelect(selectId) {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            if (!customSelectRegistry.has(select)) {
+                enhanceCustomSelect(select);
+            } else {
+                rebuildCustomSelect(select);
+            }
+        }
+
+        function refreshAllCustomSelects() {
+            document.querySelectorAll('select.form-input').forEach((select) => {
+                if (!select.closest('.menu-select')) {
+                    refreshCustomSelect(select.id);
+                }
+            });
+        }
+
         // ------------------------------
         // 6. Navegação
         // ------------------------------
@@ -3688,6 +3980,8 @@
                 value: String(t.id),
                 label: t.name
             })));
+
+            refreshAllCustomSelects();
         }
 
         function getDeviceTypeOrder(type) {
@@ -4397,10 +4691,12 @@
                 options += `<option value="${loan.id}">${className} - ${teacherName} (${loan.date_time})</option>`;
             });
             document.getElementById('returnLoan').innerHTML = options;
+            refreshCustomSelect('returnLoan');
         }
 
         function loadReturnDetails() {
             const loanId = parseInt(document.getElementById('returnLoan').value);
+            refreshCustomSelect('returnLoan');
             if (!loanId) {
                 document.getElementById('returnDetails').style.display = 'none';
                 return;
@@ -4661,6 +4957,8 @@
                 form.reset();
                 document.getElementById('classId').value = '';
             }
+
+            refreshCustomSelect('classShift');
             
             modal.classList.add('active');
         }
@@ -4927,6 +5225,7 @@
 
             statusSelect.innerHTML = options.map(option => `<option value="${option.value}">${option.label}</option>`).join('');
             statusSelect.value = options.some(option => option.value === selectedStatus) ? selectedStatus : options[0].value;
+            refreshCustomSelect('deviceStatus');
         }
 
         function handleDeviceTypeChange(preferredStatus = null) {
@@ -4977,7 +5276,8 @@
 
             document.getElementById('deviceType').value = device?.type || 'Notebook';
             handleDeviceTypeChange(isFixedDevice(device?.type) && device?.status === 'Em uso' ? 'Disponível' : (device?.status || 'Disponível'));
-            
+            refreshCustomSelect('deviceType');
+
             modal.classList.add('active');
         }
 
