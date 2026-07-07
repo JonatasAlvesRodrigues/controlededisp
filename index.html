@@ -11,11 +11,13 @@
     <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="./manifest.json">
     <link rel="apple-touch-icon" href="./icon.png">
     <link rel="icon" href="./icon.png" type="image/png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+    <script src="./config.js"></script>
     <style>
         * {
             margin: 0;
@@ -2569,8 +2571,14 @@
         // ------------------------------
         // 1. Configuração do Supabase
         // ------------------------------
-        const SUPABASE_URL = "https://gjahjvuptptjeenkssum.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqYWhqdnVwdHB0amVlbmtzc3VtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NDE0NDQsImV4cCI6MjA5NzQxNzQ0NH0.7WvbMzuf6V3BU1Bj7V9aciwbXsWqlMARo9uQD8RfwJw";
+        const APP_CONFIG = window.APP_CONFIG || {};
+        const SUPABASE_URL = APP_CONFIG.SUPABASE_URL || "";
+        const SUPABASE_ANON_KEY = APP_CONFIG.SUPABASE_ANON_KEY || "";
+
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+            console.warn('Configuração do Supabase ausente. Verifique o arquivo config.js.');
+        }
+
         const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ------------------------------

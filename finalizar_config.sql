@@ -1,11 +1,11 @@
-
--- 1. Desabilita RLS (caso não tenha sido feito ainda)
+-- 1. Desabilita RLS, caso ainda não tenha sido feito
 ALTER TABLE classes DISABLE ROW LEVEL SECURITY;
 ALTER TABLE teachers DISABLE ROW LEVEL SECURITY;
 ALTER TABLE devices DISABLE ROW LEVEL SECURITY;
 ALTER TABLE loans DISABLE ROW LEVEL SECURITY;
 
--- 2. (Opcional) Insere dados de exemplo para testar
+-- 2. Opcional: insere dados de exemplo para testar
+
 -- Turmas
 INSERT INTO classes (name, shift, students) VALUES
 ('7ºA', 'Matutino', 30),
@@ -32,4 +32,3 @@ INSERT INTO devices (type, patrimony, "group", status) VALUES
 ('Tablet', 'PAT008', 'Carrinho A', 'Disponível'),
 ('Tablet', 'PAT009', 'Carrinho A', 'Disponível'),
 ('Tablet', 'PAT010', 'Carrinho A', 'Disponível');
-

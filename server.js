@@ -5,7 +5,9 @@ const path = require('path');
 const PORT = 8000;
 
 const server = http.createServer((req, res) => {
-    let filePath = '.' + req.url;
+    const requestUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    let filePath = '.' + decodeURIComponent(requestUrl.pathname);
+
     if (filePath === './') {
         filePath = './index.html';
     }

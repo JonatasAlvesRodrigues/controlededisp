@@ -1,10 +1,18 @@
-const CACHE_NAME = 'controle-dispositivos-v2';
+const CACHE_NAME = 'controle-dispositivos-v4';
 const APP_SHELL = [
     './',
     './index.html',
     './manifest.json',
-    './icon.png'
+    './icon.png',
+    './config.js'
 ];
+
+const EXTERNAL_CACHEABLE_HOSTS = new Set([
+    'cdnjs.cloudflare.com',
+    'cdn.jsdelivr.net',
+    'fonts.googleapis.com',
+    'fonts.gstatic.com'
+]);
 
 self.addEventListener('install', (event) => {
     event.waitUntil((async () => {
@@ -37,6 +45,8 @@ self.addEventListener('fetch', (event) => {
         event.request.mode === 'navigate' ||
         requestUrl.pathname.endsWith('.html') ||
         event.request.headers.get('accept')?.includes('text/html');
+    const isCacheableExternal = EXTERNAL_CACHEABLE_HOSTS.has(requestUrl.hostname);
+    const isSameOrigin = requestUrl.origin === self.location.origin;
 
     if (isHtmlNavigation) {
         event.respondWith((async () => {
@@ -53,6 +63,10 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    if (!isSameOrigin && !isCacheableExternal) {
+        return;
+    }
+
     event.respondWith((async () => {
         const cachedResponse = await caches.match(event.request);
         if (cachedResponse) {
@@ -65,7 +79,7 @@ self.addEventListener('fetch', (event) => {
             cache.put(event.request, networkResponse.clone());
             return networkResponse;
         } catch (error) {
-            return new Response('Offline', { status: 503, statusText: 'Offline' });
+            return cachedResponse || new Response('Offline', { status: 503, statusText: 'Offline' });
         }
     })());
 });
