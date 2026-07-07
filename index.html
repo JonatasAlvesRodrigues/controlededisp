@@ -14,6 +14,8 @@
     <link rel="apple-touch-icon" href="./icon.png">
     <link rel="icon" href="./icon.png" type="image/png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -457,7 +459,7 @@
         /* Stats Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 24px;
             margin-bottom: 24px;
         }
@@ -487,12 +489,14 @@
         .stat-icon.green { background: #d1fae5; color: #065f46; }
         .stat-icon.yellow { background: #fef3c7; color: #92400e; }
         .stat-icon.purple { background: #ede9fe; color: #5b21b6; }
+        .stat-icon.gray { background: #e2e8f0; color: #334155; }
 
         /* Modo Escuro - Stat Icons */
         body.dark-mode .stat-icon.blue { background: rgba(30,64,175,0.3); color: #60a5fa; }
         body.dark-mode .stat-icon.green { background: rgba(16,185,129,0.3); color: #34d399; }
         body.dark-mode .stat-icon.yellow { background: rgba(245,158,11,0.3); color: #fbbf24; }
         body.dark-mode .stat-icon.purple { background: rgba(124,58,237,0.3); color: #a78bfa; }
+        body.dark-mode .stat-icon.gray { background: rgba(100,116,139,0.25); color: #cbd5e1; }
 
         .stat-content {
             flex: 1;
@@ -665,6 +669,7 @@
         .badge.green { background: #d1fae5; color: #065f46; }
         .badge.yellow { background: #fef3c7; color: #92400e; }
         .badge.red { background: #fee2e2; color: #991b1b; }
+        .badge.gray { background: #e2e8f0; color: #334155; }
 
         /* Modo Escuro - Table e Badges */
         body.dark-mode th {
@@ -674,6 +679,7 @@
         body.dark-mode .badge.green { background: rgba(16,185,129,0.2); color: #34d399; }
         body.dark-mode .badge.yellow { background: rgba(245,158,11,0.2); color: #fbbf24; }
         body.dark-mode .badge.red { background: rgba(239,68,68,0.2); color: #fca5a5; }
+        body.dark-mode .badge.gray { background: rgba(100,116,139,0.25); color: #cbd5e1; }
 
         /* Form Grid */
         .form-grid {
@@ -809,6 +815,83 @@
             letter-spacing: 0.08em;
             text-transform: uppercase;
             color: var(--text-muted);
+        }
+
+        .device-filter-bar {
+            display: grid;
+            grid-template-columns: 1.4fr 0.9fr auto;
+            gap: 12px;
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(148, 163, 184, 0.05);
+        }
+
+        .device-filter-bar .form-group {
+            margin-bottom: 0;
+        }
+
+        .device-filter-bar .btn {
+            align-self: end;
+            min-height: 48px;
+        }
+
+        .report-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .report-card {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: var(--surface);
+            padding: 18px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+        }
+
+        .report-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .report-card-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #dbeafe;
+            color: #1e40af;
+            flex-shrink: 0;
+        }
+
+        .report-card-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text-dark);
+        }
+
+        .report-card-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .report-card .form-group:last-of-type {
+            margin-bottom: 0;
+        }
+
+        body.dark-mode .report-card-icon {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+        }
+
+        @media (max-width: 768px) {
+            .report-grid { grid-template-columns: 1fr; }
         }
 
         .device-group-row td {
@@ -1024,6 +1107,7 @@
             .card-body { overflow-x: auto; padding: 16px; -webkit-overflow-scrolling: touch; }
             .card-body table { min-width: 640px; }
             th, td { padding: 10px 12px; font-size: 13px; }
+            .device-filter-bar { grid-template-columns: 1fr; }
             .device-card-list,
             .simple-card-list { padding: 12px; }
             .device-card,
@@ -1754,6 +1838,15 @@
                     </div>
                 </div>
                 <div class="stat-card">
+                    <div class="stat-icon gray">
+                        <i class="fas fa-ban"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="stat-outofuse">0</div>
+                        <div class="stat-label">Fora de uso</div>
+                    </div>
+                </div>
+                <div class="stat-card">
                     <div class="stat-icon purple">
                         <i class="fas fa-database"></i>
                     </div>
@@ -1920,7 +2013,7 @@
                                     <option value="Notebook Ultra">Notebook Ultra</option>
                                     <option value="Tablet">Tablet</option>
                                 </select>
-                                <small class="loan-note">Desktops são fixos na sala de informática e não entram em empréstimo.</small>
+                                <small class="loan-note">Desktops e Desktop Gestão são fixos na sala de informática e não entram em empréstimo.</small>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Responsável pela Liberação</label>
@@ -2072,6 +2165,73 @@
                     <div id="history-cards" class="loan-card-list"></div>
                 </div>
             </div>
+
+            <div class="report-grid">
+                <div class="report-card">
+                    <div class="report-card-header">
+                        <div class="report-card-icon">
+                            <i class="fas fa-print"></i>
+                        </div>
+                        <div>
+                            <div class="report-card-title">Relatório de dispositivos</div>
+                            <div class="report-card-desc">Gera um PDF com todos os dispositivos ou apenas um tipo específico.</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tipo de dispositivo</label>
+                        <select id="reportDeviceType" class="form-input">
+                            <option value="">Todos os tipos</option>
+                            <option value="Notebook">Notebook</option>
+                            <option value="Notebook Positivo (Novos)">Notebook Positivo (Novos)</option>
+                            <option value="Notebook Ultra">Notebook Ultra</option>
+                            <option value="Tablet">Tablet</option>
+                            <option value="Desktop">Desktop</option>
+                            <option value="Desktop Gestão">Desktop Gestão</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-full" onclick="generateDeviceReportPdf()">
+                        <i class="fas fa-file-pdf"></i>
+                        Gerar PDF de dispositivos
+                    </button>
+                </div>
+
+                <div class="report-card">
+                    <div class="report-card-header">
+                        <div class="report-card-icon">
+                            <i class="fas fa-calendar-days"></i>
+                        </div>
+                        <div>
+                            <div class="report-card-title">Relatório de uso</div>
+                            <div class="report-card-desc">Gera um PDF semanal ou mensal com turma, professor e quantidade usada.</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Período</label>
+                        <select id="reportUsagePeriod" class="form-input">
+                            <option value="weekly">Semanal</option>
+                            <option value="monthly">Mensal</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status do uso</label>
+                        <select id="reportUsageStatus" class="form-input">
+                            <option value="">Todos os status</option>
+                            <option value="active">Em uso</option>
+                            <option value="complete">Devolvido</option>
+                            <option value="incomplete">Incompleto</option>
+                            <option value="damaged">Com danos</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Data de referência</label>
+                        <input type="date" id="reportUsageDate" class="form-input">
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-full" onclick="generateUsageReportPdf()">
+                        <i class="fas fa-file-pdf"></i>
+                        Gerar PDF de uso
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Devices Screen -->
@@ -2089,6 +2249,31 @@
 
             <div class="card">
                 <div class="card-body" style="padding: 0;">
+                    <div class="device-filter-bar">
+                        <div class="form-group">
+                            <label class="form-label">Pesquisar</label>
+                            <input type="text" id="deviceSearchInput" class="form-input" placeholder="Buscar por N/S, contador, patrimônio ou ID" oninput="applyDeviceFilters()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tipo</label>
+                            <select id="deviceTypeFilter" class="form-input" onchange="applyDeviceFilters()">
+                                <option value="">Todos os tipos</option>
+                                <option value="Notebook">Notebook</option>
+                                <option value="Notebook Positivo (Novos)">Notebook Positivo (Novos)</option>
+                                <option value="Notebook Ultra">Notebook Ultra</option>
+                                <option value="Tablet">Tablet</option>
+                                <option value="Desktop">Desktop</option>
+                                <option value="Desktop Gestão">Desktop Gestão</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="button" class="btn btn-secondary btn-full" onclick="clearDeviceFilters()">
+                                <i class="fas fa-eraser"></i>
+                                Limpar filtros
+                            </button>
+                        </div>
+                    </div>
                     <table>
                         <thead>
                             <tr>
@@ -2129,8 +2314,9 @@
                                 <option value="Notebook Ultra">Notebook Ultra</option>
                                 <option value="Tablet">Tablet</option>
                                 <option value="Desktop">Desktop</option>
+                                <option value="Desktop Gestão">Desktop Gestão</option>
                             </select>
-                            <small class="field-hint">Desktops ficam fixos na sala de informática e só usam manutenção.</small>
+                            <small class="field-hint">Desktops e Desktop Gestão ficam fixos e podem ser marcados como manutenção ou fora de uso.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Número de Série</label>
@@ -2186,6 +2372,7 @@
                                 <option value="Disponível">Disponível</option>
                                 <option value="Em uso">Em uso</option>
                                 <option value="Manutenção">Manutenção</option>
+                                <option value="Fora de uso">Fora de uso</option>
                             </select>
                         </div>
                         <div class="form-group full">
@@ -2547,6 +2734,10 @@
         // ------------------------------
         document.addEventListener('DOMContentLoaded', async () => {
             loadDarkModePreference();
+            const reportUsageDate = document.getElementById('reportUsageDate');
+            if (reportUsageDate && !reportUsageDate.value) {
+                reportUsageDate.value = new Date().toISOString().split('T')[0];
+            }
             setupDevicesRealtime();
             await checkAuth();
             setupLoginForms();
@@ -3065,11 +3256,14 @@
             const available = data.devices.filter(d => d.status === 'Disponível').length;
             const inUse = data.loans.filter(l => !l.returned).reduce((sum, l) => sum + l.quantity, 0);
             const maintenance = data.devices.filter(d => d.status === 'Manutenção').length;
+            const outOfUse = data.devices.filter(d => d.status === 'Fora de uso').length;
             const total = data.devices.length;
 
             document.getElementById('stat-available').textContent = available || 0;
             document.getElementById('stat-inuse').textContent = inUse || 0;
             document.getElementById('stat-maintenance').textContent = maintenance || 0;
+            const outOfUseEl = document.getElementById('stat-outofuse');
+            if (outOfUseEl) outOfUseEl.textContent = outOfUse || 0;
             document.getElementById('stat-total').textContent = total || 0;
         }
 
@@ -3088,7 +3282,7 @@
 
             // Grupos
             const groups = [...new Set(data.devices
-                .filter(d => d.type !== 'Desktop')
+                .filter(d => !isFixedDevice(d.type))
                 .map(d => d.group)
                 .filter(Boolean)
             )];
@@ -3103,19 +3297,448 @@
                 'Notebook Positivo (Novos)': 1,
                 'Notebook Ultra': 2,
                 Tablet: 3,
-                Desktop: 4
+                Desktop: 4,
+                'Desktop Gestão': 5
             };
             return order[type] ?? 99;
         }
 
         function getDeviceIcon(type) {
             if (type === 'Tablet') return 'tablet-alt';
-            if (type === 'Desktop') return 'desktop';
+            if (type === 'Desktop' || type === 'Desktop Gestão') return 'desktop';
             return 'laptop';
         }
 
         function isFixedDevice(type) {
-            return type === 'Desktop';
+            return type === 'Desktop' || type === 'Desktop Gestão';
+        }
+
+        function getDeviceStatusBadgeColor(status) {
+            if (status === 'Disponível') return 'green';
+            if (status === 'Em uso') return 'yellow';
+            if (status === 'Fora de uso') return 'gray';
+            return 'red';
+        }
+
+        function normalizeDeviceText(value) {
+            return (value || '')
+                .toString()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .trim();
+        }
+
+        function getDeviceDisplayGroupKey(device) {
+            if (isFixedDevice(device?.type)) {
+                return `${device.type || 'Outros'}::${device.group || 'Sem agrupamento'}`;
+            }
+            return device?.type || 'Outros';
+        }
+
+        function getDeviceDisplayGroupLabel(device) {
+            if (isFixedDevice(device?.type)) {
+                return `${device.type || 'Outros'} - ${device.group || 'Sem agrupamento'}`;
+            }
+            return device?.type || 'Outros';
+        }
+
+        function getFilteredDevices() {
+            const selectedType = document.getElementById('deviceTypeFilter')?.value || '';
+            const searchTerm = normalizeDeviceText(document.getElementById('deviceSearchInput')?.value || '');
+            const sortedDevices = sortDevicesForDisplay(data.devices);
+
+            return sortedDevices.filter(device => {
+                const matchesType = !selectedType || device.type === selectedType;
+                if (!matchesType) return false;
+
+                if (!searchTerm) return true;
+
+                const searchableValues = [
+                    device.id,
+                    device.serial_number,
+                    device.counter_number,
+                    device.patrimony,
+                    device.group,
+                    device.type,
+                    device.status
+                ]
+                    .map(normalizeDeviceText)
+                    .join(' ');
+
+                return searchableValues.includes(searchTerm);
+            });
+        }
+
+        function applyDeviceFilters() {
+            updateDevicesTable();
+            updateDevicesCards();
+        }
+
+        function clearDeviceFilters() {
+            const searchInput = document.getElementById('deviceSearchInput');
+            const typeFilter = document.getElementById('deviceTypeFilter');
+            if (searchInput) searchInput.value = '';
+            if (typeFilter) typeFilter.value = '';
+            applyDeviceFilters();
+        }
+
+        function getJsPdfInstance() {
+            const jsPDF = window.jspdf?.jsPDF;
+            if (!jsPDF) {
+                throw new Error('Biblioteca de PDF indisponível. Verifique a conexão com a internet.');
+            }
+            return jsPDF;
+        }
+
+        function formatDateTimeForPdf(value) {
+            if (!value) return '-';
+            if (typeof value !== 'string') return String(value);
+            return value;
+        }
+
+        function parseLoanDateTime(value) {
+            if (!value) return null;
+            const [datePart = '', timePart = '00:00'] = value.split(' ');
+            const [day, month, year] = datePart.split('/');
+            if (!day || !month || !year) return null;
+            const [hour = '00', minute = '00'] = timePart.split(':');
+            const parsed = new Date(
+                parseInt(year, 10),
+                parseInt(month, 10) - 1,
+                parseInt(day, 10),
+                parseInt(hour, 10) || 0,
+                parseInt(minute, 10) || 0,
+                0,
+                0
+            );
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        function formatDateBR(date) {
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '-';
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        function formatDateTimeBR(date) {
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '-';
+            return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+        }
+
+        function getLoanReturnStatusLabel(loan) {
+            if (!loan?.returned) return 'Em uso';
+            if (loan.return_status === 'complete') return 'Devolvido';
+            if (loan.return_status === 'incomplete') return 'Incompleto';
+            if (loan.return_status === 'damaged') return 'Com danos';
+            return 'Em uso';
+        }
+
+        function getLoanReportStatusKey(loan) {
+            if (!loan?.returned) return 'active';
+            if (loan.return_status === 'complete') return 'complete';
+            if (loan.return_status === 'incomplete') return 'incomplete';
+            if (loan.return_status === 'damaged') return 'damaged';
+            return 'active';
+        }
+
+        function getLoanReportStatusLabel(statusKey) {
+            const labels = {
+                '': 'Todos os status',
+                active: 'Em uso',
+                complete: 'Devolvido',
+                incomplete: 'Incompleto',
+                damaged: 'Com danos'
+            };
+            return labels[statusKey] || 'Todos os status';
+        }
+
+        function filterLoansForReport(loans, statusFilter) {
+            if (!statusFilter) return loans;
+            return loans.filter(loan => getLoanReportStatusKey(loan) === statusFilter);
+        }
+
+        function buildLoanSummaryMap(loans, labelResolver) {
+            const summary = new Map();
+
+            loans.forEach(loan => {
+                const key = labelResolver(loan);
+                if (!summary.has(key)) {
+                    summary.set(key, { label: key, loans: 0, quantity: 0 });
+                }
+
+                const entry = summary.get(key);
+                entry.loans += 1;
+                entry.quantity += Number(loan.quantity) || 0;
+            });
+
+            return [...summary.values()].sort((a, b) => b.quantity - a.quantity || b.loans - a.loans || a.label.localeCompare(b.label, 'pt-BR', { numeric: true, sensitivity: 'base' }));
+        }
+
+        function getPeriodRange(period, referenceDateValue) {
+            const referenceDate = referenceDateValue ? new Date(`${referenceDateValue}T12:00:00`) : new Date();
+            if (Number.isNaN(referenceDate.getTime())) {
+                return null;
+            }
+
+            const start = new Date(referenceDate);
+            const end = new Date(referenceDate);
+
+            if (period === 'monthly') {
+                start.setDate(1);
+                start.setHours(0, 0, 0, 0);
+                end.setMonth(end.getMonth() + 1, 0);
+                end.setHours(23, 59, 59, 999);
+                return { start, end, label: `Mensal - ${start.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}` };
+            }
+
+            const day = start.getDay();
+            const mondayOffset = (day + 6) % 7;
+            start.setDate(start.getDate() - mondayOffset);
+            start.setHours(0, 0, 0, 0);
+            end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+            return { start, end, label: `Semanal - ${formatDateBR(start)} até ${formatDateBR(end)}` };
+        }
+
+        function buildDeviceReportRows(devices) {
+            return devices.map((device, index) => ([
+                String(index + 1),
+                device.type || '-',
+                device.serial_number || '-',
+                device.patrimony || '-',
+                device.counter_number || '-',
+                device.group || '-',
+                device.type === 'Tablet' ? (device.imei || '-') : '-',
+                device.status || '-',
+                device.observations || '-'
+            ]));
+        }
+
+        function buildLoanReportRows(loans) {
+            return loans.map((loan, index) => {
+                const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
+                const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name || '-';
+                const loanTypeLabel = loan.loan_type === 'full' ? 'Base completa' : 'Quantidade específica';
+                const statusLabel = getLoanReturnStatusLabel(loan);
+
+                return [
+                    String(index + 1),
+                    loan.date_time || '-',
+                    className,
+                    teacherName,
+                    loan.device_type || '-',
+                    loanTypeLabel,
+                    String(loan.quantity ?? '-'),
+                    loan.releaser || '-',
+                    statusLabel,
+                    loan.observations || '-'
+                ];
+            });
+        }
+
+        function generateDeviceReportPdf() {
+            try {
+                const jsPDF = getJsPdfInstance();
+                const selectedType = document.getElementById('reportDeviceType')?.value || '';
+                const filteredDevices = sortDevicesForDisplay(data.devices).filter(device => !selectedType || device.type === selectedType);
+
+                if (!filteredDevices.length) {
+                    alert('Nenhum dispositivo encontrado para gerar o relatório.');
+                    return;
+                }
+
+                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                const title = selectedType ? `Relatório de Dispositivos - ${selectedType}` : 'Relatório Geral de Dispositivos';
+                const generatedAt = new Date().toLocaleString('pt-BR');
+                const rows = buildDeviceReportRows(filteredDevices);
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(16);
+                doc.text(title, 14, 16);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.text(`Gerado em: ${generatedAt}`, 14, 22);
+                doc.text(`Total de dispositivos: ${filteredDevices.length}`, 14, 28);
+
+                doc.autoTable({
+                    startY: 34,
+                    head: [[
+                        '#',
+                        'Tipo',
+                        'N/S',
+                        'Patrimônio',
+                        'Contador',
+                        'Agrupamento',
+                        'IMEI',
+                        'Estado',
+                        'Observações'
+                    ]],
+                    body: rows,
+                    theme: 'grid',
+                    styles: { fontSize: 7, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
+                    headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: 'bold' },
+                    columnStyles: {
+                        0: { cellWidth: 10 },
+                        1: { cellWidth: 30 },
+                        2: { cellWidth: 28 },
+                        3: { cellWidth: 30 },
+                        4: { cellWidth: 22 },
+                        5: { cellWidth: 30 },
+                        6: { cellWidth: 28 },
+                        7: { cellWidth: 24 },
+                        8: { cellWidth: 'auto' }
+                    },
+                    didDrawPage: (dataArg) => {
+                        doc.setFontSize(10);
+                        doc.text('Escola Percio - Controle de Dispositivos', 14, 8);
+                        const pageCount = doc.getNumberOfPages();
+                        doc.text(`Página ${dataArg.pageNumber} de ${pageCount}`, 265, 8, { align: 'right' });
+                    }
+                });
+
+                const safeType = selectedType ? selectedType.replace(/[^a-z0-9]+/gi, '_') : 'todos_os_tipos';
+                doc.save(`relatorio_dispositivos_${safeType}.pdf`);
+            } catch (error) {
+                console.error('Erro ao gerar relatório de dispositivos:', error);
+                alert('Erro ao gerar relatório de dispositivos: ' + error.message);
+            }
+        }
+
+        function generateUsageReportPdf() {
+            try {
+                const jsPDF = getJsPdfInstance();
+                const period = document.getElementById('reportUsagePeriod')?.value || 'weekly';
+                const statusFilter = document.getElementById('reportUsageStatus')?.value || '';
+                const referenceDateValue = document.getElementById('reportUsageDate')?.value || new Date().toISOString().split('T')[0];
+                const range = getPeriodRange(period, referenceDateValue);
+                if (!range) {
+                    alert('Data de referência inválida.');
+                    return;
+                }
+
+                const filteredLoans = data.loans
+                    .map(loan => ({ loan, parsedDate: parseLoanDateTime(loan.date_time) }))
+                    .filter(item => item.parsedDate && item.parsedDate >= range.start && item.parsedDate <= range.end)
+                    .map(item => item.loan)
+                const reportLoans = filterLoansForReport(filteredLoans, statusFilter)
+                    .sort((a, b) => {
+                        const aDate = parseLoanDateTime(a.date_time)?.getTime() || 0;
+                        const bDate = parseLoanDateTime(b.date_time)?.getTime() || 0;
+                        return bDate - aDate;
+                    });
+
+                if (!reportLoans.length) {
+                    alert('Nenhum empréstimo encontrado para o período selecionado.');
+                    return;
+                }
+
+                const totalQuantity = reportLoans.reduce((sum, loan) => sum + (Number(loan.quantity) || 0), 0);
+                const uniqueClasses = new Set(reportLoans.map(loan => loan.class_id).filter(Boolean)).size;
+                const uniqueTeachers = new Set(reportLoans.map(loan => loan.teacher_id).filter(Boolean)).size;
+                const roomSummary = buildLoanSummaryMap(reportLoans, loan => {
+                    const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
+                    return className;
+                });
+                const teacherSummary = buildLoanSummaryMap(reportLoans, loan => {
+                    const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name || '-';
+                    return teacherName;
+                });
+
+                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                const title = period === 'monthly' ? 'Relatório Mensal de Uso' : 'Relatório Semanal de Uso';
+                const rows = buildLoanReportRows(reportLoans);
+                const statusLabel = getLoanReportStatusLabel(statusFilter);
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(16);
+                doc.text(title, 14, 16);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.text(`Período: ${range.label}`, 14, 22);
+                doc.text(`Status: ${statusLabel}`, 14, 28);
+                doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 34);
+                doc.text(`Registros: ${reportLoans.length} | Quantidade total: ${totalQuantity} | Turmas: ${uniqueClasses} | Professores: ${uniqueTeachers}`, 14, 40);
+
+                const summaryHeadStyle = { fillColor: [30, 64, 175], textColor: 255, fontStyle: 'bold' };
+                const summaryStyles = { fontSize: 8, cellPadding: 2, overflow: 'linebreak' };
+
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Resumo por sala', 14, 48);
+                doc.autoTable({
+                    startY: 52,
+                    head: [['Sala', 'Empréstimos', 'Quantidade total']],
+                    body: roomSummary.length
+                        ? roomSummary.map(item => [item.label, String(item.loans), String(item.quantity)])
+                        : [['-', '0', '0']],
+                    theme: 'grid',
+                    styles: summaryStyles,
+                    headStyles: summaryHeadStyle,
+                    margin: { left: 14, right: 14 }
+                });
+
+                const afterRooms = doc.lastAutoTable?.finalY || 52;
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Resumo por professor', 14, afterRooms + 10);
+                doc.autoTable({
+                    startY: afterRooms + 14,
+                    head: [['Professor', 'Empréstimos', 'Quantidade total']],
+                    body: teacherSummary.length
+                        ? teacherSummary.map(item => [item.label, String(item.loans), String(item.quantity)])
+                        : [['-', '0', '0']],
+                    theme: 'grid',
+                    styles: summaryStyles,
+                    headStyles: { fillColor: [5, 150, 105], textColor: 255, fontStyle: 'bold' },
+                    margin: { left: 14, right: 14 }
+                });
+
+                doc.autoTable({
+                    startY: (doc.lastAutoTable?.finalY || afterRooms) + 12,
+                    head: [[
+                        '#',
+                        'Data/Hora',
+                        'Turma/Sala',
+                        'Professor',
+                        'Tipo disp.',
+                        'Tipo saída',
+                        'Qtd.',
+                        'Responsável',
+                        'Status',
+                        'Obs.'
+                    ]],
+                    body: rows,
+                    theme: 'grid',
+                    styles: { fontSize: 7, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
+                    headStyles: { fillColor: [5, 150, 105], textColor: 255, fontStyle: 'bold' },
+                    columnStyles: {
+                        0: { cellWidth: 10 },
+                        1: { cellWidth: 26 },
+                        2: { cellWidth: 28 },
+                        3: { cellWidth: 30 },
+                        4: { cellWidth: 24 },
+                        5: { cellWidth: 28 },
+                        6: { cellWidth: 14, halign: 'center' },
+                        7: { cellWidth: 26 },
+                        8: { cellWidth: 18 },
+                        9: { cellWidth: 'auto' }
+                    },
+                    didDrawPage: (dataArg) => {
+                        doc.setFontSize(10);
+                        doc.text('Escola Percio - Controle de Dispositivos', 14, 8);
+                        const pageCount = doc.getNumberOfPages();
+                        doc.text(`Página ${dataArg.pageNumber} de ${pageCount}`, 265, 8, { align: 'right' });
+                    }
+                });
+
+                const safePeriod = period === 'monthly' ? 'mensal' : 'semanal';
+                const safeStatus = statusFilter || 'todos_status';
+                const safeDate = referenceDateValue.replace(/-/g, '_');
+                doc.save(`relatorio_uso_${safePeriod}_${safeStatus}_${safeDate}.pdf`);
+            } catch (error) {
+                console.error('Erro ao gerar relatório de uso:', error);
+                alert('Erro ao gerar relatório de uso: ' + error.message);
+            }
         }
 
         function getDeviceCounterSortKey(counterNumber) {
@@ -3137,6 +3760,13 @@
                 const typeDiff = getDeviceTypeOrder(a.type) - getDeviceTypeOrder(b.type);
                 if (typeDiff !== 0) return typeDiff;
 
+                const aFixed = isFixedDevice(a.type);
+                const bFixed = isFixedDevice(b.type);
+                if (aFixed && bFixed) {
+                    const groupDiff = normalizeDeviceText(a.group).localeCompare(normalizeDeviceText(b.group), 'pt-BR', { numeric: true, sensitivity: 'base' });
+                    if (groupDiff !== 0) return groupDiff;
+                }
+
                 const aCounter = getDeviceCounterSortKey(a.counter_number);
                 const bCounter = getDeviceCounterSortKey(b.counter_number);
 
@@ -3155,12 +3785,18 @@
             const map = new Map();
 
             devices.forEach(device => {
-                if (!map.has(device.type)) {
-                    const group = { type: device.type || 'Outros', devices: [] };
-                    map.set(device.type, group);
+                const key = getDeviceDisplayGroupKey(device);
+                if (!map.has(key)) {
+                    const group = {
+                        key,
+                        type: device.type || 'Outros',
+                        label: getDeviceDisplayGroupLabel(device),
+                        devices: []
+                    };
+                    map.set(key, group);
                     grouped.push(group);
                 }
-                map.get(device.type).devices.push(device);
+                map.get(key).devices.push(device);
             });
 
             return grouped;
@@ -3406,8 +4042,8 @@
             let quantity = 0;
             let groupName = '';
 
-            if (deviceType === 'Desktop') {
-                alert('Desktops são fixos na sala de informática e não podem ser emprestados.');
+            if (isFixedDevice(deviceType)) {
+                alert('Desktops e Desktop Gestão são fixos na sala de informática e não podem ser emprestados.');
                 return;
             }
 
@@ -3415,7 +4051,7 @@
                 quantity = parseInt(document.getElementById('loanQuantity').value);
             } else {
                 groupName = document.getElementById('loanGroup').value;
-                const loanableDevices = data.devices.filter(d => d.group === groupName && d.type !== 'Desktop');
+                const loanableDevices = data.devices.filter(d => d.group === groupName && !isFixedDevice(d.type));
                 if (!loanableDevices.length) {
                     alert('Esse agrupamento não possui dispositivos que possam ser emprestados.');
                     return;
@@ -3767,9 +4403,9 @@
                 html = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum dispositivo cadastrado</td></tr>';
             } else {
                 data.devices.forEach(d => {
-                    const badgeColor = d.status === 'Disponível' ? 'green' : d.status === 'Em uso' ? 'yellow' : 'red';
-                    const isDesktop = d.type === 'Desktop';
-                    const icon = d.type === 'Notebook' ? 'laptop' : d.type === 'Tablet' ? 'tablet-alt' : 'desktop';
+                    const badgeColor = getDeviceStatusBadgeColor(d.status);
+                    const isDesktop = isFixedDevice(d.type);
+                    const icon = getDeviceIcon(d.type);
                     html += `<tr>
                         <td>
                             <i class="fas fa-${icon}"></i> ${d.type}
@@ -3813,9 +4449,9 @@
                 html = '<div class="device-card"><div style="text-align:center; color: var(--text-muted); font-weight: 600;">Nenhum dispositivo cadastrado</div></div>';
             } else {
                 data.devices.forEach(d => {
-                    const badgeColor = d.status === 'Disponível' ? 'green' : d.status === 'Em uso' ? 'yellow' : 'red';
-                    const icon = d.type === 'Notebook' ? 'laptop' : d.type === 'Tablet' ? 'tablet-alt' : 'desktop';
-                    const isDesktop = d.type === 'Desktop';
+                    const badgeColor = getDeviceStatusBadgeColor(d.status);
+                    const icon = getDeviceIcon(d.type);
+                    const isDesktop = isFixedDevice(d.type);
                     const deleteButton = isDesktop ? '' : `<button class="btn btn-danger btn-small" onclick="deleteDevice(${d.id})">
                         <i class="fas fa-trash"></i>
                         Remover
@@ -3877,15 +4513,17 @@
 
         function renderDeviceStatusOptions(type, selectedStatus = 'Disponível') {
             const statusSelect = document.getElementById('deviceStatus');
-            const options = type === 'Desktop'
+            const options = isFixedDevice(type)
                 ? [
                     { value: 'Disponível', label: 'Disponível' },
-                    { value: 'Manutenção', label: 'Manutenção' }
+                    { value: 'Manutenção', label: 'Manutenção' },
+                    { value: 'Fora de uso', label: 'Fora de uso' }
                 ]
                 : [
                     { value: 'Disponível', label: 'Disponível' },
                     { value: 'Em uso', label: 'Em uso' },
-                    { value: 'Manutenção', label: 'Manutenção' }
+                    { value: 'Manutenção', label: 'Manutenção' },
+                    { value: 'Fora de uso', label: 'Fora de uso' }
                 ];
 
             statusSelect.innerHTML = options.map(option => `<option value="${option.value}">${option.label}</option>`).join('');
@@ -3899,8 +4537,8 @@
             const imeiInput = document.getElementById('deviceImei');
             const currentStatus = preferredStatus || document.getElementById('deviceStatus').value;
 
-            groupInput.placeholder = type === 'Desktop'
-                ? 'Ex: Sala 17 ou Sala de Informática'
+            groupInput.placeholder = isFixedDevice(type)
+                ? 'Ex: Sala 17, Sala de Informática ou Gestão'
                 : 'Ex: Base 1, Carrinho A, Sala 17';
             if (imeiGroup && imeiInput) {
                 const isTablet = type === 'Tablet';
@@ -3939,7 +4577,7 @@
             }
 
             document.getElementById('deviceType').value = device?.type || 'Notebook';
-            handleDeviceTypeChange(device?.type === 'Desktop' && device?.status === 'Em uso' ? 'Disponível' : (device?.status || 'Disponível'));
+            handleDeviceTypeChange(isFixedDevice(device?.type) && device?.status === 'Em uso' ? 'Disponível' : (device?.status || 'Disponível'));
             
             modal.classList.add('active');
         }
@@ -4019,7 +4657,7 @@
                 observations: document.getElementById('deviceObservations').value || null
             };
 
-            if (deviceData.type === 'Desktop' && deviceData.status === 'Em uso') {
+            if (isFixedDevice(deviceData.type) && deviceData.status === 'Em uso') {
                 deviceData.status = 'Disponível';
             }
 
@@ -4123,21 +4761,23 @@
                 `;
             }
 
-            const sortedDevices = sortDevicesForDisplay(data.devices);
+            const sortedDevices = getFilteredDevices();
+            const hasFilters = !!(document.getElementById('deviceSearchInput')?.value?.trim() || document.getElementById('deviceTypeFilter')?.value);
             let html = '';
 
             if (sortedDevices.length === 0) {
-                html = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum dispositivo cadastrado</td></tr>';
+                html = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">${hasFilters ? 'Nenhum dispositivo encontrado com os filtros aplicados' : 'Nenhum dispositivo cadastrado'}</td></tr>`;
             } else {
-                let lastType = null;
+                let lastGroupKey = null;
                 sortedDevices.forEach(d => {
-                    const badgeColor = d.status === 'Disponível' ? 'green' : d.status === 'Em uso' ? 'yellow' : 'red';
+                    const badgeColor = getDeviceStatusBadgeColor(d.status);
                     const isDesktop = isFixedDevice(d.type);
                     const icon = getDeviceIcon(d.type);
+                    const groupKey = getDeviceDisplayGroupKey(d);
 
-                    if (d.type !== lastType) {
-                        lastType = d.type;
-                        html += `<tr class="device-group-row"><td colspan="9">${getDeviceTypeLabel(d.type)}</td></tr>`;
+                    if (groupKey !== lastGroupKey) {
+                        lastGroupKey = groupKey;
+                        html += `<tr class="device-group-row"><td colspan="9">${getDeviceDisplayGroupLabel(d)}</td></tr>`;
                     }
 
                     html += `<tr>
@@ -4180,19 +4820,20 @@
             const container = document.getElementById('devices-cards');
             if (!container) return;
 
-            const sortedDevices = sortDevicesForDisplay(data.devices);
+            const sortedDevices = getFilteredDevices();
             const groupedDevices = groupDevicesByType(sortedDevices);
+            const hasFilters = !!(document.getElementById('deviceSearchInput')?.value?.trim() || document.getElementById('deviceTypeFilter')?.value);
             let html = '';
 
             if (sortedDevices.length === 0) {
-                html = '<div class="device-card"><div style="text-align:center; color: var(--text-muted); font-weight: 600;">Nenhum dispositivo cadastrado</div></div>';
+                html = `<div class="device-card"><div style="text-align:center; color: var(--text-muted); font-weight: 600;">${hasFilters ? 'Nenhum dispositivo encontrado com os filtros aplicados' : 'Nenhum dispositivo cadastrado'}</div></div>`;
             } else {
                 html = groupedDevices.map(group => `
                     <section class="device-group-section">
-                        <div class="device-group-heading">${getDeviceTypeLabel(group.type)}</div>
+                        <div class="device-group-heading">${group.label}</div>
                         <div style="display: grid; gap: 14px;">
                             ${group.devices.map(d => {
-                                const badgeColor = d.status === 'Disponível' ? 'green' : d.status === 'Em uso' ? 'yellow' : 'red';
+                                const badgeColor = getDeviceStatusBadgeColor(d.status);
                                 const icon = getDeviceIcon(d.type);
                                 const isDesktop = isFixedDevice(d.type);
                                 const deleteButton = isDesktop ? '' : `<button class="btn btn-danger btn-small" onclick="deleteDevice(${d.id})">
