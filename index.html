@@ -123,43 +123,73 @@
             color: var(--text-dark);
         }
 
+        .form-input,
         .form-group input,
         .form-group select,
         .form-group textarea {
             width: 100%;
-            padding: 14px 16px;
-            border: 1px solid var(--border);
-            border-radius: 10px;
+            min-height: 48px;
+            padding: 13px 16px;
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            border-radius: 14px;
             font-size: 15px;
             font-family: inherit;
-            background: var(--surface);
+            background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,250,252,0.96));
             color: var(--text-dark);
-            transition: all 0.3s ease;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, background 0.2s ease;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.65), 0 1px 2px rgba(15, 23, 42, 0.04);
             box-sizing: border-box;
         }
 
-        .form-group select {
+        .form-input:hover,
+        .form-group input:hover,
+        .form-group select:hover,
+        .form-group textarea:hover {
+            border-color: rgba(59, 130, 246, 0.35);
+        }
+
+        .form-input:focus,
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.72);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14), 0 10px 24px rgba(59, 130, 246, 0.10);
+            background: linear-gradient(180deg, rgba(255,255,255,1), rgba(248,250,252,0.98));
+            transform: translateY(-1px);
+        }
+
+        .form-group select,
+        .form-input[type="date"] {
             cursor: pointer;
             appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 14px center;
             background-size: 18px;
-            padding-right: 44px;
+            padding-right: 46px;
+        }
+
+        .form-group select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        }
+
+        .form-input[type="date"] {
+            padding-right: 14px;
+        }
+
+        .form-input::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            opacity: 0.72;
+        }
+
+        .form-input::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
         }
 
         .form-group textarea {
             resize: vertical;
             min-height: 100px;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
-            background: var(--surface);
+            padding-top: 14px;
         }
 
         .form-group input::placeholder,
@@ -212,8 +242,25 @@
         }
 
         /* Modo Escuro - Select com ícone */
+        body.dark-mode .form-input,
+        body.dark-mode .form-group input,
+        body.dark-mode .form-group select,
+        body.dark-mode .form-group textarea {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.96));
+            border-color: rgba(148, 163, 184, 0.22);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 2px rgba(0,0,0,0.22);
+        }
+
+        body.dark-mode .form-input:focus,
+        body.dark-mode .form-group input:focus,
+        body.dark-mode .form-group select:focus,
+        body.dark-mode .form-group textarea:focus {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 1), rgba(30, 41, 59, 0.98));
+            box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.14), 0 10px 24px rgba(2, 6, 23, 0.28);
+        }
+
         body.dark-mode .form-group select {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
         }
 
         .btn {
