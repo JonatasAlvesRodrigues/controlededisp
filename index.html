@@ -186,6 +186,39 @@
             opacity: 1;
         }
 
+        .filter-chip {
+            min-height: 42px;
+            width: auto;
+            min-width: 0;
+            padding: 10px 14px;
+            border-radius: 999px;
+            border-color: rgba(148, 163, 184, 0.24);
+            background: rgba(255, 255, 255, 0.78);
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+            letter-spacing: 0.01em;
+        }
+
+        .filter-chip:hover {
+            border-color: rgba(59, 130, 246, 0.42);
+            transform: translateY(-1px);
+        }
+
+        .filter-chip:focus {
+            transform: translateY(-1px);
+        }
+
+        .filter-chip[type="date"] {
+            padding-right: 12px;
+        }
+
+        .filter-chip[type="date"]::-webkit-calendar-picker-indicator {
+            opacity: 0.6;
+        }
+
+        .filter-chip[type="date"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 0.9;
+        }
+
         .form-group textarea {
             resize: vertical;
             min-height: 100px;
@@ -261,6 +294,16 @@
 
         body.dark-mode .form-group select {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        }
+
+        body.dark-mode .filter-chip {
+            background: rgba(15, 23, 42, 0.78);
+            border-color: rgba(148, 163, 184, 0.18);
+            box-shadow: 0 10px 22px rgba(2, 6, 23, 0.18);
+        }
+
+        body.dark-mode .filter-chip:hover {
+            border-color: rgba(96, 165, 250, 0.42);
         }
 
         .btn {
@@ -2189,11 +2232,11 @@
             <div class="card">
                 <div class="card-header">
                     <div style="display: flex; gap: 12px; align-items: center;">
-                        <input type="date" id="filterDate" class="form-input" style="width: auto;" onchange="filterHistory()">
-                        <select id="filterClass" class="form-input" style="width: auto;" onchange="filterHistory()">
+                        <input type="date" id="filterDate" class="form-input filter-chip" style="width: auto;" onchange="filterHistory()">
+                        <select id="filterClass" class="form-input filter-chip" style="width: auto;" onchange="filterHistory()">
                             <option value="">Todas as turmas</option>
                         </select>
-                        <select id="filterTeacher" class="form-input" style="width: auto;" onchange="filterHistory()">
+                        <select id="filterTeacher" class="form-input filter-chip" style="width: auto;" onchange="filterHistory()">
                             <option value="">Todos os professores</option>
                         </select>
                     </div>
