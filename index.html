@@ -4725,7 +4725,7 @@
                 html = '<tr><td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhuma turma cadastrada</td></tr>';
             } else {
                 data.classes.forEach(c => {
-                    html += `<tr class="device-row" onclick="openDeviceDetails(${d.id})" title="Abrir detalhes do dispositivo">
+                    html += `<tr>
                         <td><i class="fas fa-door-open"></i> ${c.name}</td>
                         <td>${c.shift}</td>
                         <td>${c.students || '-'}</td>
