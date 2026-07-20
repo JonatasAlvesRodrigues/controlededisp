@@ -4057,6 +4057,74 @@
             return device.school_name || 'Escola Percio';
         }
 
+        let patrimonyLabelLogoPromise = null;
+
+        function getPatrimonyLabelLogo() {
+            if (patrimonyLabelLogoPromise) {
+                return patrimonyLabelLogoPromise;
+            }
+
+            patrimonyLabelLogoPromise = new Promise((resolve) => {
+                const image = new Image();
+                image.onload = () => {
+                    try {
+                        const sourceCanvas = document.createElement('canvas');
+                        const sourceContext = sourceCanvas.getContext('2d', { willReadFrequently: true });
+                        sourceCanvas.width = image.naturalWidth;
+                        sourceCanvas.height = image.naturalHeight;
+                        sourceContext.drawImage(image, 0, 0);
+
+                        const imageData = sourceContext.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
+                        const data = imageData.data;
+                        let minX = sourceCanvas.width;
+                        let minY = sourceCanvas.height;
+                        let maxX = 0;
+                        let maxY = 0;
+
+                        for (let py = 0; py < sourceCanvas.height; py++) {
+                            for (let px = 0; px < sourceCanvas.width; px++) {
+                                const index = (py * sourceCanvas.width + px) * 4;
+                                const alpha = data[index + 3];
+                                const isInk = alpha > 10 && (data[index] < 245 || data[index + 1] < 245 || data[index + 2] < 245);
+                                if (isInk) {
+                                    minX = Math.min(minX, px);
+                                    minY = Math.min(minY, py);
+                                    maxX = Math.max(maxX, px);
+                                    maxY = Math.max(maxY, py);
+                                }
+                            }
+                        }
+
+                        if (minX > maxX || minY > maxY) {
+                            resolve({ dataUrl: sourceCanvas.toDataURL('image/png'), width: sourceCanvas.width, height: sourceCanvas.height });
+                            return;
+                        }
+
+                        const margin = 16;
+                        minX = Math.max(0, minX - margin);
+                        minY = Math.max(0, minY - margin);
+                        maxX = Math.min(sourceCanvas.width - 1, maxX + margin);
+                        maxY = Math.min(sourceCanvas.height - 1, maxY + margin);
+
+                        const cropW = maxX - minX + 1;
+                        const cropH = maxY - minY + 1;
+                        const cropCanvas = document.createElement('canvas');
+                        cropCanvas.width = cropW;
+                        cropCanvas.height = cropH;
+                        cropCanvas.getContext('2d').drawImage(sourceCanvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+                        resolve({ dataUrl: cropCanvas.toDataURL('image/png'), width: cropW, height: cropH });
+                    } catch (error) {
+                        console.warn('Falha ao preparar logo da etiqueta:', error);
+                        resolve(null);
+                    }
+                };
+                image.onerror = () => resolve(null);
+                image.src = './logo-percio.jpg';
+            });
+
+            return patrimonyLabelLogoPromise;
+        }
+
         function getLabelModelBrand(device) {
             const brand = device.brand || '';
             const model = device.model || '';
@@ -4207,6 +4275,7 @@
             const createdAt = device.created_at ? formatDateBR(new Date(device.created_at)) : formatDateBR(new Date());
             const barcodeDataUrl = generateBarcodeDataUrl(patrimony);
             const qrDataUrl = await generateQrCodeDataUrl(getDeviceDetailUrl(device.id));
+            const logo = await getPatrimonyLabelLogo();
 
             {
             const pad = Math.max(3, width * 0.04);
@@ -4230,10 +4299,25 @@
             doc.line(innerX, innerY + headerH, innerX + innerW, innerY + headerH);
 
             doc.setTextColor(0);
-            doc.setFont('helvetica', 'bold');
-            fitPdfText(doc, schoolName, innerX + leftW / 2, innerY + 8, leftW, { fontSize: Math.min(12, height * 0.18), minFontSize: 7, align: 'center' });
-            doc.setFont('helvetica', 'normal');
-            fitPdfText(doc, 'Controle Patrimonial Escolar', innerX + leftW / 2, innerY + 13, leftW, { fontSize: 5.5, minFontSize: 4, align: 'center' });
+            if (logo?.dataUrl) {
+                const logoMaxW = leftW;
+                const logoMaxH = headerH - 2;
+                const logoRatio = logo.width / logo.height;
+                let logoW = logoMaxW;
+                let logoH = logoW / logoRatio;
+
+                if (logoH > logoMaxH) {
+                    logoH = logoMaxH;
+                    logoW = logoH * logoRatio;
+                }
+
+                doc.addImage(logo.dataUrl, 'PNG', innerX + (leftW - logoW) / 2, innerY + (headerH - logoH) / 2 - 0.5, logoW, logoH);
+            } else {
+                doc.setFont('helvetica', 'bold');
+                fitPdfText(doc, schoolName, innerX + leftW / 2, innerY + 8, leftW, { fontSize: Math.min(12, height * 0.18), minFontSize: 7, align: 'center' });
+                doc.setFont('helvetica', 'normal');
+                fitPdfText(doc, 'Controle Patrimonial Escolar', innerX + leftW / 2, innerY + 13, leftW, { fontSize: 5.5, minFontSize: 4, align: 'center' });
+            }
 
             doc.line(innerX + leftW + 2.5, innerY, innerX + leftW + 2.5, innerY + headerH - 3);
             doc.setFont('helvetica', 'bold');
@@ -4287,75 +4371,8 @@
             doc.setFont('helvetica', 'bold');
             fitPdfText(doc, `PATRIMONIO DA ${schoolName.toUpperCase()}`, innerX + innerW / 2, footerY + footerH * 0.68, innerW - 4, { fontSize: Math.max(3.8, footerH * 0.65), minFontSize: 3.2, align: 'center' });
             doc.setTextColor(0);
-            return;
             }
 
-            doc.setDrawColor(0);
-            doc.setLineWidth(0.5);
-            doc.roundedRect(x, y, width, height, 3, 3);
-
-            const pad = Math.max(3, width * 0.035);
-            const topH = height * 0.36;
-            const midY = y + topH + 2;
-            const bottomY = y + height * 0.63;
-            const footerH = Math.max(6, height * 0.075);
-
-            doc.setFont('helvetica', 'bold');
-            fitPdfText(doc, schoolName, x + pad, y + topH * 0.48, width * 0.39, { fontSize: Math.max(14, height * 0.25), minFontSize: 9, align: 'center' });
-            doc.setFont('helvetica', 'normal');
-            fitPdfText(doc, 'Controle Patrimonial Escolar', x + pad, y + topH * 0.68, width * 0.39, { fontSize: 8, minFontSize: 5, align: 'center' });
-
-            doc.line(x + width * 0.44, y + pad, x + width * 0.44, y + topH - pad);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(Math.max(8, height * 0.12));
-            doc.text('PATRIMÔNIO', x + width * 0.48, y + pad + 5);
-            fitPdfText(doc, patrimony, x + width * 0.48, y + topH * 0.62, width * 0.47, { fontSize: Math.max(20, height * 0.22), minFontSize: 12 });
-            doc.line(x + width * 0.48, y + topH - 8, x + width - pad, y + topH - 8);
-            fitPdfText(doc, `TIPO: ${device.type || '-'}`.toUpperCase(), x + width * 0.48, y + topH - 2, width * 0.47, { fontSize: 9, minFontSize: 6 });
-
-            doc.line(x + pad, midY, x + width - pad, midY);
-            drawLabelField(doc, '▭', 'MODELO / MARCA', modelBrand.toUpperCase(), x + pad + 1, midY + 6, width * 0.45);
-            drawLabelField(doc, '▥', 'Nº DE SÉRIE', serial.toUpperCase(), x + width * 0.58, midY + 6, width * 0.36);
-            drawLabelField(doc, '●', 'LOCALIZAÇÃO', location.toUpperCase(), x + pad + 1, midY + height * 0.18, width * 0.45);
-            drawLabelField(doc, '▣', 'DATA DE CADASTRO', createdAt, x + width * 0.58, midY + height * 0.18, width * 0.36);
-
-            doc.line(x + pad, bottomY, x + width - pad, bottomY);
-            const barcodeX = x + pad + 2;
-            const barcodeY = bottomY + 10;
-            const barcodeW = width * 0.42;
-            const barcodeH = height * 0.17;
-            doc.setFillColor(0);
-            doc.roundedRect(barcodeX + barcodeW * 0.18, bottomY + 2, barcodeW * 0.64, 6, 1, 1, 'F');
-            doc.setTextColor(255);
-            doc.setFontSize(7);
-            doc.text('CÓDIGO DE BARRAS', barcodeX + barcodeW * 0.5, bottomY + 6.2, { align: 'center' });
-            doc.setTextColor(0);
-            doc.addImage(barcodeDataUrl, 'PNG', barcodeX, barcodeY, barcodeW, barcodeH);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10);
-            doc.text(patrimony, barcodeX + barcodeW * 0.5, barcodeY + barcodeH + 6, { align: 'center' });
-
-            doc.line(x + width * 0.52, bottomY + 3, x + width * 0.52, y + height - footerH - 4);
-            const qrX = x + width * 0.58;
-            const qrY = bottomY + 10;
-            const qrSize = Math.min(height * 0.27, width * 0.18);
-            doc.setFillColor(0);
-            doc.roundedRect(qrX + qrSize * 0.14, bottomY + 2, qrSize * 1.1, 6, 1, 1, 'F');
-            doc.setTextColor(255);
-            doc.setFontSize(7);
-            doc.text('QR CODE', qrX + qrSize * 0.68, bottomY + 6.2, { align: 'center' });
-            doc.setTextColor(0);
-            doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(6.5);
-            doc.text(['Escaneie com', 'o celular para', 'acessar o dispositivo', 'no sistema.'], qrX + qrSize + 10, qrY + 8);
-
-            doc.setFillColor(0);
-            doc.roundedRect(x + width * 0.09, y + height - footerH - 1, width * 0.82, footerH, 1.5, 1.5, 'F');
-            doc.setTextColor(255);
-            doc.setFont('helvetica', 'bold');
-            fitPdfText(doc, `ESTE PATRIMÔNIO É DA ${schoolName.toUpperCase()}`, x + width * 0.5, y + height - footerH * 0.38, width * 0.76, { fontSize: Math.max(5, footerH * 0.48), minFontSize: 4, align: 'center' });
-            doc.setTextColor(0);
         }
 
         async function generateLabelsPdfForDevices(devices, filePrefix = 'etiquetas_patrimoniais') {

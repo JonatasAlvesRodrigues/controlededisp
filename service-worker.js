@@ -1,10 +1,11 @@
-const CACHE_NAME = 'controle-dispositivos-v7';
+const CACHE_NAME = 'controle-dispositivos-v8';
 const APP_SHELL = [
     './',
     './index.html',
     './404.html',
     './manifest.json',
     './icon.png',
+    './logo-percio.jpg',
     './config.js'
 ];
 
