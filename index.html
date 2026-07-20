@@ -4325,8 +4325,10 @@
             doc.setFontSize(6);
             doc.text('PATRIMONIO', rightX, innerY + 5);
             fitPdfText(doc, patrimony, rightX, innerY + 12, rightW, { fontSize: Math.min(13, height * 0.19), minFontSize: 8 });
-            doc.line(rightX, innerY + 14, innerX + innerW, innerY + 14);
-            fitPdfText(doc, `TIPO: ${device.type || '-'}`.toUpperCase(), rightX, innerY + 19, rightW, { fontSize: 6, minFontSize: 4.5 });
+            if (!compactLabel) {
+                doc.line(rightX, innerY + 14, innerX + innerW, innerY + 14);
+                fitPdfText(doc, `TIPO: ${device.type || '-'}`.toUpperCase(), rightX, innerY + 19, rightW, { fontSize: 6, minFontSize: 4.5 });
+            }
 
             const infoGap = 3;
             const infoColW = (innerW - infoGap) / 2;
