@@ -1,7 +1,8 @@
-const CACHE_NAME = 'controle-dispositivos-v4';
+const CACHE_NAME = 'controle-dispositivos-v5';
 const APP_SHELL = [
     './',
     './index.html',
+    './404.html',
     './manifest.json',
     './icon.png',
     './config.js'

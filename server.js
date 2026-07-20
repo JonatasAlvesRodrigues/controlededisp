@@ -12,6 +12,10 @@ const server = http.createServer((req, res) => {
         filePath = './index.html';
     }
 
+    if (/^\.\/dispositivo\/\d+\/?$/.test(filePath)) {
+        filePath = './index.html';
+    }
+
     const extname = String(path.extname(filePath)).toLowerCase();
     const contentType = {
         '.html': 'text/html',

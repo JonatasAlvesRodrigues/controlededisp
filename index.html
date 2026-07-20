@@ -17,6 +17,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <script src="./config.js"></script>
     <style>
         * {
@@ -2398,6 +2400,44 @@
                         Gerar PDF de uso
                     </button>
                 </div>
+
+                <div class="report-card">
+                    <div class="report-card-header">
+                        <div class="report-card-icon">
+                            <i class="fas fa-tags"></i>
+                        </div>
+                        <div>
+                            <div class="report-card-title">Etiquetas patrimoniais</div>
+                            <div class="report-card-desc">Gera etiquetas com patrimônio, código de barras e QR Code para acesso ao dispositivo.</div>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Tamanho</label>
+                            <select id="labelSize" class="form-input">
+                                <option value="100x70">100 x 70 mm</option>
+                                <option value="90x60">90 x 60 mm</option>
+                                <option value="80x50">80 x 50 mm</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tipo</label>
+                            <select id="labelDeviceType" class="form-input">
+                                <option value="">Todos os tipos</option>
+                                <option value="Notebook">Notebook</option>
+                                <option value="Notebook Positivo (Novos)">Notebook Positivo (Novos)</option>
+                                <option value="Notebook Ultra">Notebook Ultra</option>
+                                <option value="Tablet">Tablet</option>
+                                <option value="Desktop">Desktop</option>
+                                <option value="Desktop Gestão">Desktop Gestão</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-full" onclick="generateAllLabelsPdf()">
+                        <i class="fas fa-file-pdf"></i>
+                        Gerar etiquetas em lote
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -2408,10 +2448,20 @@
                     <div class="page-title">Dispositivos</div>
                     <div class="page-subtitle">Gerenciar todos os dispositivos cadastrados</div>
                 </div>
-                <button class="btn btn-primary" onclick="openDeviceModal()">
-                    <i class="fas fa-plus"></i>
-                    Novo Dispositivo
-                </button>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" onclick="generateSelectedLabelsPdf()">
+                        <i class="fas fa-tags"></i>
+                        Etiquetas selecionadas
+                    </button>
+                    <button class="btn btn-secondary" onclick="generateFilteredLabelsPdf()">
+                        <i class="fas fa-print"></i>
+                        Etiquetas filtradas
+                    </button>
+                    <button class="btn btn-primary" onclick="openDeviceModal()">
+                        <i class="fas fa-plus"></i>
+                        Novo Dispositivo
+                    </button>
+                </div>
             </div>
 
             <div class="card">
@@ -2780,6 +2830,7 @@
         let appAlertResolver = null;
         let appAlertReturnFocus = null;
         let deviceSchemaReady = null;
+        let deviceLabelSchemaReady = null;
         let loadDataInProgress = false;
         let loadDataQueued = false;
         let loadDataRefreshTimer = null;
@@ -2791,6 +2842,8 @@
         let scannerLastValue = '';
         let deviceStatusFilter = '';
         let selectedDeviceId = null;
+        let selectedLabelDeviceIds = new Set();
+        let pendingDeviceDetailId = null;
         const DEVICE_MAINTENANCE_HISTORY_KEY = 'deviceMaintenanceHistory';
 
         function inferAlertType(message) {
@@ -2928,6 +2981,8 @@
         // ------------------------------
         document.addEventListener('DOMContentLoaded', async () => {
             loadDarkModePreference();
+            pendingDeviceDetailId = getRequestedDeviceIdFromUrl();
+            ensureDeviceLabelFields();
             const reportUsageDate = document.getElementById('reportUsageDate');
             if (reportUsageDate && !reportUsageDate.value) {
                 reportUsageDate.value = new Date().toISOString().split('T')[0];
@@ -3152,6 +3207,12 @@
                 currentAccessRole = 'Funcionário';
                 showApp();
                 await loadData();
+            } else if (pendingDeviceDetailId) {
+                isQuickAccess = true;
+                currentUser = { name: 'Consulta por QR Code', role: 'Aluno', email: '' };
+                currentAccessRole = 'Aluno';
+                showApp();
+                await loadData();
             } else {
                 showLogin();
             }
@@ -3285,6 +3346,12 @@
                 data = { classes, teachers, devices, loans, loanDevices, deviceMaintenanceHistory };
                 updateAll();
                 await verifyDeviceSchema();
+                await verifyDeviceLabelSchema();
+                if (pendingDeviceDetailId) {
+                    const deviceId = pendingDeviceDetailId;
+                    pendingDeviceDetailId = null;
+                    openDeviceDetails(deviceId);
+                }
             } catch (error) {
                 console.error('Erro ao carregar dados:', error);
                 alert('Erro ao carregar dados: ' + error.message);
@@ -3301,6 +3368,64 @@
             const { error } = await client.from('devices').select('counter_number, imei').limit(1);
             deviceSchemaReady = !error;
             return deviceSchemaReady;
+        }
+
+        async function verifyDeviceLabelSchema() {
+            const { error } = await client.from('devices').select('brand, model, school_name').limit(1);
+            deviceLabelSchemaReady = !error;
+            return deviceLabelSchemaReady;
+        }
+
+        function getRequestedDeviceIdFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const queryId = parseInt(params.get('device') || params.get('dispositivo'));
+            if (queryId) return queryId;
+
+            const match = window.location.pathname.match(/\/dispositivo\/(\d+)\/?$/);
+            return match ? parseInt(match[1], 10) : null;
+        }
+
+        function getDeviceDetailUrl(deviceId) {
+            const origin = window.location.origin;
+            const basePath = window.location.pathname
+                .replace(/\/dispositivo\/\d+\/?$/, '/')
+                .replace(/\/(index\.html)?$/, '/');
+            return `${origin}${basePath.replace(/\/$/, '')}/dispositivo/${deviceId}`;
+        }
+
+        function ensureDeviceLabelFields() {
+            const typeSelect = document.getElementById('deviceType');
+            const form = document.getElementById('deviceForm');
+            if (!typeSelect || !form || document.getElementById('deviceBrand')) return;
+
+            typeSelect.closest('.form-group')?.insertAdjacentHTML('afterend', `
+                <div class="form-group">
+                    <label class="form-label">Marca</label>
+                    <input type="text" id="deviceBrand" class="form-input" placeholder="Ex: Lenovo, Samsung, Positivo">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Modelo</label>
+                    <input type="text" id="deviceModel" class="form-input" placeholder="Ex: ThinkPad E14, Galaxy Tab A">
+                </div>
+            `);
+
+            document.getElementById('deviceGroup')?.closest('.form-group')?.insertAdjacentHTML('afterend', `
+                <div class="form-group">
+                    <label class="form-label">Nome da escola</label>
+                    <input type="text" id="deviceSchoolName" class="form-input" placeholder="Escola Percio">
+                    <small class="field-hint">Usado no topo e rodapé da etiqueta patrimonial.</small>
+                </div>
+            `);
+
+            const actions = form.querySelector('button[type="submit"]')?.parentElement;
+            if (actions && !document.getElementById('deviceLabelButton')) {
+                actions.insertAdjacentHTML('beforeend', `
+                    <button type="button" class="btn btn-secondary btn-full" id="deviceLabelButton" onclick="generateCurrentDeviceLabelPdf()">
+                        <i class="fas fa-tag"></i>
+                        Gerar etiqueta
+                    </button>
+                `);
+            }
         }
 
         function getScannerLabel(fieldId) {
@@ -3426,7 +3551,7 @@
         // 6. Navegação
         // ------------------------------
         function showScreen(screenId) {
-            if (isAlunoAccess() && !['dashboard', 'loan', 'return'].includes(screenId)) {
+            if (isAlunoAccess() && !['dashboard', 'loan', 'return', 'device-detail'].includes(screenId)) {
                 screenId = 'loan';
             }
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -3702,6 +3827,15 @@
             return [...relatedMap.values()].sort((a, b) => (b.id || 0) - (a.id || 0));
         }
 
+        function getCurrentDeviceResponsible(device, relatedLoans = null) {
+            const loans = relatedLoans || getDeviceRelatedLoans(device);
+            const activeLoan = loans.find(loan => !loan.returned);
+            if (!activeLoan) return '-';
+            const className = data.classes.find(c => c.id === activeLoan.class_id)?.name || '-';
+            const teacherName = data.teachers.find(t => t.id === activeLoan.teacher_id)?.name || '-';
+            return `${teacherName} (${className})`;
+        }
+
         function renderSelectedDeviceDetails() {
             if (!selectedDeviceId) return;
             const device = data.devices.find(d => d.id === selectedDeviceId);
@@ -3728,6 +3862,7 @@
             const icon = getDeviceIcon(device.type);
             const relatedLoans = getDeviceRelatedLoans(device);
             const maintenanceHistory = getDeviceMaintenanceHistory(device.id);
+            const currentResponsible = getCurrentDeviceResponsible(device, relatedLoans);
             const isCurrentlyMaintenance = device.status === 'Manutenção';
 
             const loanHtml = relatedLoans.length
@@ -3787,9 +3922,13 @@
                             ${renderDetailInfoItem('ID', device.id)}
                             ${renderDetailInfoItem('Número de série', device.serial_number)}
                             ${renderDetailInfoItem('Patrimônio', device.patrimony)}
+                            ${renderDetailInfoItem('Marca', device.brand)}
+                            ${renderDetailInfoItem('Modelo', device.model)}
                             ${device.type === 'Tablet' ? renderDetailInfoItem('IMEI', device.imei) : ''}
                             ${renderDetailInfoItem('Número contador / S/N', device.counter_number)}
                             ${renderDetailInfoItem('Agrupamento / Sala', device.group)}
+                            ${renderDetailInfoItem('Escola', getLabelSchoolName(device))}
+                            ${renderDetailInfoItem('Responsável atual', currentResponsible)}
                             ${renderDetailInfoItem('Criado em', device.created_at ? formatDateTimeBR(new Date(device.created_at)) : '-')}
                             ${renderDetailInfoItem('Observações', device.observations)}
                         </div>
@@ -3797,6 +3936,10 @@
                             <button class="btn btn-primary btn-full" onclick="editDevice(${device.id})">
                                 <i class="fas fa-edit"></i>
                                 Editar dispositivo
+                            </button>
+                            <button class="btn btn-secondary btn-full" onclick="generateSingleDeviceLabelPdf(${device.id})">
+                                <i class="fas fa-tag"></i>
+                                Gerar etiqueta
                             </button>
                             <button class="btn btn-secondary btn-full" style="background: #fef3c7; color: #92400e;" onclick="toggleMaintenance(${device.id})">
                                 <i class="fas fa-wrench"></i>
@@ -3900,6 +4043,265 @@
                 throw new Error('Biblioteca de PDF indisponível. Verifique a conexão com a internet.');
             }
             return jsPDF;
+        }
+
+        function getSelectedLabelSize() {
+            const value = document.getElementById('labelSize')?.value || '100x70';
+            const [width, height] = value.split('x').map(Number);
+            return { width: width || 100, height: height || 70 };
+        }
+
+        function getLabelSchoolName(device) {
+            return device.school_name || 'Escola Percio';
+        }
+
+        function getLabelModelBrand(device) {
+            const brand = device.brand || '';
+            const model = device.model || '';
+            return [brand, model].filter(Boolean).join(' ') || device.type || '-';
+        }
+
+        function getLabelPatrimony(device) {
+            return device.patrimony || device.counter_number || `DISP-${device.id}`;
+        }
+
+        function getLabelFilteredDevices() {
+            const selectedType = document.getElementById('labelDeviceType')?.value || '';
+            return sortDevicesForDisplay(data.devices).filter(device => !selectedType || device.type === selectedType);
+        }
+
+        function getSelectedLabelDevices() {
+            return sortDevicesForDisplay(data.devices).filter(device => selectedLabelDeviceIds.has(parseInt(device.id)));
+        }
+
+        function toggleLabelDeviceSelection(deviceId, checked) {
+            const parsedId = parseInt(deviceId);
+            if (checked) {
+                selectedLabelDeviceIds.add(parsedId);
+            } else {
+                selectedLabelDeviceIds.delete(parsedId);
+            }
+            syncLabelSelectionControls();
+        }
+
+        function toggleAllVisibleLabelDevices(checked) {
+            getFilteredDevices().forEach(device => {
+                if (checked) {
+                    selectedLabelDeviceIds.add(parseInt(device.id));
+                } else {
+                    selectedLabelDeviceIds.delete(parseInt(device.id));
+                }
+            });
+            updateDevicesTable();
+            updateDevicesCards();
+        }
+
+        function syncLabelSelectionControls() {
+            document.querySelectorAll('[data-label-device-id]').forEach(input => {
+                input.checked = selectedLabelDeviceIds.has(parseInt(input.dataset.labelDeviceId));
+            });
+            const allVisible = getFilteredDevices();
+            const toggle = document.getElementById('selectAllLabelsToggle');
+            if (toggle) {
+                toggle.checked = allVisible.length > 0 && allVisible.every(device => selectedLabelDeviceIds.has(parseInt(device.id)));
+            }
+        }
+
+        function generateBarcodeDataUrl(value) {
+            if (!window.JsBarcode) {
+                throw new Error('Biblioteca de código de barras indisponível.');
+            }
+            const canvas = document.createElement('canvas');
+            window.JsBarcode(canvas, value, {
+                format: 'CODE128',
+                displayValue: false,
+                margin: 0,
+                width: 2,
+                height: 70
+            });
+            return canvas.toDataURL('image/png');
+        }
+
+        async function generateQrCodeDataUrl(value) {
+            if (!window.QRCode?.toDataURL) {
+                throw new Error('Biblioteca de QR Code indisponível.');
+            }
+            return window.QRCode.toDataURL(value, {
+                errorCorrectionLevel: 'M',
+                margin: 1,
+                width: 220,
+                color: { dark: '#000000', light: '#ffffff' }
+            });
+        }
+
+        function fitPdfText(doc, text, x, y, maxWidth, options = {}) {
+            const safeText = (text || '-').toString();
+            let fontSize = options.fontSize || 10;
+            const minFontSize = options.minFontSize || 6;
+            doc.setFontSize(fontSize);
+            while (doc.getTextWidth(safeText) > maxWidth && fontSize > minFontSize) {
+                fontSize -= 0.5;
+                doc.setFontSize(fontSize);
+            }
+            if (options.align) {
+                doc.text(safeText, x, y, { align: options.align });
+            } else {
+                doc.text(safeText, x, y);
+            }
+        }
+
+        function drawLabelField(doc, icon, label, value, x, y, width) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text(icon, x, y + 5);
+            doc.setFontSize(6.5);
+            doc.setFont('helvetica', 'bold');
+            doc.text(label, x + 10, y + 2.5);
+            doc.setFontSize(9);
+            fitPdfText(doc, value, x + 10, y + 9, width - 10, { fontSize: 9, minFontSize: 6 });
+        }
+
+        async function drawPatrimonyLabel(doc, device, x, y, width, height) {
+            const patrimony = getLabelPatrimony(device);
+            const schoolName = getLabelSchoolName(device);
+            const modelBrand = getLabelModelBrand(device);
+            const serial = device.serial_number || '-';
+            const location = device.group || '-';
+            const createdAt = device.created_at ? formatDateBR(new Date(device.created_at)) : formatDateBR(new Date());
+            const barcodeDataUrl = generateBarcodeDataUrl(patrimony);
+            const qrDataUrl = await generateQrCodeDataUrl(getDeviceDetailUrl(device.id));
+
+            doc.setDrawColor(0);
+            doc.setLineWidth(0.5);
+            doc.roundedRect(x, y, width, height, 3, 3);
+
+            const pad = Math.max(3, width * 0.035);
+            const topH = height * 0.36;
+            const midY = y + topH + 2;
+            const bottomY = y + height * 0.63;
+            const footerH = Math.max(6, height * 0.075);
+
+            doc.setFont('helvetica', 'bold');
+            fitPdfText(doc, schoolName, x + pad, y + topH * 0.48, width * 0.39, { fontSize: Math.max(14, height * 0.25), minFontSize: 9, align: 'center' });
+            doc.setFont('helvetica', 'normal');
+            fitPdfText(doc, 'Controle Patrimonial Escolar', x + pad, y + topH * 0.68, width * 0.39, { fontSize: 8, minFontSize: 5, align: 'center' });
+
+            doc.line(x + width * 0.44, y + pad, x + width * 0.44, y + topH - pad);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(Math.max(8, height * 0.12));
+            doc.text('PATRIMÔNIO', x + width * 0.48, y + pad + 5);
+            fitPdfText(doc, patrimony, x + width * 0.48, y + topH * 0.62, width * 0.47, { fontSize: Math.max(20, height * 0.22), minFontSize: 12 });
+            doc.line(x + width * 0.48, y + topH - 8, x + width - pad, y + topH - 8);
+            fitPdfText(doc, `TIPO: ${device.type || '-'}`.toUpperCase(), x + width * 0.48, y + topH - 2, width * 0.47, { fontSize: 9, minFontSize: 6 });
+
+            doc.line(x + pad, midY, x + width - pad, midY);
+            drawLabelField(doc, '▭', 'MODELO / MARCA', modelBrand.toUpperCase(), x + pad + 1, midY + 6, width * 0.45);
+            drawLabelField(doc, '▥', 'Nº DE SÉRIE', serial.toUpperCase(), x + width * 0.58, midY + 6, width * 0.36);
+            drawLabelField(doc, '●', 'LOCALIZAÇÃO', location.toUpperCase(), x + pad + 1, midY + height * 0.18, width * 0.45);
+            drawLabelField(doc, '▣', 'DATA DE CADASTRO', createdAt, x + width * 0.58, midY + height * 0.18, width * 0.36);
+
+            doc.line(x + pad, bottomY, x + width - pad, bottomY);
+            const barcodeX = x + pad + 2;
+            const barcodeY = bottomY + 10;
+            const barcodeW = width * 0.42;
+            const barcodeH = height * 0.17;
+            doc.setFillColor(0);
+            doc.roundedRect(barcodeX + barcodeW * 0.18, bottomY + 2, barcodeW * 0.64, 6, 1, 1, 'F');
+            doc.setTextColor(255);
+            doc.setFontSize(7);
+            doc.text('CÓDIGO DE BARRAS', barcodeX + barcodeW * 0.5, bottomY + 6.2, { align: 'center' });
+            doc.setTextColor(0);
+            doc.addImage(barcodeDataUrl, 'PNG', barcodeX, barcodeY, barcodeW, barcodeH);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.text(patrimony, barcodeX + barcodeW * 0.5, barcodeY + barcodeH + 6, { align: 'center' });
+
+            doc.line(x + width * 0.52, bottomY + 3, x + width * 0.52, y + height - footerH - 4);
+            const qrX = x + width * 0.58;
+            const qrY = bottomY + 10;
+            const qrSize = Math.min(height * 0.27, width * 0.18);
+            doc.setFillColor(0);
+            doc.roundedRect(qrX + qrSize * 0.14, bottomY + 2, qrSize * 1.1, 6, 1, 1, 'F');
+            doc.setTextColor(255);
+            doc.setFontSize(7);
+            doc.text('QR CODE', qrX + qrSize * 0.68, bottomY + 6.2, { align: 'center' });
+            doc.setTextColor(0);
+            doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(6.5);
+            doc.text(['Escaneie com', 'o celular para', 'acessar o dispositivo', 'no sistema.'], qrX + qrSize + 10, qrY + 8);
+
+            doc.setFillColor(0);
+            doc.roundedRect(x + width * 0.09, y + height - footerH - 1, width * 0.82, footerH, 1.5, 1.5, 'F');
+            doc.setTextColor(255);
+            doc.setFont('helvetica', 'bold');
+            fitPdfText(doc, `ESTE PATRIMÔNIO É DA ${schoolName.toUpperCase()}`, x + width * 0.5, y + height - footerH * 0.38, width * 0.76, { fontSize: Math.max(5, footerH * 0.48), minFontSize: 4, align: 'center' });
+            doc.setTextColor(0);
+        }
+
+        async function generateLabelsPdfForDevices(devices, filePrefix = 'etiquetas_patrimoniais') {
+            try {
+                if (!devices.length) {
+                    alert('Nenhum dispositivo selecionado para gerar etiqueta.');
+                    return;
+                }
+
+                const jsPDF = getJsPdfInstance();
+                const { width: labelW, height: labelH } = getSelectedLabelSize();
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                const pageW = doc.internal.pageSize.getWidth();
+                const pageH = doc.internal.pageSize.getHeight();
+                const margin = 8;
+                const gap = 5;
+                const cols = Math.max(1, Math.floor((pageW - margin * 2 + gap) / (labelW + gap)));
+                const rows = Math.max(1, Math.floor((pageH - margin * 2 + gap) / (labelH + gap)));
+                const perPage = cols * rows;
+
+                for (let index = 0; index < devices.length; index++) {
+                    if (index > 0 && index % perPage === 0) {
+                        doc.addPage();
+                    }
+                    const pageIndex = index % perPage;
+                    const col = pageIndex % cols;
+                    const row = Math.floor(pageIndex / cols);
+                    await drawPatrimonyLabel(doc, devices[index], margin + col * (labelW + gap), margin + row * (labelH + gap), labelW, labelH);
+                }
+
+                doc.save(`${filePrefix}_${new Date().toISOString().slice(0, 10)}.pdf`);
+            } catch (error) {
+                console.error('Erro ao gerar etiquetas:', error);
+                alert('Erro ao gerar etiquetas: ' + error.message);
+            }
+        }
+
+        function generateCurrentDeviceLabelPdf() {
+            const deviceId = parseInt(document.getElementById('deviceId')?.value);
+            if (!deviceId) {
+                alert('Salve o dispositivo antes de gerar a etiqueta.');
+                return;
+            }
+            generateSingleDeviceLabelPdf(deviceId);
+        }
+
+        function generateSingleDeviceLabelPdf(deviceId) {
+            const device = data.devices.find(item => parseInt(item.id) === parseInt(deviceId));
+            if (!device) {
+                alert('Dispositivo não encontrado.');
+                return;
+            }
+            generateLabelsPdfForDevices([device], `etiqueta_${getLabelPatrimony(device).replace(/[^a-z0-9]+/gi, '_')}`);
+        }
+
+        function generateSelectedLabelsPdf() {
+            generateLabelsPdfForDevices(getSelectedLabelDevices(), 'etiquetas_selecionadas');
+        }
+
+        function generateFilteredLabelsPdf() {
+            generateLabelsPdfForDevices(getFilteredDevices(), 'etiquetas_filtradas');
+        }
+
+        function generateAllLabelsPdf() {
+            generateLabelsPdfForDevices(getLabelFilteredDevices(), 'etiquetas_patrimoniais');
         }
 
         function formatDateTimeForPdf(value) {
@@ -5106,6 +5508,7 @@
             }
 
             container.innerHTML = html;
+            syncLabelSelectionControls();
         }
 
         function renderDeviceStatusOptions(type, selectedStatus = 'Disponível') {
@@ -5150,6 +5553,7 @@
 
         // Função para abrir o modal de novo dispositivo
         function openDeviceModal(device = null) {
+            ensureDeviceLabelFields();
             const modal = document.getElementById('deviceModal');
             const modalTitle = document.getElementById('modalTitle');
             const form = document.getElementById('deviceForm');
@@ -5161,6 +5565,9 @@
                 document.getElementById('deviceSerial').value = device.serial_number || '';
                 document.getElementById('devicePatrimony').value = device.patrimony || '';
                 document.getElementById('deviceImei').value = device.imei || '';
+                document.getElementById('deviceBrand').value = device.brand || '';
+                document.getElementById('deviceModel').value = device.model || '';
+                document.getElementById('deviceSchoolName').value = device.school_name || getLabelSchoolName(device);
                 document.getElementById('deviceCounter').value = device.counter_number || 's/n';
                 document.getElementById('deviceGroup').value = device.group;
                 document.getElementById('deviceObservations').value = device.observations || '';
@@ -5170,6 +5577,9 @@
                 document.getElementById('deviceId').value = '';
                 document.getElementById('deviceSerial').value = '';
                 document.getElementById('deviceImei').value = '';
+                document.getElementById('deviceBrand').value = '';
+                document.getElementById('deviceModel').value = '';
+                document.getElementById('deviceSchoolName').value = 'Escola Percio';
                 document.getElementById('deviceCounter').value = 's/n';
             }
 
@@ -5272,6 +5682,15 @@
                 observations: document.getElementById('deviceObservations').value || null
             };
 
+            if (deviceLabelSchemaReady === null) {
+                await verifyDeviceLabelSchema();
+            }
+            if (deviceLabelSchemaReady) {
+                deviceData.brand = document.getElementById('deviceBrand')?.value || null;
+                deviceData.model = document.getElementById('deviceModel')?.value || null;
+                deviceData.school_name = document.getElementById('deviceSchoolName')?.value || null;
+            }
+
             if (isFixedDevice(deviceData.type) && deviceData.status === 'Em uso') {
                 deviceData.status = 'Disponível';
             }
@@ -5363,8 +5782,9 @@
             const headerRow = table?.querySelector('thead tr');
             if (!tableBody) return;
 
-            if (headerRow && headerRow.children.length === 8) {
+            if (headerRow && headerRow.children.length !== 10) {
                 headerRow.innerHTML = `
+                    <th><input type="checkbox" id="selectAllLabelsToggle" onchange="toggleAllVisibleLabelDevices(this.checked)" title="Selecionar dispositivos visíveis"></th>
                     <th>Tipo</th>
                     <th>Nº Série</th>
                     <th>Patrimônio</th>
@@ -5382,7 +5802,7 @@
             let html = '';
 
             if (sortedDevices.length === 0) {
-                html = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">${hasFilters ? 'Nenhum dispositivo encontrado com os filtros aplicados' : 'Nenhum dispositivo cadastrado'}</td></tr>`;
+                html = `<tr><td colspan="10" style="text-align: center; padding: 40px; color: var(--text-muted);">${hasFilters ? 'Nenhum dispositivo encontrado com os filtros aplicados' : 'Nenhum dispositivo cadastrado'}</td></tr>`;
             } else {
                 let lastGroupKey = null;
                 sortedDevices.forEach(d => {
@@ -5393,10 +5813,11 @@
 
                     if (groupKey !== lastGroupKey) {
                         lastGroupKey = groupKey;
-                        html += `<tr class="device-group-row"><td colspan="9">${getDeviceDisplayGroupLabel(d)}</td></tr>`;
+                        html += `<tr class="device-group-row"><td colspan="10">${getDeviceDisplayGroupLabel(d)}</td></tr>`;
                     }
 
                     html += `<tr class="device-row" onclick="openDeviceDetails(${d.id})" title="Abrir detalhes do dispositivo">
+                        <td><input type="checkbox" data-label-device-id="${d.id}" ${selectedLabelDeviceIds.has(parseInt(d.id)) ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleLabelDeviceSelection(${d.id}, this.checked)" title="Selecionar para etiqueta"></td>
                         <td>
                             <i class="fas fa-${icon}"></i> ${d.type}
                             ${isDesktop ? '<span class="device-fixed-badge"><i class="fas fa-building"></i> Fixo</span>' : ''}
@@ -5411,6 +5832,9 @@
                         <td>
                             <button class="btn btn-small btn-secondary" onclick="event.stopPropagation(); openDeviceDetails(${d.id})" title="Detalhes">
                                 <i class="fas fa-circle-info"></i>
+                            </button>
+                            <button class="btn btn-small btn-secondary" onclick="event.stopPropagation(); generateSingleDeviceLabelPdf(${d.id})" title="Gerar etiqueta">
+                                <i class="fas fa-tag"></i>
                             </button>
                             <button class="btn btn-small btn-primary" onclick="event.stopPropagation(); editDevice(${d.id})" title="Editar">
                                 <i class="fas fa-edit"></i>
@@ -5433,6 +5857,7 @@
             }
 
             tableBody.innerHTML = html;
+            syncLabelSelectionControls();
         }
 
         function updateDevicesCards() {
@@ -5467,7 +5892,10 @@
                                                 <i class="fas fa-${icon}"></i>
                                                 <span>${d.type}</span>
                                             </div>
-                                            ${isDesktop ? '<span class="device-fixed-badge"><i class="fas fa-building"></i> Fixo</span>' : ''}
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                ${isDesktop ? '<span class="device-fixed-badge"><i class="fas fa-building"></i> Fixo</span>' : ''}
+                                                <input type="checkbox" data-label-device-id="${d.id}" ${selectedLabelDeviceIds.has(parseInt(d.id)) ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleLabelDeviceSelection(${d.id}, this.checked)" title="Selecionar para etiqueta">
+                                            </div>
                                         </div>
                                         <div class="device-card-meta">
                                             <div class="device-card-field">
@@ -5505,6 +5933,10 @@
                                             <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); openDeviceDetails(${d.id})">
                                                 <i class="fas fa-circle-info"></i>
                                                 Detalhes
+                                            </button>
+                                            <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); generateSingleDeviceLabelPdf(${d.id})">
+                                                <i class="fas fa-tag"></i>
+                                                Etiqueta
                                             </button>
                                             <button class="btn btn-primary btn-small" onclick="event.stopPropagation(); editDevice(${d.id})">
                                                 <i class="fas fa-edit"></i>
