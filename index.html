@@ -1814,6 +1814,265 @@
         body.dark-mode .field-hint {
             color: #94a3b8;
         }
+
+        /* Premium UI polish */
+        :root {
+            --surface-elevated: rgba(255, 255, 255, 0.94);
+            --control-bg: rgba(255, 255, 255, 0.92);
+            --control-border: rgba(148, 163, 184, 0.38);
+            --control-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            --ring: rgba(37, 99, 235, 0.18);
+        }
+
+        body.dark-mode {
+            --surface-elevated: rgba(15, 23, 42, 0.92);
+            --control-bg: rgba(15, 23, 42, 0.88);
+            --control-border: rgba(71, 85, 105, 0.78);
+            --control-shadow: 0 14px 30px rgba(2, 6, 23, 0.30);
+            --ring: rgba(96, 165, 250, 0.22);
+        }
+
+        .form-input,
+        .form-group input,
+        .form-group select,
+        .form-group textarea,
+        .login-container input[type="email"],
+        .login-container input[type="password"],
+        .login-container input[type="text"] {
+            min-height: 46px;
+            border: 1px solid var(--control-border);
+            border-radius: 12px;
+            background-color: var(--control-bg);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 1px 2px rgba(15, 23, 42, 0.04);
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        select.form-input,
+        .form-group select,
+        .card-header select.form-input,
+        .device-filter-bar select.form-input {
+            appearance: none;
+            background-image:
+                linear-gradient(45deg, transparent 50%, #475569 50%),
+                linear-gradient(135deg, #475569 50%, transparent 50%),
+                linear-gradient(180deg, rgba(226, 232, 240, 0.95), rgba(226, 232, 240, 0.2));
+            background-position:
+                calc(100% - 20px) 50%,
+                calc(100% - 14px) 50%,
+                calc(100% - 42px) 50%;
+            background-size: 6px 6px, 6px 6px, 1px 22px;
+            background-repeat: no-repeat;
+            padding-right: 52px;
+            cursor: pointer;
+        }
+
+        body.dark-mode select.form-input,
+        body.dark-mode .form-group select,
+        body.dark-mode .card-header select.form-input,
+        body.dark-mode .device-filter-bar select.form-input {
+            background-image:
+                linear-gradient(45deg, transparent 50%, #cbd5e1 50%),
+                linear-gradient(135deg, #cbd5e1 50%, transparent 50%),
+                linear-gradient(180deg, rgba(71, 85, 105, 0.9), rgba(71, 85, 105, 0.28));
+        }
+
+        input[type="date"].form-input {
+            color-scheme: light;
+            padding-right: 14px;
+        }
+
+        body.dark-mode input[type="date"].form-input {
+            color-scheme: dark;
+        }
+
+        .form-input:hover,
+        .form-group input:hover,
+        .form-group select:hover,
+        .form-group textarea:hover {
+            border-color: rgba(59, 130, 246, 0.55);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), var(--control-shadow);
+        }
+
+        .form-input:focus,
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px var(--ring), var(--control-shadow);
+        }
+
+        .card-header > div[style*="display: flex"],
+        .device-filter-bar {
+            padding: 14px;
+            border-radius: 16px;
+            background: rgba(248, 250, 252, 0.76);
+            border: 1px solid rgba(226, 232, 240, 0.86);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+        }
+
+        .card-header > div[style*="display: flex"] {
+            flex-wrap: wrap;
+        }
+
+        .card-header .form-input,
+        .card-header input[type="date"].form-input,
+        .card-header select.form-input {
+            width: min(240px, 100%) !important;
+            min-width: 180px;
+        }
+
+        .device-filter-bar {
+            margin: 14px;
+            align-items: end;
+        }
+
+        body.dark-mode .card-header > div[style*="display: flex"],
+        body.dark-mode .device-filter-bar {
+            background: rgba(15, 23, 42, 0.62);
+            border-color: rgba(51, 65, 85, 0.86);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+        }
+
+        .card,
+        .report-card,
+        .stat-card,
+        .device-detail-panel,
+        .device-detail-section,
+        .simple-card,
+        .device-card,
+        .loan-card {
+            background: var(--surface-elevated);
+            border-color: rgba(226, 232, 240, 0.88);
+            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+
+        table {
+            background: rgba(255, 255, 255, 0.78);
+        }
+
+        th {
+            height: 56px;
+            background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+            color: #334155;
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            border-bottom: 1px solid rgba(203, 213, 225, 0.9);
+        }
+
+        td {
+            height: 64px;
+            border-top: 1px solid rgba(226, 232, 240, 0.85);
+        }
+
+        tbody tr {
+            transition: background 0.16s ease, box-shadow 0.16s ease;
+        }
+
+        tbody tr:hover td {
+            background: rgba(239, 246, 255, 0.72);
+        }
+
+        .badge {
+            min-height: 28px;
+            padding: 6px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.42);
+        }
+
+        .badge.green { background: #c9f8df; color: #03684d; }
+        .badge.blue { background: #d9eaff; color: #1d4ed8; }
+        .badge.yellow { background: #fff0c2; color: #8a4b0a; }
+        .badge.red { background: #ffe1e1; color: #991b1b; }
+        .badge.gray { background: #e9eef5; color: #334155; }
+
+        .btn {
+            min-height: 42px;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            font-weight: 800;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #1d4ed8, #2563eb);
+            box-shadow: 0 12px 22px rgba(37, 99, 235, 0.22);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(180deg, #f8fafc, #e2e8f0);
+            border-color: rgba(148, 163, 184, 0.35);
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #059669, #10b981);
+            box-shadow: 0 12px 22px rgba(5, 150, 105, 0.22);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            box-shadow: 0 12px 22px rgba(239, 68, 68, 0.20);
+        }
+
+        .nav-item {
+            border-radius: 12px;
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            box-shadow: 0 12px 24px rgba(37, 99, 235, 0.24);
+        }
+
+        .page-title {
+            font-size: 26px;
+            letter-spacing: 0;
+        }
+
+        .page-subtitle {
+            font-weight: 600;
+        }
+
+        body.dark-mode table {
+            background: rgba(15, 23, 42, 0.72);
+        }
+
+        body.dark-mode th {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.92));
+        }
+
+        body.dark-mode .card,
+        body.dark-mode .report-card,
+        body.dark-mode .stat-card,
+        body.dark-mode .device-detail-panel,
+        body.dark-mode .device-detail-section,
+        body.dark-mode .simple-card,
+        body.dark-mode .device-card,
+        body.dark-mode .loan-card {
+            border-color: rgba(51, 65, 85, 0.86);
+            box-shadow: 0 18px 42px rgba(2, 6, 23, 0.34);
+        }
+
+        body.dark-mode .btn-secondary {
+            color: #e2e8f0;
+            background: linear-gradient(180deg, rgba(51, 65, 85, 0.96), rgba(30, 41, 59, 0.96));
+            border-color: rgba(71, 85, 105, 0.9);
+        }
+
+        body.dark-mode tbody tr:hover td {
+            background: rgba(37, 99, 235, 0.12);
+        }
+
+        @media (max-width: 768px) {
+            .card-header .form-input,
+            .card-header input[type="date"].form-input,
+            .card-header select.form-input {
+                width: 100% !important;
+                min-width: 0;
+            }
+
+            .card-header > div[style*="display: flex"] {
+                padding: 12px;
+            }
+        }
     </style>
 </head>
 <body>
