@@ -4286,9 +4286,10 @@
             const footerH = Math.max(4, height * 0.07);
             const footerY = y + height - pad - footerH;
             const infoY = innerY + headerH + 4;
-            const compactLabel = height < 60;
+            const compactLabel = height <= 60;
             const maxCodeH = Math.max(7, Math.min(10, height * 0.14));
-            const codeY = Math.max(innerY + headerH + (compactLabel ? 14 : 26), footerY - maxCodeH - 4);
+            const preferredCodeY = innerY + headerH + (compactLabel ? 14 : 26);
+            const codeY = Math.min(preferredCodeY, footerY - maxCodeH - 4);
             const leftW = innerW * 0.42;
             const rightX = innerX + leftW + 5;
             const rightW = innerX + innerW - rightX;
@@ -4346,7 +4347,7 @@
             doc.line(innerX, codeY - 4, innerX + innerW, codeY - 4);
 
             const barcodeW = innerW * 0.48;
-            const barcodeH = Math.max(6, Math.min(maxCodeH, footerY - (codeY + 3) - 1));
+            const barcodeH = Math.max(5, Math.min(maxCodeH, footerY - (codeY + 3) - 1));
             const barcodeX = innerX;
             const barcodeY = codeY + 3;
             doc.setFont('helvetica', 'bold');
@@ -4354,7 +4355,8 @@
             doc.text('CODIGO DE BARRAS', barcodeX + barcodeW / 2, codeY, { align: 'center' });
             doc.addImage(barcodeDataUrl, 'PNG', barcodeX, barcodeY, barcodeW, barcodeH);
 
-            const qrSize = Math.max(8, Math.min(height * 0.23, innerW * 0.23, footerY - barcodeY - 1));
+            const qrAvailableH = Math.max(4, footerY - barcodeY - 1);
+            const qrSize = Math.min(Math.max(6, Math.min(height * 0.23, innerW * 0.23)), qrAvailableH);
             const qrX = innerX + barcodeW + 6;
             const qrY = barcodeY - 1;
             doc.setFont('helvetica', 'bold');
