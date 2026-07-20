@@ -4354,8 +4354,8 @@
             doc.text('CODIGO DE BARRAS', barcodeX + barcodeW / 2, codeY, { align: 'center' });
             doc.addImage(barcodeDataUrl, 'PNG', barcodeX, barcodeY, barcodeW, barcodeH);
 
-            const qrSize = Math.max(6, Math.min(height * 0.18, innerW * 0.18, footerY - barcodeY - 1));
-            const qrX = innerX + barcodeW + 8;
+            const qrSize = Math.max(8, Math.min(height * 0.23, innerW * 0.23, footerY - barcodeY - 1));
+            const qrX = innerX + barcodeW + 6;
             const qrY = barcodeY - 1;
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(5);
@@ -4363,7 +4363,7 @@
             doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(4.5);
-            doc.text(['Escaneie para', 'acessar no', 'sistema'], qrX + qrSize + 4, qrY + 4);
+            doc.text(['Escaneie para', 'acessar no', 'sistema'], qrX + qrSize + 3, qrY + 4);
 
             doc.setFillColor(0);
             doc.roundedRect(innerX, footerY, innerW, footerH, 1, 1, 'F');
