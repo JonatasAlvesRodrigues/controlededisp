@@ -2459,7 +2459,7 @@
                         <i class="fas fa-print"></i>
                         Etiquetas filtradas
                     </button>
-                    <button class="btn btn-primary" onclick="openDeviceModal()">
+                    <button class="btn btn-primary" onclick="openDeviceModal()" data-admin-only="true">
                         <i class="fas fa-plus"></i>
                         Novo Dispositivo
                     </button>
@@ -2828,6 +2828,7 @@
         let currentLoanType = 'quantity';
         let currentUser = null;
         let isQuickAccess = false;
+        let currentUserProfile = null;
         let currentAccessRole = 'Funcionário';
         let appAlertResolver = null;
         let appAlertReturnFocus = null;
@@ -3023,11 +3024,72 @@
         }
 
         function normalizeRole(role) {
-            return (role || '').toString().trim().toLowerCase();
+            return (role || '')
+                .toString()
+                .trim()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
         }
 
         function isAlunoAccess() {
-            return normalizeRole(currentAccessRole) === 'aluno';
+            return normalizeRole(currentAccessRole).includes('aluno');
+        }
+
+        function isAdminAccess() {
+            const role = normalizeRole(currentAccessRole);
+            return role === 'admin' || role === 'adm' || role === 'administrador';
+        }
+
+        function isFuncionarioAccess() {
+            return normalizeRole(currentAccessRole).includes('funcion');
+        }
+
+        function canManageDevices() {
+            return isAdminAccess();
+        }
+
+        function getRoleLabel(role = currentAccessRole) {
+            const normalized = normalizeRole(role);
+            if (normalized.includes('aluno')) return 'Aluno';
+            if (normalized === 'admin' || normalized === 'adm' || normalized === 'administrador') return 'Administrador';
+            return 'Funcionário';
+        }
+
+        function requireDeviceAdminPermission() {
+            if (canManageDevices()) return true;
+            alert('Apenas administradores podem adicionar, editar, apagar ou colocar dispositivos em manutenção.');
+            return false;
+        }
+
+        async function getSupabaseUserProfile(user) {
+            if (!user?.id) return null;
+
+            try {
+                const { data: profileById, error: errorById } = await client
+                    .from('user_profiles')
+                    .select('id, email, name, role')
+                    .eq('id', user.id)
+                    .maybeSingle();
+
+                if (!errorById && profileById) {
+                    return profileById;
+                }
+
+                const { data: profileByEmail, error: errorByEmail } = await client
+                    .from('user_profiles')
+                    .select('id, email, name, role')
+                    .eq('email', user.email)
+                    .maybeSingle();
+
+                if (!errorByEmail && profileByEmail) {
+                    return profileByEmail;
+                }
+            } catch (error) {
+                console.warn('Não foi possível carregar perfil do usuário:', error);
+            }
+
+            return null;
         }
 
         function applyRoleRestrictions() {
@@ -3051,6 +3113,18 @@
             const historyButtons = document.querySelectorAll('[onclick*="showScreen(\'history\')"]');
             historyButtons.forEach(button => {
                 button.style.display = isAlunoAccess() ? 'none' : '';
+            });
+
+            document.querySelectorAll('[data-admin-only="true"]').forEach(element => {
+                element.style.display = canManageDevices() ? '' : 'none';
+            });
+
+            document.querySelectorAll('[data-not-student="true"]').forEach(element => {
+                element.style.display = isAlunoAccess() ? 'none' : '';
+            });
+
+            document.querySelectorAll('button[onclick*="openDeviceModal"], button[onclick*="editDevice"], button[onclick*="toggleMaintenance"], button[onclick*="deleteDevice"]').forEach(button => {
+                button.style.display = canManageDevices() ? '' : 'none';
             });
         }
 
@@ -3132,7 +3206,7 @@
                 const password = document.getElementById('registerPassword').value;
 
                 try {
-                    const { error } = await client.auth.signUp({ 
+                    const { data: signUpData, error } = await client.auth.signUp({ 
                         email, 
                         password,
                         options: {
@@ -3140,6 +3214,17 @@
                         }
                     });
                     if (error) throw error;
+                    if (signUpData?.user?.id) {
+                        const { error: profileError } = await client.from('user_profiles').upsert({
+                            id: signUpData.user.id,
+                            email,
+                            name,
+                            role: 'funcionario'
+                        });
+                        if (profileError) {
+                            console.warn('Perfil de acesso não foi criado automaticamente:', profileError);
+                        }
+                    }
                     alert('Conta criada com sucesso! Verifique seu email para confirmar o cadastro.');
                 } catch (error) {
                     alert('Erro ao criar conta: ' + error.message);
@@ -3162,6 +3247,7 @@
                 isQuickAccess = true;
                 currentUser = { name, role, email: '' }; // Simulação de usuário
                 currentAccessRole = role;
+                currentAccessRole = currentUserProfile?.role || user.user_metadata?.role || 'funcionario';
                 showApp();
                 await loadData();
             });
@@ -3174,11 +3260,13 @@
                     localStorage.removeItem('quickAccessUser');
                     isQuickAccess = false;
                     currentUser = null;
+                    currentUserProfile = null;
                     currentAccessRole = 'Funcionário';
                     showLogin();
                 } else {
                     await client.auth.signOut();
                     currentUser = null;
+                    currentUserProfile = null;
                     currentAccessRole = 'Funcionário';
                     showLogin();
                 }
@@ -3195,6 +3283,7 @@
                 const quickUser = JSON.parse(savedQuickAccess);
                 isQuickAccess = true;
                 currentUser = quickUser;
+                currentUserProfile = null;
                 currentAccessRole = quickUser.role || 'Funcionário';
                 showApp();
                 await loadData();
@@ -3206,12 +3295,14 @@
             if (user) {
                 currentUser = user;
                 isQuickAccess = false;
-                currentAccessRole = 'Funcionário';
+                currentUserProfile = await getSupabaseUserProfile(user);
+                currentAccessRole = currentUserProfile?.role || user.user_metadata?.role || 'funcionario';
                 showApp();
                 await loadData();
             } else if (pendingDeviceDetailId) {
                 isQuickAccess = true;
                 currentUser = { name: 'Consulta por QR Code', role: 'Aluno', email: '' };
+                currentUserProfile = null;
                 currentAccessRole = 'Aluno';
                 showApp();
                 await loadData();
@@ -3236,9 +3327,9 @@
                 } else {
                     // Usuário do Supabase
                     const email = currentUser.email || 'email@exemplo.com';
-                    const name = currentUser.user_metadata?.name || email.split('@')[0];
+                    const name = currentUserProfile?.name || currentUser.user_metadata?.name || email.split('@')[0];
                     document.getElementById('userName').textContent = name;
-                    document.getElementById('userEmail').textContent = email;
+                    document.getElementById('userEmail').textContent = `${getRoleLabel()} - ${email}`;
                 }
             }
 
@@ -3581,6 +3672,7 @@
             updateTeachersList();
             updateTeachersCards();
             updateReturnSelect();
+            applyRoleRestrictions();
         }
 
         function updateStats() {
@@ -5698,6 +5790,8 @@
 
         // Função para abrir o modal de novo dispositivo
         function openDeviceModal(device = null) {
+            if (!requireDeviceAdminPermission()) return;
+
             ensureDeviceLabelFields();
             const modal = document.getElementById('deviceModal');
             const modalTitle = document.getElementById('modalTitle');
@@ -5741,6 +5835,8 @@
 
         // Função para editar dispositivo
         function editDevice(deviceId) {
+            if (!requireDeviceAdminPermission()) return;
+
             const device = data.devices.find(d => d.id === deviceId);
             if (device) {
                 openDeviceModal(device);
@@ -5749,6 +5845,8 @@
 
         // Função para alternar entre manutenção e disponível
         async function toggleMaintenance(deviceId) {
+            if (!requireDeviceAdminPermission()) return;
+
             const device = data.devices.find(d => d.id === deviceId);
             if (!device) return;
 
@@ -5769,6 +5867,8 @@
 
         // Função para deletar dispositivo
         async function deleteDevice(deviceId) {
+            if (!requireDeviceAdminPermission()) return;
+
             if (!confirm('Tem certeza que deseja remover este dispositivo?')) return;
 
             try {
@@ -5785,6 +5885,8 @@
         // Evento para salvar dispositivo (novo ou editado)
         document.getElementById('deviceForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            if (!requireDeviceAdminPermission()) return;
+
             const deviceId = document.getElementById('deviceId').value;
             const serialNumber = document.getElementById('deviceSerial').value.trim();
             const imei = document.getElementById('deviceImei').value.trim();
@@ -5955,6 +6057,7 @@
                     const isDesktop = isFixedDevice(d.type);
                     const icon = getDeviceIcon(d.type);
                     const groupKey = getDeviceDisplayGroupKey(d);
+                    const adminDeviceActions = canManageDevices();
 
                     if (groupKey !== lastGroupKey) {
                         lastGroupKey = groupKey;
