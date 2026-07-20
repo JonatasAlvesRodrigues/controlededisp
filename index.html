@@ -1947,6 +1947,10 @@
                 <i class="fas fa-user-tie"></i>
                 <span>Professores</span>
             </div>
+            <div class="nav-item" onclick="showScreen('users')" data-screen="users" data-admin-only="true">
+                <i class="fas fa-user-shield"></i>
+                <span>Usuários</span>
+            </div>
         </nav>
 
         <div class="sidebar-footer">
@@ -1978,9 +1982,10 @@
                     <div class="page-subtitle">Visão geral do controle de dispositivos</div>
                 </div>
             </div>
+            <div id="profileDashboardPanel" style="margin-bottom: 24px;"></div>
 
             <!-- Stats -->
-            <div class="stats-grid">
+            <div class="stats-grid" id="dashboardStatsGrid">
                 <button class="stat-card stat-card-button" type="button" onclick="openDevicesByStatus('Disponível')" aria-label="Ver dispositivos disponíveis">
                     <div class="stat-icon blue">
                         <i class="fas fa-laptop"></i>
@@ -2440,6 +2445,28 @@
                         Gerar etiquetas em lote
                     </button>
                 </div>
+
+                <div class="report-card">
+                    <div class="report-card-header">
+                        <div class="report-card-icon">
+                            <i class="fas fa-download"></i>
+                        </div>
+                        <div>
+                            <div class="report-card-title">Backup geral</div>
+                            <div class="report-card-desc">Exporta dispositivos, empréstimos, professores, turmas e históricos em PDF ou Excel.</div>
+                        </div>
+                    </div>
+                    <div style="display: grid; gap: 10px;">
+                        <button type="button" class="btn btn-primary btn-full" onclick="generateFullBackupPdf()">
+                            <i class="fas fa-file-pdf"></i>
+                            Baixar backup em PDF
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-full" onclick="exportFullBackupExcel()">
+                            <i class="fas fa-file-excel"></i>
+                            Baixar backup em Excel
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -2723,6 +2750,33 @@
             </div>
         </div>
 
+        <!-- Users Screen -->
+        <div id="users" class="screen">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Usuários</div>
+                    <div class="page-subtitle">Definir quem é administrador, funcionário ou aluno</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body" style="padding: 0;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Email</th>
+                                <th>Perfil</th>
+                                <th>Criado em</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table"></tbody>
+                    </table>
+                    <div id="users-cards" class="simple-card-list"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal para Editar/Criar Professor -->
         <div class="modal-overlay" id="teacherModal">
             <div class="modal">
@@ -2823,7 +2877,9 @@
             devices: [],
             loans: [],
             loanDevices: [],
-            deviceMaintenanceHistory: []
+            deviceMaintenanceHistory: [],
+            deviceChangeHistory: [],
+            userProfiles: []
         };
         let currentLoanType = 'quantity';
         let currentUser = null;
@@ -3104,6 +3160,11 @@
             document.getElementById('dashboardInUseCard').style.display = isAlunoAccess() ? 'none' : '';
             document.getElementById('dashboardAlertCard').style.display = isAlunoAccess() ? 'none' : '';
             document.getElementById('latestLoansCard').style.display = isAlunoAccess() ? 'none' : '';
+            document.getElementById('dashboardActionsCard').style.display = isAlunoAccess() ? 'none' : '';
+            const dashboardStatsGrid = document.getElementById('dashboardStatsGrid');
+            if (dashboardStatsGrid) {
+                dashboardStatsGrid.style.display = isAlunoAccess() ? 'none' : '';
+            }
 
             const dashboardQuickActions = document.querySelectorAll('#dashboardActionsCard .quick-actions .quick-action');
             dashboardQuickActions.forEach((action, index) => {
@@ -3402,6 +3463,24 @@
         // ------------------------------
         // 5. Carregamento de Dados
         // ------------------------------
+        async function fetchOptionalTable(tableName, select = '*', options = {}) {
+            try {
+                let query = client.from(tableName).select(select);
+                if (options.orderBy) {
+                    query = query.order(options.orderBy, { ascending: options.ascending ?? false });
+                }
+                const { data: tableData, error } = await query;
+                if (error) {
+                    console.warn(`Tabela opcional indisponível (${tableName}):`, error.message);
+                    return [];
+                }
+                return tableData || [];
+            } catch (error) {
+                console.warn(`Tabela opcional indisponível (${tableName}):`, error);
+                return [];
+            }
+        }
+
         async function loadData() {
             if (loadDataInProgress) {
                 loadDataQueued = true;
@@ -3435,8 +3514,13 @@
                     .order('created_at', { ascending: false });
                 if (errorMaintenanceHistory) throw errorMaintenanceHistory;
 
+                const deviceChangeHistory = await fetchOptionalTable('device_change_history', '*', { orderBy: 'created_at' });
+                const userProfiles = canManageDevices()
+                    ? await fetchOptionalTable('user_profiles', 'id, email, name, role, created_at, updated_at', { orderBy: 'created_at', ascending: true })
+                    : [];
+
                 // Atualiza a variável de dados
-                data = { classes, teachers, devices, loans, loanDevices, deviceMaintenanceHistory };
+                data = { classes, teachers, devices, loans, loanDevices, deviceMaintenanceHistory, deviceChangeHistory, userProfiles };
                 updateAll();
                 await verifyDeviceSchema();
                 await verifyDeviceLabelSchema();
@@ -3647,6 +3731,9 @@
             if (isAlunoAccess() && !['dashboard', 'loan', 'return', 'device-detail'].includes(screenId)) {
                 screenId = 'loan';
             }
+            if (screenId === 'users' && !canManageDevices()) {
+                screenId = 'dashboard';
+            }
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
@@ -3660,6 +3747,7 @@
         // ------------------------------
         function updateAll() {
             updateStats();
+            updateProfileDashboard();
             updateSelects();
             updateActiveLoans();
             updateLatestLoans();
@@ -3671,10 +3759,137 @@
             updateClassesCards();
             updateTeachersList();
             updateTeachersCards();
+            updateUsersList();
             updateReturnSelect();
             applyRoleRestrictions();
         }
 
+        function updateProfileDashboard() {
+            const panel = document.getElementById('profileDashboardPanel');
+            if (!panel) return;
+
+            const activeLoans = data.loans.filter(loan => !loan.returned);
+            const available = data.devices.filter(device => device.status === 'Disponível').length;
+            const maintenance = data.devices.filter(device => device.status === 'Manutenção').length;
+
+            if (isAlunoAccess()) {
+                panel.innerHTML = `
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="quick-actions">
+                                <div class="quick-action primary" onclick="showScreen('loan')">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Novo empréstimo</span>
+                                    <span style="font-size: 11px; opacity: 0.9; margin-top: 4px; display: block;">Retirar dispositivos</span>
+                                </div>
+                                <div class="quick-action success" onclick="showScreen('return')">
+                                    <i class="fas fa-undo"></i>
+                                    <span>Devolução</span>
+                                    <span style="font-size: 11px; opacity: 0.9; margin-top: 4px; display: block;">Registrar retorno</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const adminExtra = canManageDevices()
+                ? `<div class="quick-action purple" onclick="showScreen('users')">
+                        <i class="fas fa-user-shield"></i>
+                        <span>Usuários</span>
+                        <span style="font-size: 11px; opacity: 0.9; margin-top: 4px; display: block;">Gerenciar perfis</span>
+                   </div>`
+                : '';
+
+            panel.innerHTML = `
+                <div class="card">
+                    <div class="card-body">
+                        <div class="alert-item" style="margin-bottom: 16px;">
+                            <div class="alert-icon info"><i class="fas fa-user-check"></i></div>
+                            <div class="alert-content">
+                                <div class="alert-title">Perfil: ${escapeHtml(getRoleLabel())}</div>
+                                <div class="alert-desc">${activeLoans.length} empréstimo(s) ativo(s), ${available} dispositivo(s) disponíveis e ${maintenance} em manutenção.</div>
+                            </div>
+                        </div>
+                        <div class="quick-actions">
+                            <div class="quick-action primary" onclick="showScreen('loan')">
+                                <i class="fas fa-plus"></i>
+                                <span>Novo empréstimo</span>
+                            </div>
+                            <div class="quick-action success" onclick="showScreen('return')">
+                                <i class="fas fa-undo"></i>
+                                <span>Devolução</span>
+                            </div>
+                            ${adminExtra}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateUsersList() {
+            const tableBody = document.getElementById('users-table');
+            const cards = document.getElementById('users-cards');
+            if (!tableBody || !cards) return;
+
+            if (!canManageDevices()) {
+                tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">Apenas administradores podem gerenciar usuários.</td></tr>';
+                cards.innerHTML = '';
+                return;
+            }
+
+            const profiles = [...(data.userProfiles || [])].sort((a, b) => (a.email || '').localeCompare(b.email || ''));
+            if (!profiles.length) {
+                tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum perfil encontrado. Execute controle_acesso_usuarios.sql no Supabase.</td></tr>';
+                cards.innerHTML = '<div class="simple-card"><div style="color: var(--text-muted); font-weight: 600;">Nenhum perfil encontrado</div></div>';
+                return;
+            }
+
+            const roleSelect = (profile) => `
+                <select class="form-input" style="min-width: 150px;" onchange="updateUserRole('${profile.id}', this.value)">
+                    <option value="admin" ${profile.role === 'admin' ? 'selected' : ''}>Administrador</option>
+                    <option value="funcionario" ${profile.role === 'funcionario' ? 'selected' : ''}>Funcionário</option>
+                    <option value="aluno" ${profile.role === 'aluno' ? 'selected' : ''}>Aluno</option>
+                </select>
+            `;
+
+            tableBody.innerHTML = profiles.map(profile => `
+                <tr>
+                    <td style="font-weight: 600;">${escapeHtml(profile.name || '-')}</td>
+                    <td>${escapeHtml(profile.email || '-')}</td>
+                    <td>${roleSelect(profile)}</td>
+                    <td>${profile.created_at ? escapeHtml(formatDateTimeBR(new Date(profile.created_at))) : '-'}</td>
+                </tr>
+            `).join('');
+
+            cards.innerHTML = profiles.map(profile => `
+                <div class="simple-card">
+                    <div style="font-weight: 700; margin-bottom: 4px;">${escapeHtml(profile.name || profile.email || '-')}</div>
+                    <div style="color: var(--text-muted); font-size: 13px; margin-bottom: 10px;">${escapeHtml(profile.email || '-')}</div>
+                    ${roleSelect(profile)}
+                </div>
+            `).join('');
+        }
+
+        async function updateUserRole(userId, role) {
+            if (!canManageDevices()) return;
+            if (!['admin', 'funcionario', 'aluno'].includes(role)) return;
+
+            try {
+                const { error } = await client
+                    .from('user_profiles')
+                    .update({ role, updated_at: new Date().toISOString() })
+                    .eq('id', userId);
+                if (error) throw error;
+                await loadData();
+                alert('Perfil atualizado com sucesso!');
+            } catch (error) {
+                console.error('Erro ao atualizar perfil:', error);
+                alert('Erro ao atualizar perfil: ' + error.message);
+                updateUsersList();
+            }
+        }
         function updateStats() {
             const available = data.devices.filter(d => d.status === 'Disponível').length;
             const inUse = data.loans.filter(l => !l.returned).reduce((sum, l) => sum + l.quantity, 0);
@@ -3849,7 +4064,48 @@
         function getCurrentActorName() {
             if (!currentUser) return null;
             if (isQuickAccess) return currentUser.name || currentUser.role || null;
-            return currentUser.user_metadata?.name || currentUser.email || null;
+            return currentUserProfile?.name || currentUser.user_metadata?.name || currentUser.email || null;
+        }
+
+        function summarizeDeviceForHistory(device) {
+            if (!device) return null;
+            return {
+                id: device.id,
+                type: device.type || null,
+                serial_number: device.serial_number || null,
+                patrimony: device.patrimony || null,
+                counter_number: device.counter_number || null,
+                group: device.group || null,
+                status: device.status || null,
+                brand: device.brand || null,
+                model: device.model || null,
+                observations: device.observations || null
+            };
+        }
+
+        async function recordDeviceChangeEvent(action, device, previousData = null, newData = null, notes = null) {
+            if (!device?.id) return;
+
+            const eventData = {
+                device_id: device.id,
+                action,
+                changed_by: getCurrentActorName(),
+                previous_data: previousData ? summarizeDeviceForHistory(previousData) : null,
+                new_data: newData ? summarizeDeviceForHistory(newData) : null,
+                notes
+            };
+
+            try {
+                const { data: insertedHistory, error } = await client
+                    .from('device_change_history')
+                    .insert(eventData)
+                    .select()
+                    .single();
+                if (error) throw error;
+                data.deviceChangeHistory = [insertedHistory, ...(data.deviceChangeHistory || [])];
+            } catch (error) {
+                console.warn('Histórico de alterações de dispositivos indisponível:', error.message || error);
+            }
         }
 
         async function recordDeviceMaintenanceEvent(device, previousStatus, newStatus) {
@@ -3872,6 +4128,7 @@
             if (error) throw error;
 
             data.deviceMaintenanceHistory = [insertedHistory, ...(data.deviceMaintenanceHistory || [])];
+            await recordDeviceChangeEvent(newStatus === 'Manutenção' ? 'maintenance_in' : 'maintenance_out', device, { ...device, status: previousStatus }, { ...device, status: newStatus }, eventData.notes);
         }
 
         function getDeviceRelatedLoans(device) {
@@ -3956,8 +4213,21 @@
             const icon = getDeviceIcon(device.type);
             const relatedLoans = getDeviceRelatedLoans(device);
             const maintenanceHistory = getDeviceMaintenanceHistory(device.id);
+            const changeHistory = (data.deviceChangeHistory || []).filter(item => parseInt(item.device_id) === parseInt(device.id));
             const currentResponsible = getCurrentDeviceResponsible(device, relatedLoans);
             const isCurrentlyMaintenance = device.status === 'Manutenção';
+            const activeLoan = relatedLoans.find(loan => !loan.returned);
+            const quickDeviceActionHtml = activeLoan
+                ? `<button class="btn btn-success btn-full" onclick="startReturnFromDevice(${device.id})">
+                        <i class="fas fa-undo"></i>
+                        Devolver este dispositivo
+                   </button>`
+                : (device.status === 'Disponível' && !isFixedDevice(device.type)
+                    ? `<button class="btn btn-primary btn-full" onclick="startLoanFromDevice(${device.id})">
+                            <i class="fas fa-sign-out-alt"></i>
+                            Emprestar este dispositivo
+                       </button>`
+                    : '');
 
             const loanHtml = relatedLoans.length
                 ? `<div class="detail-timeline">
@@ -4002,6 +4272,29 @@
                 </div>`
                 : `<div class="detail-empty">${isCurrentlyMaintenance ? 'Status atual: em manutenção. Ainda não há registros anteriores salvos.' : 'Nenhum registro de manutenção salvo para este dispositivo.'}</div>`;
 
+            const changeActionLabels = {
+                created: 'Criado',
+                updated: 'Editado',
+                deleted: 'Apagado',
+                maintenance_in: 'Entrada em manutenção',
+                maintenance_out: 'Saída de manutenção'
+            };
+            const changeHtml = changeHistory.length
+                ? `<div class="detail-timeline">
+                    ${changeHistory.map(item => `
+                        <div class="detail-timeline-item">
+                            <div class="detail-timeline-title">
+                                <span>${escapeHtml(changeActionLabels[item.action] || item.action || 'Alteração')}</span>
+                                <span>${item.created_at ? escapeHtml(formatDateTimeBR(new Date(item.created_at))) : '-'}</span>
+                            </div>
+                            <div class="detail-timeline-meta">
+                                ${item.changed_by ? `Por: ${escapeHtml(item.changed_by)}` : 'Responsável não registrado'}
+                                ${item.notes ? `<br>${escapeHtml(item.notes)}` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>`
+                : '<div class="detail-empty">Nenhuma alteração administrativa registrada.</div>';
             container.innerHTML = `
                 <div class="device-detail-layout">
                     <aside class="device-detail-panel">
@@ -4027,6 +4320,7 @@
                             ${renderDetailInfoItem('Observações', device.observations)}
                         </div>
                         <div style="display: grid; gap: 10px; margin-top: 16px;">
+                            ${quickDeviceActionHtml}
                             <button class="btn btn-primary btn-full" onclick="editDevice(${device.id})">
                                 <i class="fas fa-edit"></i>
                                 Editar dispositivo
@@ -4057,6 +4351,13 @@
                                 <span class="badge yellow">${maintenanceHistory.length}</span>
                             </div>
                             <div class="device-detail-section-body">${maintenanceHtml}</div>
+                        </section>
+                        <section class="device-detail-section">
+                            <div class="device-detail-section-header">
+                                <div class="device-detail-section-title">Histórico de alterações</div>
+                                <span class="badge blue">${changeHistory.length}</span>
+                            </div>
+                            <div class="device-detail-section-body">${changeHtml}</div>
                         </section>
                     </div>
                 </div>
@@ -4891,6 +5192,117 @@
             }
         }
 
+        function downloadTextFile(filename, content, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function buildFullBackupSections() {
+            const loanRows = data.loans.map(loan => {
+                const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
+                const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name || '-';
+                return [loan.id, loan.date_time, className, teacherName, loan.device_type, loan.quantity, loan.releaser, loan.returned ? 'Devolvido' : 'Em uso'];
+            });
+
+            return [
+                {
+                    title: 'Dispositivos',
+                    head: ['ID', 'Tipo', 'Serial', 'Patrimônio', 'Contador', 'Grupo', 'Status'],
+                    rows: sortDevicesForDisplay(data.devices).map(d => [d.id, d.type, d.serial_number || '-', d.patrimony || '-', d.counter_number || '-', d.group || '-', d.status || '-'])
+                },
+                {
+                    title: 'Empréstimos',
+                    head: ['ID', 'Data', 'Turma', 'Professor', 'Tipo', 'Qtd.', 'Responsável', 'Status'],
+                    rows: loanRows
+                },
+                {
+                    title: 'Professores',
+                    head: ['ID', 'Nome', 'Disciplina'],
+                    rows: data.teachers.map(t => [t.id, t.name, t.subject || '-'])
+                },
+                {
+                    title: 'Turmas',
+                    head: ['ID', 'Nome', 'Turno', 'Alunos'],
+                    rows: data.classes.map(c => [c.id, c.name, c.shift, c.students || '-'])
+                },
+                {
+                    title: 'Histórico de manutenção',
+                    head: ['ID', 'Dispositivo', 'Anterior', 'Novo', 'Responsável', 'Data'],
+                    rows: (data.deviceMaintenanceHistory || []).map(h => [h.id || '-', h.device_id, h.previous_status, h.new_status, h.changed_by || '-', h.created_at ? formatDateTimeBR(new Date(h.created_at)) : '-'])
+                },
+                {
+                    title: 'Histórico de alterações',
+                    head: ['ID', 'Dispositivo', 'Ação', 'Responsável', 'Data', 'Notas'],
+                    rows: (data.deviceChangeHistory || []).map(h => [h.id || '-', h.device_id, h.action, h.changed_by || '-', h.created_at ? formatDateTimeBR(new Date(h.created_at)) : '-', h.notes || '-'])
+                }
+            ];
+        }
+
+        function generateFullBackupPdf() {
+            try {
+                const jsPDF = getJsPdfInstance();
+                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                const sections = buildFullBackupSections();
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(16);
+                doc.text('Backup geral - Controle de Dispositivos', 14, 16);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 23);
+
+                let startY = 32;
+                sections.forEach((section, index) => {
+                    if (index > 0 && startY > 165) {
+                        doc.addPage();
+                        startY = 18;
+                    }
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(12);
+                    doc.text(`${section.title} (${section.rows.length})`, 14, startY);
+                    doc.autoTable({
+                        startY: startY + 4,
+                        head: [section.head],
+                        body: section.rows.length ? section.rows : [section.head.map(() => '-')],
+                        theme: 'grid',
+                        styles: { fontSize: 7, cellPadding: 1.6, overflow: 'linebreak' },
+                        headStyles: { fillColor: [30, 64, 175], textColor: 255 },
+                        margin: { left: 14, right: 14 }
+                    });
+                    startY = (doc.lastAutoTable?.finalY || startY) + 10;
+                });
+
+                doc.save(`backup_geral_${new Date().toISOString().slice(0, 10)}.pdf`);
+            } catch (error) {
+                console.error('Erro ao gerar backup PDF:', error);
+                alert('Erro ao gerar backup PDF: ' + error.message);
+            }
+        }
+
+        function exportFullBackupExcel() {
+            const sections = buildFullBackupSections();
+            const html = `
+                <html><head><meta charset="UTF-8"></head><body>
+                ${sections.map(section => `
+                    <h2>${escapeHtml(section.title)}</h2>
+                    <table border="1">
+                        <thead><tr>${section.head.map(cell => `<th>${escapeHtml(cell)}</th>`).join('')}</tr></thead>
+                        <tbody>
+                            ${(section.rows.length ? section.rows : [section.head.map(() => '-')]).map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}
+                        </tbody>
+                    </table><br>
+                `).join('')}
+                </body></html>
+            `;
+            downloadTextFile(`backup_geral_${new Date().toISOString().slice(0, 10)}.xls`, html, 'application/vnd.ms-excel;charset=utf-8');
+        }
         function getDeviceCounterSortKey(counterNumber) {
             const raw = (counterNumber || '').toString().trim().toLowerCase();
             if (!raw || raw === 's/n' || raw === 'sn') {
@@ -5165,6 +5577,36 @@
             document.getElementById('returnDateLoan').textContent = loan.date_time;
             document.getElementById('returnQuantity').value = loan.quantity;
             document.getElementById('returnDetails').style.display = 'block';
+        }
+
+        function startReturnFromDevice(deviceId) {
+            const device = data.devices.find(item => parseInt(item.id) === parseInt(deviceId));
+            if (!device) return;
+            const activeLoan = getDeviceRelatedLoans(device).find(loan => !loan.returned);
+            if (!activeLoan) {
+                alert('Este dispositivo não possui empréstimo ativo para devolução.');
+                return;
+            }
+
+            showScreen('return');
+            document.getElementById('returnLoan').value = activeLoan.id;
+            loadReturnDetails();
+        }
+
+        function startLoanFromDevice(deviceId) {
+            const device = data.devices.find(item => parseInt(item.id) === parseInt(deviceId));
+            if (!device) return;
+            if (device.status !== 'Disponível' || isFixedDevice(device.type)) {
+                alert('Este dispositivo não está disponível para empréstimo rápido.');
+                return;
+            }
+
+            showScreen('loan');
+            setLoanType('quantity');
+            document.getElementById('loanDeviceType').value = device.type;
+            document.getElementById('loanQuantity').value = 1;
+            document.getElementById('loanObs').value = `Empréstimo iniciado pelo QR do dispositivo ${device.patrimony || device.counter_number || device.id}.`;
+            document.getElementById('loanClass').focus();
         }
 
         // ------------------------------
@@ -5872,8 +6314,12 @@
             if (!confirm('Tem certeza que deseja remover este dispositivo?')) return;
 
             try {
+                const device = data.devices.find(d => parseInt(d.id) === parseInt(deviceId));
                 const { error } = await client.from('devices').delete().eq('id', deviceId);
                 if (error) throw error;
+                if (device) {
+                    await recordDeviceChangeEvent('deleted', device, device, null, 'Dispositivo removido');
+                }
                 await loadData();
                 alert('Dispositivo removido com sucesso!');
             } catch (error) {
@@ -5947,12 +6393,14 @@
                     // Editar dispositivo existente
                     const { error } = await client.from('devices').update(deviceData).eq('id', parseInt(deviceId));
                     if (error) throw error;
+                    await recordDeviceChangeEvent('updated', previousDevice, previousDevice, { ...previousDevice, ...deviceData }, 'Dispositivo editado');
                     await recordDeviceMaintenanceEvent(previousDevice, previousDevice?.status, deviceData.status);
                     alert('Dispositivo atualizado com sucesso!');
                 } else {
                     // Criar novo dispositivo
-                    const { error } = await client.from('devices').insert(deviceData);
+                    const { data: createdDevice, error } = await client.from('devices').insert(deviceData).select().single();
                     if (error) throw error;
+                    await recordDeviceChangeEvent('created', createdDevice, null, createdDevice, 'Dispositivo criado');
                     alert('Dispositivo criado com sucesso!');
                 }
                 

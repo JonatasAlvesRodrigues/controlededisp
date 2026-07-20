@@ -14,6 +14,18 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     CONSTRAINT user_profiles_role_check CHECK (role IN ('admin', 'funcionario', 'aluno'))
 );
 
+CREATE OR REPLACE FUNCTION public.is_access_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1
+        FROM public.user_profiles
+        WHERE id = auth.uid()
+          AND role = 'admin'
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
 CREATE OR REPLACE FUNCTION public.handle_new_user_profile()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -45,7 +57,10 @@ CREATE POLICY "Usuarios veem perfis"
 ON public.user_profiles
 FOR SELECT
 TO authenticated
-USING (auth.uid() = id);
+USING (
+    auth.uid() = id
+    OR public.is_access_admin()
+);
 
 DROP POLICY IF EXISTS "Usuario cria proprio perfil" ON public.user_profiles;
 CREATE POLICY "Usuario cria proprio perfil"
@@ -55,12 +70,14 @@ TO authenticated
 WITH CHECK (auth.uid() = id AND role = 'funcionario');
 
 DROP POLICY IF EXISTS "Usuario atualiza proprio nome" ON public.user_profiles;
-CREATE POLICY "Usuario atualiza proprio nome"
+
+DROP POLICY IF EXISTS "Admins atualizam perfis" ON public.user_profiles;
+CREATE POLICY "Admins atualizam perfis"
 ON public.user_profiles
 FOR UPDATE
 TO authenticated
-USING (auth.uid() = id)
-WITH CHECK (auth.uid() = id AND role = (SELECT role FROM public.user_profiles WHERE id = auth.uid()));
+USING (public.is_access_admin())
+WITH CHECK (public.is_access_admin());
 
 -- Como definir administradores:
 -- Troque o email abaixo pelo email da pessoa que sera admin e execute no SQL Editor.
