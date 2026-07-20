@@ -689,6 +689,7 @@
         }
 
         .badge.green { background: #d1fae5; color: #065f46; }
+        .badge.blue { background: #dbeafe; color: #1e40af; }
         .badge.yellow { background: #fef3c7; color: #92400e; }
         .badge.red { background: #fee2e2; color: #991b1b; }
         .badge.gray { background: #e2e8f0; color: #334155; }
@@ -699,6 +700,7 @@
         }
 
         body.dark-mode .badge.green { background: rgba(16,185,129,0.2); color: #34d399; }
+        body.dark-mode .badge.blue { background: rgba(59,130,246,0.2); color: #93c5fd; }
         body.dark-mode .badge.yellow { background: rgba(245,158,11,0.2); color: #fbbf24; }
         body.dark-mode .badge.red { background: rgba(239,68,68,0.2); color: #fca5a5; }
         body.dark-mode .badge.gray { background: rgba(100,116,139,0.25); color: #cbd5e1; }
@@ -766,6 +768,25 @@
             padding: 16px;
         }
 
+        .device-row,
+        .device-card-clickable {
+            cursor: pointer;
+        }
+
+        .device-row:hover {
+            background: rgba(59, 130, 246, 0.06);
+        }
+
+        .device-card-clickable {
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .device-card-clickable:hover {
+            transform: translateY(-2px);
+            border-color: #93c5fd;
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
+        }
+
         .device-card-top {
             display: flex;
             justify-content: space-between;
@@ -815,7 +836,7 @@
 
         .device-card-actions {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
             gap: 10px;
         }
 
@@ -837,6 +858,127 @@
             letter-spacing: 0.08em;
             text-transform: uppercase;
             color: var(--text-muted);
+        }
+
+        .device-detail-layout {
+            display: grid;
+            grid-template-columns: minmax(280px, 360px) 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .device-detail-panel,
+        .device-detail-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .device-detail-panel {
+            padding: 22px;
+        }
+
+        .device-detail-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .device-detail-subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 18px;
+        }
+
+        .detail-info-grid {
+            display: grid;
+            gap: 10px;
+        }
+
+        .detail-info-item {
+            background: rgba(148, 163, 184, 0.08);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .detail-info-item small {
+            display: block;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .detail-info-item span {
+            display: block;
+            color: var(--text-dark);
+            font-weight: 700;
+            word-break: break-word;
+        }
+
+        .device-detail-stack {
+            display: grid;
+            gap: 18px;
+        }
+
+        .device-detail-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 18px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .device-detail-section-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text-dark);
+        }
+
+        .device-detail-section-body {
+            padding: 18px 20px;
+        }
+
+        .detail-timeline {
+            display: grid;
+            gap: 12px;
+        }
+
+        .detail-timeline-item {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            background: rgba(148, 163, 184, 0.06);
+        }
+
+        .detail-timeline-title {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            color: var(--text-dark);
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .detail-timeline-meta {
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .detail-empty {
+            color: var(--text-muted);
+            font-weight: 600;
+            text-align: center;
+            padding: 24px;
         }
 
         .device-filter-bar {
@@ -1130,6 +1272,9 @@
             .card-body table { min-width: 640px; }
             th, td { padding: 10px 12px; font-size: 13px; }
             .device-filter-bar { grid-template-columns: 1fr; }
+            .device-detail-layout { grid-template-columns: 1fr; gap: 16px; }
+            .device-detail-section-header,
+            .detail-timeline-title { flex-direction: column; align-items: flex-start; }
             .device-card-list,
             .simple-card-list { padding: 12px; }
             .device-card,
@@ -2316,6 +2461,22 @@
             </div>
         </div>
 
+        <!-- Device Detail Screen -->
+        <div id="device-detail" class="screen">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Detalhes do Dispositivo</div>
+                    <div class="page-subtitle">Especificações, empréstimos relacionados e histórico de manutenção</div>
+                </div>
+                <button class="btn btn-secondary" onclick="showScreen('devices')">
+                    <i class="fas fa-arrow-left"></i>
+                    Voltar para dispositivos
+                </button>
+            </div>
+
+            <div id="deviceDetailContent"></div>
+        </div>
+
         <!-- Modal para Editar/Criar Dispositivo -->
         <div class="modal-overlay" id="deviceModal">
             <div class="modal">
@@ -2627,6 +2788,8 @@
         let scannerDetector = null;
         let scannerLastValue = '';
         let deviceStatusFilter = '';
+        let selectedDeviceId = null;
+        const DEVICE_MAINTENANCE_HISTORY_KEY = 'deviceMaintenanceHistory';
 
         function inferAlertType(message) {
             const text = (message || '').toLowerCase();
@@ -3274,6 +3437,7 @@
             updateHistoryTable();
             updateDevicesTable();
             updateDevicesCards();
+            renderSelectedDeviceDetails();
             updateClassesList();
             updateClassesCards();
             updateTeachersList();
@@ -3367,6 +3531,203 @@
                 if (parsedCurrentId && device.id === parsedCurrentId) return false;
                 return normalizeDeviceText(device.serial_number) === normalizedSerial;
             }) || null;
+        }
+
+        function escapeHtml(value) {
+            return (value ?? '-').toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function renderDetailInfoItem(label, value) {
+            return `
+                <div class="detail-info-item">
+                    <small>${escapeHtml(label)}</small>
+                    <span>${escapeHtml(value || '-')}</span>
+                </div>
+            `;
+        }
+
+        function getAllDeviceMaintenanceHistory() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(DEVICE_MAINTENANCE_HISTORY_KEY) || '[]');
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (error) {
+                return [];
+            }
+        }
+
+        function saveAllDeviceMaintenanceHistory(history) {
+            localStorage.setItem(DEVICE_MAINTENANCE_HISTORY_KEY, JSON.stringify(history));
+        }
+
+        function getDeviceMaintenanceHistory(deviceId) {
+            return getAllDeviceMaintenanceHistory()
+                .filter(item => parseInt(item.device_id) === parseInt(deviceId))
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        }
+
+        function recordDeviceMaintenanceEvent(device, previousStatus, newStatus) {
+            if (!device || previousStatus === newStatus) return;
+            if (![previousStatus, newStatus].includes('Manutenção')) return;
+
+            const history = getAllDeviceMaintenanceHistory();
+            history.push({
+                id: Date.now(),
+                device_id: device.id,
+                device_type: device.type,
+                serial_number: device.serial_number || '',
+                patrimony: device.patrimony || '',
+                counter_number: device.counter_number || '',
+                previous_status: previousStatus,
+                new_status: newStatus,
+                observations: device.observations || '',
+                created_at: new Date().toISOString()
+            });
+            saveAllDeviceMaintenanceHistory(history);
+        }
+
+        function getDeviceRelatedLoans(device) {
+            if (!device) return [];
+            const deviceType = normalizeDeviceText(device.type);
+            const deviceGroup = normalizeDeviceText(device.group);
+
+            return data.loans
+                .filter(loan => {
+                    if (normalizeDeviceText(loan.device_type) !== deviceType) return false;
+                    if (loan.group_name) {
+                        return normalizeDeviceText(loan.group_name) === deviceGroup;
+                    }
+                    return true;
+                })
+                .sort((a, b) => (b.id || 0) - (a.id || 0));
+        }
+
+        function renderSelectedDeviceDetails() {
+            if (!selectedDeviceId) return;
+            const device = data.devices.find(d => d.id === selectedDeviceId);
+            if (!device) {
+                selectedDeviceId = null;
+                return;
+            }
+            renderDeviceDetails(device);
+        }
+
+        function openDeviceDetails(deviceId) {
+            const device = data.devices.find(d => d.id === deviceId);
+            if (!device) return;
+            selectedDeviceId = deviceId;
+            renderDeviceDetails(device);
+            showScreen('device-detail');
+        }
+
+        function renderDeviceDetails(device) {
+            const container = document.getElementById('deviceDetailContent');
+            if (!container) return;
+
+            const badgeColor = getDeviceStatusBadgeColor(device.status);
+            const icon = getDeviceIcon(device.type);
+            const relatedLoans = getDeviceRelatedLoans(device);
+            const maintenanceHistory = getDeviceMaintenanceHistory(device.id);
+            const isCurrentlyMaintenance = device.status === 'Manutenção';
+
+            const loanHtml = relatedLoans.length
+                ? `<div class="detail-timeline">
+                    ${relatedLoans.map(loan => {
+                        const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
+                        const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name || '-';
+                        const statusText = loan.returned
+                            ? (loan.return_status === 'complete' ? 'Devolvido' : loan.return_status === 'incomplete' ? 'Incompleto' : 'Com danos')
+                            : 'Em uso';
+                        return `
+                            <div class="detail-timeline-item">
+                                <div class="detail-timeline-title">
+                                    <span>${escapeHtml(className)} - ${escapeHtml(teacherName)}</span>
+                                    <span class="badge ${loan.returned ? 'green' : 'yellow'}">${escapeHtml(statusText)}</span>
+                                </div>
+                                <div class="detail-timeline-meta">
+                                    ${escapeHtml(loan.date_time)} - ${escapeHtml(loan.quantity)} dispositivo(s) - ${escapeHtml(loan.loan_type === 'full' ? (loan.group_name || device.group) : 'Quantidade específica')}
+                                    ${loan.return_date_time ? `<br>Devolução: ${escapeHtml(loan.return_date_time)} (${escapeHtml(loan.return_quantity || loan.quantity)} dispositivo(s))` : ''}
+                                    ${loan.observations ? `<br>Obs. saída: ${escapeHtml(loan.observations)}` : ''}
+                                    ${loan.return_observations ? `<br>Obs. devolução: ${escapeHtml(loan.return_observations)}` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>`
+                : '<div class="detail-empty">Nenhum empréstimo relacionado encontrado.</div>';
+
+            const maintenanceHtml = maintenanceHistory.length
+                ? `<div class="detail-timeline">
+                    ${maintenanceHistory.map(item => `
+                        <div class="detail-timeline-item">
+                            <div class="detail-timeline-title">
+                                <span>${escapeHtml(item.previous_status)} -> ${escapeHtml(item.new_status)}</span>
+                                <span>${escapeHtml(formatDateTimeBR(new Date(item.created_at)))}</span>
+                            </div>
+                            <div class="detail-timeline-meta">
+                                ${escapeHtml(item.new_status === 'Manutenção' ? 'Entrada em manutenção' : 'Saída de manutenção')}
+                                ${item.observations ? `<br>Observações do dispositivo: ${escapeHtml(item.observations)}` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>`
+                : `<div class="detail-empty">${isCurrentlyMaintenance ? 'Status atual: em manutenção. Ainda não há registros anteriores salvos.' : 'Nenhum registro de manutenção salvo para este dispositivo.'}</div>`;
+
+            container.innerHTML = `
+                <div class="device-detail-layout">
+                    <aside class="device-detail-panel">
+                        <div class="device-detail-title">
+                            <i class="fas fa-${icon}"></i>
+                            <span>${escapeHtml(device.type)}</span>
+                        </div>
+                        <div class="device-detail-subtitle">
+                            <span class="badge ${badgeColor}">${escapeHtml(device.status)}</span>
+                        </div>
+                        <div class="detail-info-grid">
+                            ${renderDetailInfoItem('ID', device.id)}
+                            ${renderDetailInfoItem('Número de série', device.serial_number)}
+                            ${renderDetailInfoItem('Patrimônio', device.patrimony)}
+                            ${device.type === 'Tablet' ? renderDetailInfoItem('IMEI', device.imei) : ''}
+                            ${renderDetailInfoItem('Número contador / S/N', device.counter_number)}
+                            ${renderDetailInfoItem('Agrupamento / Sala', device.group)}
+                            ${renderDetailInfoItem('Criado em', device.created_at ? formatDateTimeBR(new Date(device.created_at)) : '-')}
+                            ${renderDetailInfoItem('Observações', device.observations)}
+                        </div>
+                        <div style="display: grid; gap: 10px; margin-top: 16px;">
+                            <button class="btn btn-primary btn-full" onclick="editDevice(${device.id})">
+                                <i class="fas fa-edit"></i>
+                                Editar dispositivo
+                            </button>
+                            <button class="btn btn-secondary btn-full" style="background: #fef3c7; color: #92400e;" onclick="toggleMaintenance(${device.id})">
+                                <i class="fas fa-wrench"></i>
+                                ${device.status === 'Manutenção' ? 'Retirar da manutenção' : 'Colocar em manutenção'}
+                            </button>
+                        </div>
+                    </aside>
+
+                    <div class="device-detail-stack">
+                        <section class="device-detail-section">
+                            <div class="device-detail-section-header">
+                                <div class="device-detail-section-title">Empréstimos anteriores</div>
+                                <span class="badge blue">${relatedLoans.length}</span>
+                            </div>
+                            <div class="device-detail-section-body">${loanHtml}</div>
+                        </section>
+
+                        <section class="device-detail-section">
+                            <div class="device-detail-section-header">
+                                <div class="device-detail-section-title">Histórico de manutenção</div>
+                                <span class="badge yellow">${maintenanceHistory.length}</span>
+                            </div>
+                            <div class="device-detail-section-body">${maintenanceHtml}</div>
+                        </section>
+                    </div>
+                </div>
+            `;
         }
 
         function getDeviceDisplayGroupKey(device) {
@@ -4189,7 +4550,7 @@
                 html = '<tr><td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhuma turma cadastrada</td></tr>';
             } else {
                 data.classes.forEach(c => {
-                    html += `<tr>
+                    html += `<tr class="device-row" onclick="openDeviceDetails(${d.id})" title="Abrir detalhes do dispositivo">
                         <td><i class="fas fa-door-open"></i> ${c.name}</td>
                         <td>${c.shift}</td>
                         <td>${c.students || '-'}</td>
@@ -4472,18 +4833,21 @@
                         <td><span class="badge ${badgeColor}">${d.status}</span></td>
                         <td>${d.observations ? d.observations.substring(0, 30) + (d.observations.length > 30 ? '...' : '') : '-'}</td>
                         <td>
-                            <button class="btn btn-small btn-primary" onclick="editDevice(${d.id})" title="Editar">
+                            <button class="btn btn-small btn-secondary" onclick="event.stopPropagation(); openDeviceDetails(${d.id})" title="Detalhes">
+                                <i class="fas fa-circle-info"></i>
+                            </button>
+                            <button class="btn btn-small btn-primary" onclick="event.stopPropagation(); editDevice(${d.id})" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </button>
                             ${isDesktop ? `
-                                <button class="btn btn-small" style="background: #fef3c7; color: #92400e;" onclick="toggleMaintenance(${d.id})" title="Colocar/Retirar de Manutenção">
+                                <button class="btn btn-small" style="background: #fef3c7; color: #92400e;" onclick="event.stopPropagation(); toggleMaintenance(${d.id})" title="Colocar/Retirar de Manutenção">
                                     <i class="fas fa-wrench"></i>
                                 </button>
                             ` : `
-                                <button class="btn btn-small" style="background: #fef3c7; color: #92400e;" onclick="toggleMaintenance(${d.id})" title="Colocar/Retirar de Manutenção">
+                                <button class="btn btn-small" style="background: #fef3c7; color: #92400e;" onclick="event.stopPropagation(); toggleMaintenance(${d.id})" title="Colocar/Retirar de Manutenção">
                                     <i class="fas fa-wrench"></i>
                                 </button>
-                                <button class="btn btn-small" style="background: #fee2e2; color: #991b1b;" onclick="deleteDevice(${d.id})" title="Remover">
+                                <button class="btn btn-small" style="background: #fee2e2; color: #991b1b;" onclick="event.stopPropagation(); deleteDevice(${d.id})" title="Remover">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             `}
@@ -4506,13 +4870,13 @@
                     const badgeColor = getDeviceStatusBadgeColor(d.status);
                     const icon = getDeviceIcon(d.type);
                     const isDesktop = isFixedDevice(d.type);
-                    const deleteButton = isDesktop ? '' : `<button class="btn btn-danger btn-small" onclick="deleteDevice(${d.id})">
+                                const deleteButton = isDesktop ? '' : `<button class="btn btn-danger btn-small" onclick="event.stopPropagation(); deleteDevice(${d.id})">
                         <i class="fas fa-trash"></i>
                         Remover
                     </button>`;
 
                     html += `
-                        <div class="device-card">
+                                    <div class="device-card device-card-clickable" onclick="openDeviceDetails(${d.id})">
                             <div class="device-card-top">
                                 <div class="device-card-title">
                                     <i class="fas fa-${icon}"></i>
@@ -4547,11 +4911,15 @@
                                 </div>
                             </div>
                             <div class="device-card-actions">
-                                <button class="btn btn-primary btn-small" onclick="editDevice(${d.id})">
+                                            <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); openDeviceDetails(${d.id})">
+                                                <i class="fas fa-circle-info"></i>
+                                                Detalhes
+                                            </button>
+                                            <button class="btn btn-primary btn-small" onclick="event.stopPropagation(); editDevice(${d.id})">
                                     <i class="fas fa-edit"></i>
                                     Editar
                                 </button>
-                                <button class="btn btn-secondary btn-small" style="background: #fef3c7; color: #92400e;" onclick="toggleMaintenance(${d.id})">
+                                            <button class="btn btn-secondary btn-small" style="background: #fef3c7; color: #92400e;" onclick="event.stopPropagation(); toggleMaintenance(${d.id})">
                                     <i class="fas fa-wrench"></i>
                                     Manut.
                                 </button>
@@ -4659,7 +5027,9 @@
             try {
                 const { error } = await client.from('devices').update({ status: newStatus }).eq('id', deviceId);
                 if (error) throw error;
+                recordDeviceMaintenanceEvent(device, device.status, newStatus);
                 await loadData();
+                renderSelectedDeviceDetails();
                 alert(`Dispositivo ${newStatus === 'Manutenção' ? 'colocado em' : 'retirado de'} manutenção com sucesso!`);
             } catch (error) {
                 console.error('Erro ao atualizar status:', error);
@@ -4689,6 +5059,7 @@
             const serialNumber = document.getElementById('deviceSerial').value.trim();
             const imei = document.getElementById('deviceImei').value.trim();
             const counterNumber = document.getElementById('deviceCounter').value.trim();
+            const previousDevice = deviceId ? data.devices.find(d => d.id === parseInt(deviceId)) : null;
 
             if (!counterNumber) {
                 alert('Informe o numero contador ou S/N.');
@@ -4735,6 +5106,7 @@
                     // Editar dispositivo existente
                     const { error } = await client.from('devices').update(deviceData).eq('id', parseInt(deviceId));
                     if (error) throw error;
+                    recordDeviceMaintenanceEvent(previousDevice, previousDevice?.status, deviceData.status);
                     alert('Dispositivo atualizado com sucesso!');
                 } else {
                     // Criar novo dispositivo
@@ -4849,7 +5221,7 @@
                         html += `<tr class="device-group-row"><td colspan="9">${getDeviceDisplayGroupLabel(d)}</td></tr>`;
                     }
 
-                    html += `<tr>
+                    html += `<tr class="device-row" onclick="openDeviceDetails(${d.id})" title="Abrir detalhes do dispositivo">
                         <td>
                             <i class="fas fa-${icon}"></i> ${d.type}
                             ${isDesktop ? '<span class="device-fixed-badge"><i class="fas fa-building"></i> Fixo</span>' : ''}
@@ -4862,18 +5234,21 @@
                         <td><span class="badge ${badgeColor}">${d.status}</span></td>
                         <td>${d.observations ? d.observations.substring(0, 30) + (d.observations.length > 30 ? '...' : '') : '-'}</td>
                         <td>
-                            <button class="btn btn-small btn-primary" onclick="editDevice(${d.id})" title="Editar">
+                            <button class="btn btn-small btn-secondary" onclick="event.stopPropagation(); openDeviceDetails(${d.id})" title="Detalhes">
+                                <i class="fas fa-circle-info"></i>
+                            </button>
+                            <button class="btn btn-small btn-primary" onclick="event.stopPropagation(); editDevice(${d.id})" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </button>
                             ${isDesktop ? `
-                                <button class="btn btn-small" style="background: #fef3c7; color: #92400e;" onclick="toggleMaintenance(${d.id})" title="Colocar/Retirar de Manutenção">
+                                <button class="btn btn-small" style="background: #fef3c7; color: #92400e;" onclick="event.stopPropagation(); toggleMaintenance(${d.id})" title="Colocar/Retirar de Manutenção">
                                     <i class="fas fa-wrench"></i>
                                 </button>
                             ` : `
-                                <button class="btn btn-small" style="background: #fef3c7; color: #92400e;" onclick="toggleMaintenance(${d.id})" title="Colocar/Retirar de Manutenção">
+                                <button class="btn btn-small" style="background: #fef3c7; color: #92400e;" onclick="event.stopPropagation(); toggleMaintenance(${d.id})" title="Colocar/Retirar de Manutenção">
                                     <i class="fas fa-wrench"></i>
                                 </button>
-                                <button class="btn btn-small" style="background: #fee2e2; color: #991b1b;" onclick="deleteDevice(${d.id})" title="Remover">
+                                <button class="btn btn-small" style="background: #fee2e2; color: #991b1b;" onclick="event.stopPropagation(); deleteDevice(${d.id})" title="Remover">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             `}
@@ -4905,13 +5280,13 @@
                                 const badgeColor = getDeviceStatusBadgeColor(d.status);
                                 const icon = getDeviceIcon(d.type);
                                 const isDesktop = isFixedDevice(d.type);
-                                const deleteButton = isDesktop ? '' : `<button class="btn btn-danger btn-small" onclick="deleteDevice(${d.id})">
+                                const deleteButton = isDesktop ? '' : `<button class="btn btn-danger btn-small" onclick="event.stopPropagation(); deleteDevice(${d.id})">
                                     <i class="fas fa-trash"></i>
                                     Remover
                                 </button>`;
 
                                 return `
-                                    <div class="device-card">
+                                    <div class="device-card device-card-clickable" onclick="openDeviceDetails(${d.id})">
                                         <div class="device-card-top">
                                             <div class="device-card-title">
                                                 <i class="fas fa-${icon}"></i>
@@ -4952,11 +5327,15 @@
                                             </div>
                                         </div>
                                         <div class="device-card-actions">
-                                            <button class="btn btn-primary btn-small" onclick="editDevice(${d.id})">
+                                            <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); openDeviceDetails(${d.id})">
+                                                <i class="fas fa-circle-info"></i>
+                                                Detalhes
+                                            </button>
+                                            <button class="btn btn-primary btn-small" onclick="event.stopPropagation(); editDevice(${d.id})">
                                                 <i class="fas fa-edit"></i>
                                                 Editar
                                             </button>
-                                            <button class="btn btn-secondary btn-small" style="background: #fef3c7; color: #92400e;" onclick="toggleMaintenance(${d.id})">
+                                            <button class="btn btn-secondary btn-small" style="background: #fef3c7; color: #92400e;" onclick="event.stopPropagation(); toggleMaintenance(${d.id})">
                                                 <i class="fas fa-wrench"></i>
                                                 Manut.
                                             </button>
