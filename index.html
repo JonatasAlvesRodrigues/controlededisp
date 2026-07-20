@@ -4123,14 +4123,27 @@
         }
 
         async function generateQrCodeDataUrl(value) {
-            if (!window.QRCode?.toDataURL) {
-                throw new Error('Biblioteca de QR Code indisponível.');
+            if (window.QRCode?.toDataURL) {
+                return window.QRCode.toDataURL(value, {
+                    errorCorrectionLevel: 'M',
+                    margin: 1,
+                    width: 220,
+                    color: { dark: '#000000', light: '#ffffff' }
+                });
             }
-            return window.QRCode.toDataURL(value, {
-                errorCorrectionLevel: 'M',
-                margin: 1,
-                width: 220,
-                color: { dark: '#000000', light: '#ffffff' }
+
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(value)}`;
+            const response = await fetch(qrUrl);
+            if (!response.ok) {
+                throw new Error('Não foi possível gerar o QR Code.');
+            }
+
+            const blob = await response.blob();
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('Não foi possível converter o QR Code.'));
+                reader.readAsDataURL(blob);
             });
         }
 
@@ -4293,7 +4306,12 @@
         }
 
         function generateSelectedLabelsPdf() {
-            generateLabelsPdfForDevices(getSelectedLabelDevices(), 'etiquetas_selecionadas');
+            const selectedDevices = getSelectedLabelDevices();
+            if (!selectedDevices.length) {
+                alert('Selecione um ou mais dispositivos na lista, ou use "Etiquetas filtradas" para gerar todos os itens visíveis.');
+                return;
+            }
+            generateLabelsPdfForDevices(selectedDevices, 'etiquetas_selecionadas');
         }
 
         function generateFilteredLabelsPdf() {
