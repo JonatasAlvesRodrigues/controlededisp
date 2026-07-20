@@ -4208,6 +4208,88 @@
             const barcodeDataUrl = generateBarcodeDataUrl(patrimony);
             const qrDataUrl = await generateQrCodeDataUrl(getDeviceDetailUrl(device.id));
 
+            {
+            const pad = Math.max(3, width * 0.04);
+            const innerX = x + pad;
+            const innerY = y + pad;
+            const innerW = width - pad * 2;
+            const headerH = Math.max(15, height * 0.3);
+            const footerH = Math.max(4, height * 0.07);
+            const footerY = y + height - pad - footerH;
+            const infoY = innerY + headerH + 4;
+            const compactLabel = height < 60;
+            const maxCodeH = Math.max(7, Math.min(10, height * 0.14));
+            const codeY = Math.max(innerY + headerH + (compactLabel ? 14 : 26), footerY - maxCodeH - 4);
+            const leftW = innerW * 0.42;
+            const rightX = innerX + leftW + 5;
+            const rightW = innerX + innerW - rightX;
+
+            doc.setDrawColor(0);
+            doc.setLineWidth(0.45);
+            doc.roundedRect(x, y, width, height, 2, 2);
+            doc.line(innerX, innerY + headerH, innerX + innerW, innerY + headerH);
+
+            doc.setTextColor(0);
+            doc.setFont('helvetica', 'bold');
+            fitPdfText(doc, schoolName, innerX + leftW / 2, innerY + 8, leftW, { fontSize: Math.min(12, height * 0.18), minFontSize: 7, align: 'center' });
+            doc.setFont('helvetica', 'normal');
+            fitPdfText(doc, 'Controle Patrimonial Escolar', innerX + leftW / 2, innerY + 13, leftW, { fontSize: 5.5, minFontSize: 4, align: 'center' });
+
+            doc.line(innerX + leftW + 2.5, innerY, innerX + leftW + 2.5, innerY + headerH - 3);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(6);
+            doc.text('PATRIMONIO', rightX, innerY + 5);
+            fitPdfText(doc, patrimony, rightX, innerY + 12, rightW, { fontSize: Math.min(13, height * 0.19), minFontSize: 8 });
+            doc.line(rightX, innerY + 14, innerX + innerW, innerY + 14);
+            fitPdfText(doc, `TIPO: ${device.type || '-'}`.toUpperCase(), rightX, innerY + 19, rightW, { fontSize: 6, minFontSize: 4.5 });
+
+            const infoGap = 3;
+            const infoColW = (innerW - infoGap) / 2;
+            const drawInfo = (label, value, ix, iy) => {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(4.8);
+                doc.text(label, ix, iy);
+                doc.setFont('helvetica', 'normal');
+                fitPdfText(doc, String(value || '-').toUpperCase(), ix, iy + 5, infoColW, { fontSize: 6.2, minFontSize: 4.5 });
+            };
+
+            drawInfo('MODELO / MARCA', modelBrand, innerX, infoY);
+            drawInfo('N. DE SERIE', serial, innerX + infoColW + infoGap, infoY);
+            if (!compactLabel) {
+                drawInfo('LOCAL', location, innerX, infoY + 10);
+                drawInfo('CADASTRO', createdAt, innerX + infoColW + infoGap, infoY + 10);
+            }
+            doc.line(innerX, codeY - 4, innerX + innerW, codeY - 4);
+
+            const barcodeW = innerW * 0.48;
+            const barcodeH = Math.max(6, Math.min(maxCodeH, footerY - (codeY + 3) - 1));
+            const barcodeX = innerX;
+            const barcodeY = codeY + 3;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(5);
+            doc.text('CODIGO DE BARRAS', barcodeX + barcodeW / 2, codeY, { align: 'center' });
+            doc.addImage(barcodeDataUrl, 'PNG', barcodeX, barcodeY, barcodeW, barcodeH);
+
+            const qrSize = Math.max(6, Math.min(height * 0.18, innerW * 0.18, footerY - barcodeY - 1));
+            const qrX = innerX + barcodeW + 8;
+            const qrY = barcodeY - 1;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(5);
+            doc.text('QR CODE', qrX + qrSize / 2, codeY, { align: 'center' });
+            doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(4.5);
+            doc.text(['Escaneie para', 'acessar no', 'sistema'], qrX + qrSize + 4, qrY + 4);
+
+            doc.setFillColor(0);
+            doc.roundedRect(innerX, footerY, innerW, footerH, 1, 1, 'F');
+            doc.setTextColor(255);
+            doc.setFont('helvetica', 'bold');
+            fitPdfText(doc, `PATRIMONIO DA ${schoolName.toUpperCase()}`, innerX + innerW / 2, footerY + footerH * 0.68, innerW - 4, { fontSize: Math.max(3.8, footerH * 0.65), minFontSize: 3.2, align: 'center' });
+            doc.setTextColor(0);
+            return;
+            }
+
             doc.setDrawColor(0);
             doc.setLineWidth(0.5);
             doc.roundedRect(x, y, width, height, 3, 3);
