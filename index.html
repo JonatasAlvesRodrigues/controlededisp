@@ -3307,8 +3307,8 @@
                 localStorage.setItem('quickAccessUser', JSON.stringify({ name, role }));
                 isQuickAccess = true;
                 currentUser = { name, role, email: '' }; // Simulação de usuário
+                currentUserProfile = null;
                 currentAccessRole = role;
-                currentAccessRole = currentUserProfile?.role || user.user_metadata?.role || 'funcionario';
                 showApp();
                 await loadData();
             });
