@@ -2190,6 +2190,10 @@
                 <i class="fas fa-list"></i>
                 <span>Em Uso</span>
             </div>
+            <div class="nav-item" onclick="showScreen('maintenance')" data-screen="maintenance">
+                <i class="fas fa-screwdriver-wrench"></i>
+                <span>Manutenção</span>
+            </div>
             <div class="nav-item" onclick="showScreen('history')" data-screen="history">
                 <i class="fas fa-history"></i>
                 <span>Histórico</span>
@@ -2559,6 +2563,73 @@
                         <tbody id="all-active-loans"></tbody>
                     </table>
                     <div id="all-active-loans-cards" class="loan-card-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Maintenance Center Screen -->
+        <div id="maintenance" class="screen">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Central de Manutenção</div>
+                    <div class="page-subtitle">Acompanhar dispositivos em manutenção e resolver ocorrências</div>
+                </div>
+                <button class="btn btn-secondary" onclick="openDevicesByStatus('Manutenção')">
+                    <i class="fas fa-laptop-medical"></i>
+                    Ver na lista
+                </button>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon yellow">
+                        <i class="fas fa-screwdriver-wrench"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="maintenance-total">0</div>
+                        <div class="stat-label">Em manutenção</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon blue">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="maintenance-oldest">-</div>
+                        <div class="stat-label">Mais antigo</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="maintenance-handled">0</div>
+                        <div class="stat-label">Registros no histórico</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Dispositivos em manutenção</div>
+                </div>
+                <div class="card-body" style="padding: 0;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Dispositivo</th>
+                                <th>Patrimônio</th>
+                                <th>Agrupamento</th>
+                                <th>Entrada</th>
+                                <th>Responsável</th>
+                                <th>Motivo / observações</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="maintenance-table"></tbody>
+                    </table>
+                    <div id="maintenance-cards" class="device-card-list"></div>
                 </div>
             </div>
         </div>
@@ -3408,7 +3479,7 @@
         }
 
         function applyRoleRestrictions() {
-            const hiddenForAluno = ['history', 'active', 'devices', 'classes', 'teachers'];
+            const hiddenForAluno = ['history', 'active', 'maintenance', 'devices', 'classes', 'teachers'];
             hiddenForAluno.forEach(screenId => {
                 const navItem = document.querySelector(`.nav-item[data-screen="${screenId}"]`);
                 if (navItem) {
@@ -4009,6 +4080,7 @@
             updateProfileDashboard();
             updateSelects();
             updateActiveLoans();
+            updateMaintenanceCenter();
             updateLatestLoans();
             updateHistoryTable();
             updateDevicesTable();
@@ -4148,6 +4220,97 @@
                 alert('Erro ao atualizar perfil: ' + error.message);
                 updateUsersList();
             }
+        }
+        function getLatestMaintenanceEntry(deviceId) {
+            return getDeviceMaintenanceHistory(deviceId)
+                .find(item => item.new_status === 'Manutenção' || item.new_status === 'ManutenÃ§Ã£o') || null;
+        }
+
+        function getMaintenanceAgeLabel(entry) {
+            if (!entry?.created_at) return '-';
+            const start = new Date(entry.created_at);
+            if (Number.isNaN(start.getTime())) return '-';
+            const days = Math.max(0, Math.floor((Date.now() - start.getTime()) / 86400000));
+            if (days === 0) return 'Hoje';
+            if (days === 1) return '1 dia';
+            return `${days} dias`;
+        }
+
+        function updateMaintenanceCenter() {
+            const tableBody = document.getElementById('maintenance-table');
+            const cards = document.getElementById('maintenance-cards');
+            if (!tableBody || !cards) return;
+
+            const devicesInMaintenance = sortDevicesForDisplay(data.devices).filter(device => device.status === 'Manutenção');
+            const entries = devicesInMaintenance.map(device => ({ device, entry: getLatestMaintenanceEntry(device.id) }));
+            const oldestEntry = entries.map(item => item.entry).filter(Boolean).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0];
+
+            document.getElementById('maintenance-total').textContent = devicesInMaintenance.length;
+            document.getElementById('maintenance-oldest').textContent = getMaintenanceAgeLabel(oldestEntry);
+            document.getElementById('maintenance-handled').textContent = (data.deviceMaintenanceHistory || []).length;
+
+            if (!devicesInMaintenance.length) {
+                const empty = 'Nenhum dispositivo em manutenção no momento';
+                tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">${empty}</td></tr>`;
+                cards.innerHTML = `<div class="device-card"><div style="text-align:center; color: var(--text-muted); font-weight: 700;">${empty}</div></div>`;
+                return;
+            }
+
+            const actionButtons = (device) => `
+                <button class="btn btn-secondary btn-small" onclick="openDeviceDetails(${device.id})">
+                    <i class="fas fa-circle-info"></i>
+                    Detalhes
+                </button>
+                ${canManageDevices() ? `
+                    <button class="btn btn-success btn-small" onclick="resolveMaintenance(${device.id})">
+                        <i class="fas fa-check"></i>
+                        Resolver
+                    </button>
+                ` : ''}
+            `;
+
+            tableBody.innerHTML = entries.map(({ device, entry }) => `
+                <tr>
+                    <td style="font-weight: 800;">${escapeHtml(device.type || '-')}</td>
+                    <td>${escapeHtml(device.patrimony || device.counter_number || '-')}</td>
+                    <td>${escapeHtml(device.group || '-')}</td>
+                    <td>${entry?.created_at ? escapeHtml(formatDateTimeBR(new Date(entry.created_at))) : '-'}</td>
+                    <td>${escapeHtml(entry?.changed_by || '-')}</td>
+                    <td>${escapeHtml(entry?.notes || device.observations || '-')}</td>
+                    <td><div style="display: flex; gap: 8px; flex-wrap: wrap;">${actionButtons(device)}</div></td>
+                </tr>
+            `).join('');
+
+            cards.innerHTML = entries.map(({ device, entry }) => `
+                <div class="device-card device-card-clickable" onclick="openDeviceDetails(${device.id})">
+                    <div class="device-card-top">
+                        <div class="device-card-title">
+                            <i class="fas fa-${getDeviceIcon(device.type)}"></i>
+                            <span>${escapeHtml(device.type || '-')}</span>
+                        </div>
+                        <span class="badge yellow">${getMaintenanceAgeLabel(entry)}</span>
+                    </div>
+                    <div class="device-card-meta">
+                        <div class="device-card-field"><small>Patrimônio</small><span>${escapeHtml(device.patrimony || device.counter_number || '-')}</span></div>
+                        <div class="device-card-field"><small>Agrupamento</small><span>${escapeHtml(device.group || '-')}</span></div>
+                        <div class="device-card-field"><small>Entrada</small><span>${entry?.created_at ? escapeHtml(formatDateTimeBR(new Date(entry.created_at))) : '-'}</span></div>
+                        <div class="device-card-field"><small>Responsável</small><span>${escapeHtml(entry?.changed_by || '-')}</span></div>
+                        <div class="device-card-field" style="grid-column: 1 / -1;"><small>Motivo / observações</small><span>${escapeHtml(entry?.notes || device.observations || '-')}</span></div>
+                    </div>
+                    <div class="device-card-actions" onclick="event.stopPropagation()">${actionButtons(device)}</div>
+                </div>
+            `).join('');
+        }
+
+        async function resolveMaintenance(deviceId) {
+            if (!requireDeviceAdminPermission()) return;
+            const device = data.devices.find(item => parseInt(item.id) === parseInt(deviceId));
+            if (!device) return;
+            if (device.status !== 'Manutenção') {
+                alert('Este dispositivo não está em manutenção.');
+                return;
+            }
+            await toggleMaintenance(deviceId);
         }
         function updateStats() {
             const available = data.devices.filter(d => d.status === 'Disponível').length;
@@ -4379,14 +4542,18 @@
                 changed_by: getCurrentActorName()
             };
 
-            const { data: insertedHistory, error } = await client
-                .from('device_maintenance_history')
-                .insert(eventData)
-                .select()
-                .single();
-            if (error) throw error;
+            try {
+                const { data: insertedHistory, error } = await client
+                    .from('device_maintenance_history')
+                    .insert(eventData)
+                    .select()
+                    .single();
+                if (error) throw error;
+                data.deviceMaintenanceHistory = [insertedHistory, ...(data.deviceMaintenanceHistory || [])];
+            } catch (error) {
+                console.warn('Histórico de manutenção indisponível:', error.message || error);
+            }
 
-            data.deviceMaintenanceHistory = [insertedHistory, ...(data.deviceMaintenanceHistory || [])];
             await recordDeviceChangeEvent(newStatus === 'Manutenção' ? 'maintenance_in' : 'maintenance_out', device, { ...device, status: previousStatus }, { ...device, status: newStatus }, eventData.notes);
         }
 
