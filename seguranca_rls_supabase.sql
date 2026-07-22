@@ -1,5 +1,6 @@
 -- Segurança real com RLS no Supabase
--- Execute depois de controle_acesso_usuarios.sql e historico_alteracoes_dispositivos.sql.
+-- Execute depois de controle_acesso_usuarios.sql, historico_alteracoes_dispositivos.sql
+-- e admin_avisos_afazeres.sql.
 --
 -- Observação sobre "Acesso Rápido":
 -- como ele não faz login no Supabase, o banco enxerga esses usos como role "anon".
@@ -58,6 +59,7 @@ ALTER TABLE public.loan_devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.device_maintenance_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.device_change_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.admin_notice_todos ENABLE ROW LEVEL SECURITY;
 
 -- Limpa políticas anteriores com os mesmos nomes.
 DROP POLICY IF EXISTS "Leitura geral classes" ON public.classes;
@@ -77,6 +79,10 @@ DROP POLICY IF EXISTS "Leitura geral manutencao" ON public.device_maintenance_hi
 DROP POLICY IF EXISTS "Admin cria manutencao" ON public.device_maintenance_history;
 DROP POLICY IF EXISTS "Leitura geral alteracoes" ON public.device_change_history;
 DROP POLICY IF EXISTS "Admin cria alteracoes" ON public.device_change_history;
+DROP POLICY IF EXISTS "Admins veem avisos e afazeres" ON public.admin_notice_todos;
+DROP POLICY IF EXISTS "Admins criam avisos e afazeres" ON public.admin_notice_todos;
+DROP POLICY IF EXISTS "Admins atualizam avisos e afazeres" ON public.admin_notice_todos;
+DROP POLICY IF EXISTS "Admins removem avisos e afazeres" ON public.admin_notice_todos;
 
 CREATE POLICY "Leitura geral classes"
 ON public.classes FOR SELECT
@@ -166,3 +172,24 @@ CREATE POLICY "Admin cria alteracoes"
 ON public.device_change_history FOR INSERT
 TO authenticated
 WITH CHECK (public.is_access_admin());
+
+CREATE POLICY "Admins veem avisos e afazeres"
+ON public.admin_notice_todos FOR SELECT
+TO authenticated
+USING (public.is_access_admin());
+
+CREATE POLICY "Admins criam avisos e afazeres"
+ON public.admin_notice_todos FOR INSERT
+TO authenticated
+WITH CHECK (public.is_access_admin());
+
+CREATE POLICY "Admins atualizam avisos e afazeres"
+ON public.admin_notice_todos FOR UPDATE
+TO authenticated
+USING (public.is_access_admin())
+WITH CHECK (public.is_access_admin());
+
+CREATE POLICY "Admins removem avisos e afazeres"
+ON public.admin_notice_todos FOR DELETE
+TO authenticated
+USING (public.is_access_admin());

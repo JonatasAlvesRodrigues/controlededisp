@@ -2062,6 +2062,10 @@
         }
 
         @media (max-width: 768px) {
+            #adminNoticeTodoForm {
+                grid-template-columns: 1fr !important;
+            }
+
             .card-header .form-input,
             .card-header input[type="date"].form-input,
             .card-header select.form-input {
@@ -3209,7 +3213,8 @@
             loanDevices: [],
             deviceMaintenanceHistory: [],
             deviceChangeHistory: [],
-            userProfiles: []
+            userProfiles: [],
+            adminNoticeTodos: []
         };
         let currentLoanType = 'quantity';
         let currentUser = null;
@@ -3234,6 +3239,9 @@
         let selectedLabelDeviceIds = new Set();
         let pendingDeviceDetailId = null;
         const DEVICE_MAINTENANCE_HISTORY_KEY = 'deviceMaintenanceHistory';
+        const ADMIN_NOTICE_TODO_KEY = 'adminNoticeTodoItems';
+        let adminNoticeTodoTab = 'todo';
+        let adminNoticeTodoRemoteAvailable = null;
 
         function inferAlertType(message) {
             const text = (message || '').toLowerCase();
@@ -3811,6 +3819,58 @@
             }
         }
 
+        function getLocalAdminNoticeTodoItems() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(ADMIN_NOTICE_TODO_KEY) || '[]');
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (error) {
+                return [];
+            }
+        }
+
+        async function fetchAdminNoticeTodoItems() {
+            if (!canManageDevices()) return [];
+
+            try {
+                const { data: items, error } = await client
+                    .from('admin_notice_todos')
+                    .select('id, type, text, done, created_by, created_at, done_at')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                adminNoticeTodoRemoteAvailable = true;
+                const localItems = getLocalAdminNoticeTodoItems();
+                if (localItems.length) {
+                    const rows = localItems.map(item => ({
+                        type: item.type === 'notice' ? 'notice' : 'todo',
+                        text: item.text,
+                        done: Boolean(item.done),
+                        created_by: item.created_by || getCurrentActorName(),
+                        created_at: item.created_at || new Date().toISOString(),
+                        done_at: item.done_at || null
+                    })).filter(item => item.text);
+
+                    if (rows.length) {
+                        const { data: migratedItems, error: migrateError } = await client
+                            .from('admin_notice_todos')
+                            .insert(rows)
+                            .select('id, type, text, done, created_by, created_at, done_at');
+                        if (!migrateError) {
+                            localStorage.removeItem(ADMIN_NOTICE_TODO_KEY);
+                            return [...(migratedItems || []), ...(items || [])]
+                                .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+                        }
+                        console.warn('Nao foi possivel migrar avisos/afazeres locais:', migrateError.message || migrateError);
+                    }
+                }
+                return items || [];
+            } catch (error) {
+                adminNoticeTodoRemoteAvailable = false;
+                console.warn('Tabela de avisos/afazeres indisponivel, usando armazenamento local:', error.message || error);
+                return getLocalAdminNoticeTodoItems();
+            }
+        }
+
         async function loadData() {
             if (loadDataInProgress) {
                 loadDataQueued = true;
@@ -3850,7 +3910,11 @@
                     : [];
 
                 // Atualiza a variável de dados
-                data = { classes, teachers, devices, loans, loanDevices, deviceMaintenanceHistory, deviceChangeHistory, userProfiles };
+                const adminNoticeTodos = canManageDevices()
+                    ? await fetchAdminNoticeTodoItems()
+                    : [];
+
+                data = { classes, teachers, devices, loans, loanDevices, deviceMaintenanceHistory, deviceChangeHistory, userProfiles, adminNoticeTodos };
                 updateAll();
                 await verifyDeviceSchema();
                 await verifyDeviceLabelSchema();
@@ -4132,6 +4196,48 @@
                         <span style="font-size: 11px; opacity: 0.9; margin-top: 4px; display: block;">Gerenciar perfis</span>
                    </div>`
                 : '';
+            const adminNoticeTodoPanel = canManageDevices()
+                ? `
+                    <div style="border-top: 1px solid var(--border); margin-top: 18px; padding-top: 18px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px;">
+                            <div>
+                                <div style="font-weight: 800; color: var(--text-dark);">Avisos e afazeres</div>
+                                <div style="font-size: 13px; color: var(--text-muted);">Organizacao interna dos administradores</div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn btn-small btn-secondary" id="adminTodoTab" onclick="setAdminNoticeTodoTab('todo')">
+                                    <i class="fas fa-list-check"></i>
+                                    Afazeres
+                                </button>
+                                <button type="button" class="btn btn-small btn-secondary" id="adminNoticeTab" onclick="setAdminNoticeTodoTab('notice')">
+                                    <i class="fas fa-bullhorn"></i>
+                                    Avisos
+                                </button>
+                            </div>
+                        </div>
+
+                        <form id="adminNoticeTodoForm" onsubmit="addAdminNoticeTodoItem(event)" style="display: grid; grid-template-columns: minmax(120px, 170px) 1fr auto; gap: 10px; align-items: end; margin-bottom: 14px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Tipo</label>
+                                <select class="form-input" id="adminNoticeTodoType">
+                                    <option value="todo">Afazer</option>
+                                    <option value="notice">Aviso</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Texto</label>
+                                <input class="form-input" id="adminNoticeTodoText" type="text" maxlength="180" placeholder="Ex: Conferir notebooks da Base 2" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus"></i>
+                                Adicionar
+                            </button>
+                        </form>
+
+                        <div id="adminNoticeTodoList" style="display: grid; gap: 10px;"></div>
+                    </div>
+                `
+                : '';
 
             panel.innerHTML = `
                 <div class="card">
@@ -4154,9 +4260,218 @@
                             </div>
                             ${adminExtra}
                         </div>
+                        ${adminNoticeTodoPanel}
                     </div>
                 </div>
             `;
+            if (canManageDevices()) {
+                updateAdminNoticeTodoPanel();
+            }
+        }
+
+        function getAdminNoticeTodoItems() {
+            if (adminNoticeTodoRemoteAvailable === true) {
+                return data.adminNoticeTodos || [];
+            }
+            if (Array.isArray(data.adminNoticeTodos) && data.adminNoticeTodos.length) {
+                return data.adminNoticeTodos;
+            }
+            return getLocalAdminNoticeTodoItems();
+        }
+
+        function saveAdminNoticeTodoItems(items) {
+            data.adminNoticeTodos = items;
+            localStorage.setItem(ADMIN_NOTICE_TODO_KEY, JSON.stringify(items));
+        }
+
+        function setAdminNoticeTodoTab(tab) {
+            adminNoticeTodoTab = tab === 'notice' ? 'notice' : 'todo';
+            updateAdminNoticeTodoPanel();
+        }
+
+        async function addAdminNoticeTodoItem(event) {
+            event.preventDefault();
+            if (!canManageDevices()) return;
+
+            const typeInput = document.getElementById('adminNoticeTodoType');
+            const textInput = document.getElementById('adminNoticeTodoText');
+            const text = textInput?.value?.trim();
+            const type = typeInput?.value === 'notice' ? 'notice' : 'todo';
+
+            if (!text) {
+                alert('Digite o texto do aviso ou afazer.');
+                return;
+            }
+
+            const newItem = {
+                id: Date.now(),
+                type,
+                text,
+                done: false,
+                created_by: getCurrentActorName(),
+                created_at: new Date().toISOString()
+            };
+
+            try {
+                if (adminNoticeTodoRemoteAvailable !== false) {
+                    const { data: insertedItem, error } = await client
+                        .from('admin_notice_todos')
+                        .insert({
+                            type,
+                            text,
+                            done: false,
+                            created_by: getCurrentActorName()
+                        })
+                        .select('id, type, text, done, created_by, created_at, done_at')
+                        .single();
+                    if (error) throw error;
+                    adminNoticeTodoRemoteAvailable = true;
+                    data.adminNoticeTodos = [insertedItem, ...(data.adminNoticeTodos || [])];
+                    localStorage.removeItem(ADMIN_NOTICE_TODO_KEY);
+                } else {
+                    saveAdminNoticeTodoItems([newItem, ...getAdminNoticeTodoItems()]);
+                }
+            } catch (error) {
+                adminNoticeTodoRemoteAvailable = false;
+                console.warn('Nao foi possivel salvar no Supabase, salvando localmente:', error.message || error);
+                saveAdminNoticeTodoItems([newItem, ...getAdminNoticeTodoItems()]);
+            }
+
+            adminNoticeTodoTab = type;
+            if (textInput) textInput.value = '';
+            if (typeInput) typeInput.value = type;
+            updateAdminNoticeTodoPanel();
+        }
+
+        async function toggleAdminTodoItem(itemId, checked) {
+            if (!canManageDevices()) return;
+
+            const doneAt = checked ? new Date().toISOString() : null;
+            const updateLocalState = () => {
+                const items = getAdminNoticeTodoItems().map(item => {
+                    if (parseInt(item.id) !== parseInt(itemId)) return item;
+                    return { ...item, done: checked, done_at: doneAt };
+                });
+                saveAdminNoticeTodoItems(items);
+            };
+
+            if (adminNoticeTodoRemoteAvailable === true) {
+                try {
+                    const { error } = await client
+                        .from('admin_notice_todos')
+                        .update({ done: checked, done_at: doneAt })
+                        .eq('id', parseInt(itemId));
+                    if (error) throw error;
+                    data.adminNoticeTodos = (data.adminNoticeTodos || []).map(item => {
+                        if (parseInt(item.id) !== parseInt(itemId)) return item;
+                        return { ...item, done: checked, done_at: doneAt };
+                    });
+                } catch (error) {
+                    console.error('Erro ao atualizar afazer:', error);
+                    alert('Erro ao atualizar afazer: ' + error.message);
+                }
+            } else {
+                updateLocalState();
+            }
+            updateAdminNoticeTodoPanel();
+        }
+
+        async function deleteAdminNoticeTodoItem(itemId) {
+            if (!canManageDevices()) return;
+
+            const removeLocalItem = () => {
+                const items = getAdminNoticeTodoItems()
+                    .filter(item => parseInt(item.id) !== parseInt(itemId));
+                saveAdminNoticeTodoItems(items);
+            };
+
+            if (adminNoticeTodoRemoteAvailable === true) {
+                try {
+                    const { error } = await client
+                        .from('admin_notice_todos')
+                        .delete()
+                        .eq('id', parseInt(itemId));
+                    if (error) throw error;
+                    data.adminNoticeTodos = (data.adminNoticeTodos || [])
+                        .filter(item => parseInt(item.id) !== parseInt(itemId));
+                } catch (error) {
+                    console.error('Erro ao remover item:', error);
+                    alert('Erro ao remover item: ' + error.message);
+                }
+            } else {
+                removeLocalItem();
+            }
+            updateAdminNoticeTodoPanel();
+        }
+
+        function updateAdminNoticeTodoPanel() {
+            const list = document.getElementById('adminNoticeTodoList');
+            const todoTab = document.getElementById('adminTodoTab');
+            const noticeTab = document.getElementById('adminNoticeTab');
+            const typeInput = document.getElementById('adminNoticeTodoType');
+            if (!list) return;
+
+            if (typeInput) {
+                typeInput.value = adminNoticeTodoTab;
+            }
+
+            if (todoTab && noticeTab) {
+                todoTab.classList.toggle('btn-primary', adminNoticeTodoTab === 'todo');
+                todoTab.classList.toggle('btn-secondary', adminNoticeTodoTab !== 'todo');
+                noticeTab.classList.toggle('btn-primary', adminNoticeTodoTab === 'notice');
+                noticeTab.classList.toggle('btn-secondary', adminNoticeTodoTab !== 'notice');
+            }
+
+            const items = getAdminNoticeTodoItems()
+                .filter(item => item.type === adminNoticeTodoTab)
+                .sort((a, b) => {
+                    if (adminNoticeTodoTab === 'todo' && Boolean(a.done) !== Boolean(b.done)) {
+                        return a.done ? 1 : -1;
+                    }
+                    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+                });
+
+            if (!items.length) {
+                list.innerHTML = `
+                    <div class="alert-item" style="margin-bottom: 0;">
+                        <div class="alert-icon info"><i class="fas fa-circle-info"></i></div>
+                        <div class="alert-content">
+                            <div class="alert-title">${adminNoticeTodoTab === 'todo' ? 'Nenhum afazer cadastrado' : 'Nenhum aviso cadastrado'}</div>
+                            <div class="alert-desc">Use o campo acima para adicionar o primeiro item.</div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = items.map(item => {
+                const createdAt = item.created_at ? formatDateTimeBR(new Date(item.created_at)) : '';
+                const doneStyle = item.done ? 'text-decoration: line-through; color: var(--text-muted);' : '';
+                const statusBadge = item.type === 'todo'
+                    ? `<label style="display: inline-flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer;">
+                            <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleAdminTodoItem(${parseInt(item.id)}, this.checked)">
+                            Feito
+                       </label>`
+                    : `<span class="badge blue">Aviso</span>`;
+
+                return `
+                    <div class="alert-item" style="margin-bottom: 0;">
+                        <div class="alert-icon ${item.type === 'todo' ? 'warning' : 'info'}">
+                            <i class="fas fa-${item.type === 'todo' ? 'clipboard-check' : 'bullhorn'}"></i>
+                        </div>
+                        <div class="alert-content">
+                            <div class="alert-title" style="${doneStyle}">${escapeHtml(item.text)}</div>
+                            <div class="alert-desc">${createdAt ? `Criado em ${escapeHtml(createdAt)}` : 'Criado recentemente'}</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end;">
+                            ${statusBadge}
+                            <button type="button" class="btn btn-small btn-secondary" onclick="deleteAdminNoticeTodoItem(${parseInt(item.id)})" title="Remover">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function updateUsersList() {

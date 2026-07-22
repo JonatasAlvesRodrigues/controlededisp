@@ -25,7 +25,11 @@ Execute os scripts nesta ordem:
 
 1. `create_tables.sql`
 2. `atualizar_tabela_devices.sql`
-3. `finalizar_config.sql` se quiser popular os dados de exemplo
+3. `controle_acesso_usuarios.sql`
+4. `historico_alteracoes_dispositivos.sql`
+5. `admin_avisos_afazeres.sql`
+6. `finalizar_config.sql` se quiser popular os dados de exemplo
+7. `seguranca_rls_supabase.sql`
 
 ## Observações
 
