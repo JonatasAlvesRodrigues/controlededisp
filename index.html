@@ -5679,6 +5679,7 @@
             const schoolName = getLabelSchoolName(device);
             const modelBrand = getLabelModelBrand(device);
             const serial = device.serial_number || '-';
+            const counterNumber = device.counter_number || '-';
             const location = device.group || '-';
             const createdAt = device.created_at ? formatDateBR(new Date(device.created_at)) : formatDateBR(new Date());
             const barcodeDataUrl = generateBarcodeDataUrl(patrimony);
@@ -5738,21 +5739,23 @@
                 fitPdfText(doc, `TIPO: ${device.type || '-'}`.toUpperCase(), rightX, innerY + 19, rightW, { fontSize: 6, minFontSize: 4.5 });
             }
 
-            const infoGap = 3;
-            const infoColW = (innerW - infoGap) / 2;
-            const drawInfo = (label, value, ix, iy) => {
+            const infoGap = 2.5;
+            const infoColW = (innerW - infoGap * 2) / 3;
+            const wideInfoColW = (innerW - infoGap) / 2;
+            const drawInfo = (label, value, ix, iy, fieldWidth = infoColW) => {
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(4.8);
                 doc.text(label, ix, iy);
                 doc.setFont('helvetica', 'normal');
-                fitPdfText(doc, String(value || '-').toUpperCase(), ix, iy + 5, infoColW, { fontSize: 6.2, minFontSize: 4.5 });
+                fitPdfText(doc, String(value || '-').toUpperCase(), ix, iy + 5, fieldWidth, { fontSize: 6.2, minFontSize: 4.2 });
             };
 
             drawInfo('MODELO / MARCA', modelBrand, innerX, infoY);
             drawInfo('N. DE SERIE', serial, innerX + infoColW + infoGap, infoY);
+            drawInfo('N. CONTADOR', counterNumber, innerX + (infoColW + infoGap) * 2, infoY);
             if (!compactLabel) {
-                drawInfo('LOCAL', location, innerX, infoY + 10);
-                drawInfo('CADASTRO', createdAt, innerX + infoColW + infoGap, infoY + 10);
+                drawInfo('LOCAL', location, innerX, infoY + 10, wideInfoColW);
+                drawInfo('CADASTRO', createdAt, innerX + wideInfoColW + infoGap, infoY + 10, wideInfoColW);
             }
             doc.line(innerX, codeY - 4, innerX + innerW, codeY - 4);
 
