@@ -2997,7 +2997,7 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label class="form-label">Tamanho</label>
-                            <select id="labelSize" class="form-input">
+                            <select id="labelSize" class="form-input" data-label-size-control onchange="setLabelSizeValue(this.value)">
                                 <option value="100x70">100 x 70 mm</option>
                                 <option value="90x60">90 x 60 mm</option>
                                 <option value="80x50">80 x 50 mm</option>
@@ -3054,6 +3054,14 @@
                     <div class="page-subtitle">Gerenciar todos os dispositivos cadastrados</div>
                 </div>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <div class="form-group" style="margin-bottom: 0; min-width: 170px;">
+                        <label class="form-label">Tamanho etiqueta</label>
+                        <select id="deviceListLabelSize" class="form-input" data-label-size-control onchange="setLabelSizeValue(this.value)">
+                            <option value="100x70">100 x 70 mm</option>
+                            <option value="90x60">90 x 60 mm</option>
+                            <option value="80x50">80 x 50 mm</option>
+                        </select>
+                    </div>
                     <button class="btn btn-secondary" onclick="generateSelectedLabelsPdf()">
                         <i class="fas fa-tags"></i>
                         Etiquetas selecionadas
@@ -3531,6 +3539,7 @@
         const DEVICE_MAINTENANCE_HISTORY_KEY = 'deviceMaintenanceHistory';
         const ADMIN_NOTICE_TODO_KEY = 'adminNoticeTodoItems';
         const ADMIN_PRINT_FILES_KEY = 'adminPrintFiles';
+        const LABEL_SIZE_KEY = 'patrimonyLabelSize';
         const ADMIN_PRINT_FILE_MAX_BYTES = 4 * 1024 * 1024;
         let adminNoticeTodoTab = 'todo';
         let adminNoticeTodoRemoteAvailable = null;
@@ -4346,11 +4355,20 @@
             const actions = form.querySelector('button[type="submit"]')?.parentElement;
             if (actions && !document.getElementById('deviceLabelButton')) {
                 actions.insertAdjacentHTML('beforeend', `
+                    <div class="form-group" style="margin-bottom: 0; flex: 1 1 180px;">
+                        <label class="form-label">Tamanho da etiqueta</label>
+                        <select id="deviceModalLabelSize" class="form-input" data-label-size-control onchange="setLabelSizeValue(this.value)">
+                            <option value="100x70">100 x 70 mm</option>
+                            <option value="90x60">90 x 60 mm</option>
+                            <option value="80x50">80 x 50 mm</option>
+                        </select>
+                    </div>
                     <button type="button" class="btn btn-secondary btn-full" id="deviceLabelButton" onclick="generateCurrentDeviceLabelPdf()">
                         <i class="fas fa-tag"></i>
                         Gerar etiqueta
                     </button>
                 `);
+                syncLabelSizeControls();
             }
         }
 
@@ -4511,6 +4529,7 @@
             updateTeachersCards();
             updateUsersList();
             updateAdminPrintPage();
+            syncLabelSizeControls();
             updateReturnSelect();
             applyRoleRestrictions();
         }
@@ -5887,8 +5906,31 @@
             return jsPDF;
         }
 
+        function getLabelSizeValue() {
+            const activeValue = document.activeElement?.matches?.('[data-label-size-control]')
+                ? document.activeElement.value
+                : '';
+            const storedValue = localStorage.getItem(LABEL_SIZE_KEY) || '';
+            const firstControlValue = document.querySelector('[data-label-size-control]')?.value || '';
+            const value = activeValue || storedValue || firstControlValue || '100x70';
+            return ['100x70', '90x60', '80x50'].includes(value) ? value : '100x70';
+        }
+
+        function syncLabelSizeControls() {
+            const value = getLabelSizeValue();
+            document.querySelectorAll('[data-label-size-control]').forEach(control => {
+                control.value = value;
+            });
+        }
+
+        function setLabelSizeValue(value) {
+            const safeValue = ['100x70', '90x60', '80x50'].includes(value) ? value : '100x70';
+            localStorage.setItem(LABEL_SIZE_KEY, safeValue);
+            syncLabelSizeControls();
+        }
+
         function getSelectedLabelSize() {
-            const value = document.getElementById('labelSize')?.value || '100x70';
+            const value = getLabelSizeValue();
             const [width, height] = value.split('x').map(Number);
             return { width: width || 100, height: height || 70 };
         }
