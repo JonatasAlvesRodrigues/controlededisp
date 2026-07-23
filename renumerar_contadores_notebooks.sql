@@ -2,13 +2,23 @@
 --
 -- Escopo usado:
 -- - type = 'Notebook'
--- - status diferente de 'Fora de uso'
 --
--- A ordem preserva a sequencia atual quando o contador ja tem numero,
--- desempata por patrimonio e id, e coloca itens sem numero no final.
+-- Ordem dos status:
+-- 1. Em uso
+-- 2. Disponivel
+-- 3. Manutencao
+-- 4. Fora de uso
+--
+-- Dentro de cada status, a ordem preserva a sequencia atual quando o contador
+-- ja tem numero, desempata por patrimonio e id, e coloca itens sem numero no final.
 -- Depois da execucao, os notebooks ficam como 001, 002, 003... sem repetir e sem pular.
 
 BEGIN;
+
+-- O gatilho abaixo protege o app contra edicoes cadastrais indevidas.
+-- Para esta manutencao feita pelo SQL Editor, ele precisa ficar pausado
+-- somente durante a renumeracao e volta ativo antes do COMMIT.
+ALTER TABLE public.devices DISABLE TRIGGER protect_device_non_admin_update_trigger;
 
 -- Conferencia antes de alterar.
 WITH target AS (
@@ -20,10 +30,16 @@ WITH target AS (
         counter_number,
         "group",
         status,
-        NULLIF(regexp_replace(COALESCE(counter_number, ''), '\D', '', 'g'), '')::INT AS current_counter_number
+        NULLIF(regexp_replace(COALESCE(counter_number, ''), '\D', '', 'g'), '')::INT AS current_counter_number,
+        CASE status
+            WHEN 'Em uso' THEN 1
+            WHEN 'Disponível' THEN 2
+            WHEN 'Manutenção' THEN 3
+            WHEN 'Fora de uso' THEN 4
+            ELSE 5
+        END AS status_order
     FROM public.devices
     WHERE type = 'Notebook'
-      AND status <> 'Fora de uso'
 ),
 ordered AS (
     SELECT
@@ -31,6 +47,7 @@ ordered AS (
         LPAD(
             ROW_NUMBER() OVER (
                 ORDER BY
+                    status_order,
                     CASE WHEN current_counter_number IS NULL THEN 1 ELSE 0 END,
                     current_counter_number,
                     COALESCE(patrimony, ''),
@@ -57,10 +74,16 @@ WITH target AS (
     SELECT
         id,
         patrimony,
-        NULLIF(regexp_replace(COALESCE(counter_number, ''), '\D', '', 'g'), '')::INT AS current_counter_number
+        NULLIF(regexp_replace(COALESCE(counter_number, ''), '\D', '', 'g'), '')::INT AS current_counter_number,
+        CASE status
+            WHEN 'Em uso' THEN 1
+            WHEN 'Disponível' THEN 2
+            WHEN 'Manutenção' THEN 3
+            WHEN 'Fora de uso' THEN 4
+            ELSE 5
+        END AS status_order
     FROM public.devices
     WHERE type = 'Notebook'
-      AND status <> 'Fora de uso'
 ),
 ordered AS (
     SELECT
@@ -68,6 +91,7 @@ ordered AS (
         LPAD(
             ROW_NUMBER() OVER (
                 ORDER BY
+                    status_order,
                     CASE WHEN current_counter_number IS NULL THEN 1 ELSE 0 END,
                     current_counter_number,
                     COALESCE(patrimony, ''),
@@ -91,7 +115,6 @@ WITH target AS (
         NULLIF(regexp_replace(COALESCE(counter_number, ''), '\D', '', 'g'), '')::INT AS counter_as_int
     FROM public.devices
     WHERE type = 'Notebook'
-      AND status <> 'Fora de uso'
 ),
 summary AS (
     SELECT
@@ -114,5 +137,7 @@ SELECT
         ELSE 'VERIFICAR - ainda ha repeticao ou falta'
     END AS resultado
 FROM summary;
+
+ALTER TABLE public.devices ENABLE TRIGGER protect_device_non_admin_update_trigger;
 
 COMMIT;

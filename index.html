@@ -3432,6 +3432,7 @@
         const ADMIN_NOTICE_TODO_KEY = 'adminNoticeTodoItems';
         let adminNoticeTodoTab = 'todo';
         let adminNoticeTodoRemoteAvailable = null;
+        let lastAutoCounterSuggestion = '';
 
         function inferAlertType(message) {
             const text = (message || '').toLowerCase();
@@ -4986,6 +4987,18 @@
             return data.devices.find(device => {
                 if (parsedCurrentId && device.id === parsedCurrentId) return false;
                 return normalizeDeviceText(device.serial_number) === normalizedSerial;
+            }) || null;
+        }
+
+        function findDeviceWithSameCounterNumber(type, counterNumber, currentDeviceId = '') {
+            const normalizedCounter = normalizeDeviceText(counterNumber);
+            const parsedCurrentId = currentDeviceId ? parseInt(currentDeviceId) : null;
+            if (!type || !normalizedCounter || normalizedCounter === 's/n' || normalizedCounter === 'sn') return null;
+
+            return data.devices.find(device => {
+                if (device.type !== type) return false;
+                if (parsedCurrentId && parseInt(device.id) === parsedCurrentId) return false;
+                return normalizeDeviceText(device.counter_number) === normalizedCounter;
             }) || null;
         }
 
@@ -7227,6 +7240,67 @@
             statusSelect.value = options.some(option => option.value === selectedStatus) ? selectedStatus : options[0].value;
         }
 
+        function getCounterNumberValue(counterNumber) {
+            const raw = (counterNumber || '').toString().trim();
+            if (!raw || raw.toLowerCase() === 's/n' || raw.toLowerCase() === 'sn') return null;
+
+            if (!/^\d+$/.test(raw)) return null;
+
+            const value = parseInt(raw, 10);
+            return Number.isFinite(value) && value > 0 ? value : null;
+        }
+
+        function formatCounterNumber(value, type) {
+            const sameTypeCounters = data.devices
+                .filter(device => device.type === type)
+                .map(device => (device.counter_number || '').toString().trim())
+                .filter(counter => /^\d+$/.test(counter));
+            const maxWidth = sameTypeCounters.reduce((width, counter) => Math.max(width, counter.length), 0);
+            return String(value).padStart(Math.max(2, maxWidth, 3), '0');
+        }
+
+        function getNextAvailableCounterNumberForType(type, currentDeviceId = '') {
+            const usedNumbers = new Set();
+            const parsedCurrentId = currentDeviceId ? parseInt(currentDeviceId) : null;
+
+            data.devices.forEach(device => {
+                if (device.type !== type) return;
+                if (parsedCurrentId && parseInt(device.id) === parsedCurrentId) return;
+
+                const value = getCounterNumberValue(device.counter_number);
+                if (value) usedNumbers.add(value);
+            });
+
+            let next = 1;
+            while (usedNumbers.has(next)) {
+                next += 1;
+            }
+
+            return formatCounterNumber(next, type);
+        }
+
+        function updateAutoCounterSuggestion(force = false) {
+            const deviceId = document.getElementById('deviceId')?.value || '';
+            if (deviceId) return;
+
+            const type = document.getElementById('deviceType')?.value || '';
+            const counterInput = document.getElementById('deviceCounter');
+            if (!type || !counterInput) return;
+
+            const currentCounter = counterInput.value.trim();
+            const shouldReplace =
+                force ||
+                !currentCounter ||
+                currentCounter.toLowerCase() === 's/n' ||
+                currentCounter.toLowerCase() === 'sn' ||
+                currentCounter === lastAutoCounterSuggestion;
+
+            if (!shouldReplace) return;
+
+            lastAutoCounterSuggestion = getNextAvailableCounterNumberForType(type);
+            counterInput.value = lastAutoCounterSuggestion;
+        }
+
         function handleDeviceTypeChange(preferredStatus = null) {
             const type = document.getElementById('deviceType').value;
             const groupInput = document.getElementById('deviceGroup');
@@ -7246,6 +7320,7 @@
                 }
             }
             renderDeviceStatusOptions(type, currentStatus);
+            updateAutoCounterSuggestion();
         }
 
         // Função para abrir o modal de novo dispositivo
@@ -7273,17 +7348,21 @@
             } else {
                 modalTitle.textContent = 'Novo Dispositivo';
                 form.reset();
+                lastAutoCounterSuggestion = '';
                 document.getElementById('deviceId').value = '';
                 document.getElementById('deviceSerial').value = '';
                 document.getElementById('deviceImei').value = '';
                 document.getElementById('deviceBrand').value = '';
                 document.getElementById('deviceModel').value = '';
                 document.getElementById('deviceSchoolName').value = 'Escola Percio';
-                document.getElementById('deviceCounter').value = 's/n';
+                document.getElementById('deviceCounter').value = '';
             }
 
             document.getElementById('deviceType').value = device?.type || 'Notebook';
             handleDeviceTypeChange(isFixedDevice(device?.type) && device?.status === 'Em uso' ? 'Disponível' : (device?.status || 'Disponível'));
+            if (!device) {
+                updateAutoCounterSuggestion(true);
+            }
             
             modal.classList.add('active');
         }
@@ -7352,6 +7431,7 @@
             if (!requireDeviceAdminPermission()) return;
 
             const deviceId = document.getElementById('deviceId').value;
+            const selectedDeviceType = document.getElementById('deviceType').value;
             const serialNumber = document.getElementById('deviceSerial').value.trim();
             const imei = document.getElementById('deviceImei').value.trim();
             const counterNumber = document.getElementById('deviceCounter').value.trim();
@@ -7359,6 +7439,13 @@
 
             if (!counterNumber) {
                 alert('Informe o numero contador ou S/N.');
+                document.getElementById('deviceCounter').focus();
+                return;
+            }
+
+            const duplicateCounterDevice = findDeviceWithSameCounterNumber(selectedDeviceType, counterNumber, deviceId);
+            if (duplicateCounterDevice) {
+                alert(`O numero contador "${counterNumber}" ja esta em uso em outro dispositivo do tipo ${selectedDeviceType}. Use o proximo numero disponivel.`);
                 document.getElementById('deviceCounter').focus();
                 return;
             }
@@ -7383,7 +7470,7 @@
             }
 
             const deviceData = {
-                type: document.getElementById('deviceType').value,
+                type: selectedDeviceType,
                 serial_number: serialNumber || null,
                 patrimony: document.getElementById('devicePatrimony').value || null,
                 imei: document.getElementById('deviceType').value === 'Tablet' ? (imei || null) : null,
