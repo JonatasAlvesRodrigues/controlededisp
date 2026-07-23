@@ -1,6 +1,6 @@
 -- Segurança real com RLS no Supabase
--- Execute depois de controle_acesso_usuarios.sql, historico_alteracoes_dispositivos.sql
--- e admin_avisos_afazeres.sql.
+-- Execute depois de controle_acesso_usuarios.sql, historico_alteracoes_dispositivos.sql,
+-- admin_avisos_afazeres.sql e admin_impressos_avisos.sql.
 --
 -- Observação sobre "Acesso Rápido":
 -- como ele não faz login no Supabase, o banco enxerga esses usos como role "anon".
@@ -60,6 +60,7 @@ ALTER TABLE public.device_maintenance_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.device_change_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_notice_todos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.admin_print_files ENABLE ROW LEVEL SECURITY;
 
 -- Limpa políticas anteriores com os mesmos nomes.
 DROP POLICY IF EXISTS "Leitura geral classes" ON public.classes;
@@ -83,6 +84,9 @@ DROP POLICY IF EXISTS "Admins veem avisos e afazeres" ON public.admin_notice_tod
 DROP POLICY IF EXISTS "Admins criam avisos e afazeres" ON public.admin_notice_todos;
 DROP POLICY IF EXISTS "Admins atualizam avisos e afazeres" ON public.admin_notice_todos;
 DROP POLICY IF EXISTS "Admins removem avisos e afazeres" ON public.admin_notice_todos;
+DROP POLICY IF EXISTS "Admins veem impressos" ON public.admin_print_files;
+DROP POLICY IF EXISTS "Admins criam impressos" ON public.admin_print_files;
+DROP POLICY IF EXISTS "Admins removem impressos" ON public.admin_print_files;
 
 CREATE POLICY "Leitura geral classes"
 ON public.classes FOR SELECT
@@ -191,5 +195,20 @@ WITH CHECK (public.is_access_admin());
 
 CREATE POLICY "Admins removem avisos e afazeres"
 ON public.admin_notice_todos FOR DELETE
+TO authenticated
+USING (public.is_access_admin());
+
+CREATE POLICY "Admins veem impressos"
+ON public.admin_print_files FOR SELECT
+TO authenticated
+USING (public.is_access_admin());
+
+CREATE POLICY "Admins criam impressos"
+ON public.admin_print_files FOR INSERT
+TO authenticated
+WITH CHECK (public.is_access_admin());
+
+CREATE POLICY "Admins removem impressos"
+ON public.admin_print_files FOR DELETE
 TO authenticated
 USING (public.is_access_admin());

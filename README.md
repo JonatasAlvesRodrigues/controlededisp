@@ -28,8 +28,9 @@ Execute os scripts nesta ordem:
 3. `controle_acesso_usuarios.sql`
 4. `historico_alteracoes_dispositivos.sql`
 5. `admin_avisos_afazeres.sql`
-6. `finalizar_config.sql` se quiser popular os dados de exemplo
-7. `seguranca_rls_supabase.sql`
+6. `admin_impressos_avisos.sql`
+7. `finalizar_config.sql` se quiser popular os dados de exemplo
+8. `seguranca_rls_supabase.sql`
 
 ## Observações
 

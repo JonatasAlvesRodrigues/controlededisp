@@ -3404,7 +3404,8 @@
             deviceMaintenanceHistory: [],
             deviceChangeHistory: [],
             userProfiles: [],
-            adminNoticeTodos: []
+            adminNoticeTodos: [],
+            adminPrintFiles: []
         };
         let currentLoanType = 'quantity';
         let currentUser = null;
@@ -3430,8 +3431,11 @@
         let pendingDeviceDetailId = null;
         const DEVICE_MAINTENANCE_HISTORY_KEY = 'deviceMaintenanceHistory';
         const ADMIN_NOTICE_TODO_KEY = 'adminNoticeTodoItems';
+        const ADMIN_PRINT_FILES_KEY = 'adminPrintFiles';
+        const ADMIN_PRINT_FILE_MAX_BYTES = 4 * 1024 * 1024;
         let adminNoticeTodoTab = 'todo';
         let adminNoticeTodoRemoteAvailable = null;
+        let adminPrintFilesRemoteAvailable = null;
         let lastAutoCounterSuggestion = '';
 
         function inferAlertType(message) {
@@ -4019,6 +4023,15 @@
             }
         }
 
+        function getLocalAdminPrintFiles() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(ADMIN_PRINT_FILES_KEY) || '[]');
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (error) {
+                return [];
+            }
+        }
+
         async function fetchAdminNoticeTodoItems() {
             if (!canManageDevices()) return [];
 
@@ -4064,6 +4077,53 @@
             }
         }
 
+        async function fetchAdminPrintFiles() {
+            if (!canManageDevices()) return [];
+
+            try {
+                const { data: files, error } = await client
+                    .from('admin_print_files')
+                    .select('id, title, file_name, mime_type, file_size, file_data, notes, created_by, created_at')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                adminPrintFilesRemoteAvailable = true;
+
+                const localFiles = getLocalAdminPrintFiles();
+                if (localFiles.length) {
+                    const rows = localFiles.map(file => ({
+                        title: file.title || file.file_name || 'Arquivo para impressao',
+                        file_name: file.file_name,
+                        mime_type: file.mime_type || 'application/octet-stream',
+                        file_size: file.file_size || 0,
+                        file_data: file.file_data,
+                        notes: file.notes || null,
+                        created_by: file.created_by || getCurrentActorName(),
+                        created_at: file.created_at || new Date().toISOString()
+                    })).filter(file => file.file_name && file.file_data);
+
+                    if (rows.length) {
+                        const { data: migratedFiles, error: migrateError } = await client
+                            .from('admin_print_files')
+                            .insert(rows)
+                            .select('id, title, file_name, mime_type, file_size, file_data, notes, created_by, created_at');
+                        if (!migrateError) {
+                            localStorage.removeItem(ADMIN_PRINT_FILES_KEY);
+                            return [...(migratedFiles || []), ...(files || [])]
+                                .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+                        }
+                        console.warn('Nao foi possivel migrar impressos locais:', migrateError.message || migrateError);
+                    }
+                }
+
+                return files || [];
+            } catch (error) {
+                adminPrintFilesRemoteAvailable = false;
+                console.warn('Tabela de impressos indisponivel, usando armazenamento local:', error.message || error);
+                return getLocalAdminPrintFiles();
+            }
+        }
+
         async function loadData() {
             if (loadDataInProgress) {
                 loadDataQueued = true;
@@ -4106,8 +4166,11 @@
                 const adminNoticeTodos = canManageDevices()
                     ? await fetchAdminNoticeTodoItems()
                     : [];
+                const adminPrintFiles = canManageDevices()
+                    ? await fetchAdminPrintFiles()
+                    : [];
 
-                data = { classes, teachers, devices, loans, loanDevices, deviceMaintenanceHistory, deviceChangeHistory, userProfiles, adminNoticeTodos };
+                data = { classes, teachers, devices, loans, loanDevices, deviceMaintenanceHistory, deviceChangeHistory, userProfiles, adminNoticeTodos, adminPrintFiles };
                 updateAll();
                 await verifyDeviceSchema();
                 await verifyDeviceLabelSchema();
@@ -4409,6 +4472,10 @@
                                     <i class="fas fa-bullhorn"></i>
                                     Avisos <span id="adminNoticeCount">0</span>
                                 </button>
+                                <button type="button" class="btn btn-small btn-secondary" id="adminPrintTab" onclick="setAdminNoticeTodoTab('print')">
+                                    <i class="fas fa-print"></i>
+                                    Impressos <span id="adminPrintCount">0</span>
+                                </button>
                             </div>
                         </div>
 
@@ -4454,6 +4521,25 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-plus"></i>
                                 Adicionar
+                            </button>
+                        </form>
+
+                        <form id="adminPrintFileForm" class="admin-workspace-form" onsubmit="addAdminPrintFile(event)" style="display: none;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Titulo</label>
+                                <input class="form-input" id="adminPrintFileTitle" type="text" maxlength="120" placeholder="Ex: Regras da sala de informatica" required>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Arquivo</label>
+                                <input class="form-input" id="adminPrintFileInput" type="file" accept=".pdf,image/*,.txt,.doc,.docx" required>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Observacao</label>
+                                <input class="form-input" id="adminPrintFileNotes" type="text" maxlength="160" placeholder="Opcional">
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i>
+                                Salvar
                             </button>
                         </form>
 
@@ -4508,7 +4594,7 @@
         }
 
         function setAdminNoticeTodoTab(tab) {
-            adminNoticeTodoTab = tab === 'notice' ? 'notice' : 'todo';
+            adminNoticeTodoTab = ['notice', 'todo', 'print'].includes(tab) ? tab : 'todo';
             updateAdminNoticeTodoPanel();
         }
 
@@ -4637,19 +4723,210 @@
             updateAdminNoticeTodoPanel();
         }
 
+        function getAdminPrintFiles() {
+            if (adminPrintFilesRemoteAvailable === true) {
+                return data.adminPrintFiles || [];
+            }
+            if (Array.isArray(data.adminPrintFiles) && data.adminPrintFiles.length) {
+                return data.adminPrintFiles;
+            }
+            return getLocalAdminPrintFiles();
+        }
+
+        function saveAdminPrintFiles(files) {
+            data.adminPrintFiles = files;
+            localStorage.setItem(ADMIN_PRINT_FILES_KEY, JSON.stringify(files));
+        }
+
+        function formatFileSize(bytes) {
+            const size = Number(bytes || 0);
+            if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+            if (size >= 1024) return `${Math.round(size / 1024)} KB`;
+            return `${size} B`;
+        }
+
+        function readFileAsDataUrl(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('Nao foi possivel ler o arquivo.'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function addAdminPrintFile(event) {
+            event.preventDefault();
+            if (!canManageDevices()) return;
+
+            const titleInput = document.getElementById('adminPrintFileTitle');
+            const fileInput = document.getElementById('adminPrintFileInput');
+            const notesInput = document.getElementById('adminPrintFileNotes');
+            const file = fileInput?.files?.[0];
+            const title = titleInput?.value?.trim();
+
+            if (!title || !file) {
+                alert('Informe o titulo e selecione um arquivo.');
+                return;
+            }
+
+            if (file.size > ADMIN_PRINT_FILE_MAX_BYTES) {
+                alert('Arquivo muito grande. Use arquivos de ate 4 MB.');
+                return;
+            }
+
+            let pendingFile = null;
+            try {
+                const fileData = await readFileAsDataUrl(file);
+                const newFile = {
+                    id: Date.now(),
+                    title,
+                    file_name: file.name,
+                    mime_type: file.type || 'application/octet-stream',
+                    file_size: file.size,
+                    file_data: fileData,
+                    notes: notesInput?.value?.trim() || null,
+                    created_by: getCurrentActorName(),
+                    created_at: new Date().toISOString()
+                };
+                pendingFile = newFile;
+
+                if (adminPrintFilesRemoteAvailable !== false) {
+                    const { data: insertedFile, error } = await client
+                        .from('admin_print_files')
+                        .insert({
+                            title: newFile.title,
+                            file_name: newFile.file_name,
+                            mime_type: newFile.mime_type,
+                            file_size: newFile.file_size,
+                            file_data: newFile.file_data,
+                            notes: newFile.notes,
+                            created_by: newFile.created_by
+                        })
+                        .select('id, title, file_name, mime_type, file_size, file_data, notes, created_by, created_at')
+                        .single();
+                    if (error) throw error;
+                    adminPrintFilesRemoteAvailable = true;
+                    data.adminPrintFiles = [insertedFile, ...(data.adminPrintFiles || [])];
+                    localStorage.removeItem(ADMIN_PRINT_FILES_KEY);
+                } else {
+                    saveAdminPrintFiles([newFile, ...getAdminPrintFiles()]);
+                }
+
+                if (titleInput) titleInput.value = '';
+                if (fileInput) fileInput.value = '';
+                if (notesInput) notesInput.value = '';
+                updateAdminNoticeTodoPanel();
+            } catch (error) {
+                adminPrintFilesRemoteAvailable = false;
+                if (pendingFile) {
+                    saveAdminPrintFiles([pendingFile, ...getAdminPrintFiles()]);
+                    if (titleInput) titleInput.value = '';
+                    if (fileInput) fileInput.value = '';
+                    if (notesInput) notesInput.value = '';
+                    updateAdminNoticeTodoPanel();
+                    console.warn('Nao foi possivel salvar impresso no Supabase, salvando localmente:', error.message || error);
+                    return;
+                }
+                alert('Nao foi possivel salvar o arquivo: ' + error.message);
+            }
+        }
+
+        async function deleteAdminPrintFile(fileId) {
+            if (!canManageDevices()) return;
+            if (!confirm('Remover este arquivo de impressao?')) return;
+
+            const removeLocalFile = () => {
+                const files = getAdminPrintFiles()
+                    .filter(file => parseInt(file.id) !== parseInt(fileId));
+                saveAdminPrintFiles(files);
+            };
+
+            if (adminPrintFilesRemoteAvailable === true) {
+                try {
+                    const { error } = await client
+                        .from('admin_print_files')
+                        .delete()
+                        .eq('id', parseInt(fileId));
+                    if (error) throw error;
+                    data.adminPrintFiles = (data.adminPrintFiles || [])
+                        .filter(file => parseInt(file.id) !== parseInt(fileId));
+                } catch (error) {
+                    console.error('Erro ao remover arquivo:', error);
+                    alert('Erro ao remover arquivo: ' + error.message);
+                }
+            } else {
+                removeLocalFile();
+            }
+
+            updateAdminNoticeTodoPanel();
+        }
+
+        function openAdminPrintFile(fileId, shouldPrint = false) {
+            const file = getAdminPrintFiles().find(item => parseInt(item.id) === parseInt(fileId));
+            if (!file?.file_data) return;
+
+            const title = escapeHtml(file.title || file.file_name || 'Arquivo');
+            const fileName = escapeHtml(file.file_name || 'arquivo');
+            const win = window.open('', '_blank');
+            if (!win) {
+                alert('Permita pop-ups para abrir o arquivo.');
+                return;
+            }
+
+            if ((file.mime_type || '').startsWith('image/')) {
+                win.document.write(`
+                    <html><head><title>${title}</title></head>
+                    <body style="margin:0; display:flex; min-height:100vh; align-items:center; justify-content:center;">
+                        <img src="${file.file_data}" alt="${fileName}" style="max-width:100%; max-height:100vh;">
+                        <script>
+                            window.onload = function() { ${shouldPrint ? 'window.print();' : ''} };
+                        <\/script>
+                    </body></html>
+                `);
+                win.document.close();
+                return;
+            }
+
+            if ((file.mime_type || '').includes('pdf')) {
+                win.location.href = file.file_data;
+                if (shouldPrint) {
+                    setTimeout(() => {
+                        try { win.print(); } catch (error) {}
+                    }, 1000);
+                }
+                return;
+            }
+
+            win.document.write(`
+                <html><head><title>${title}</title></head>
+                <body style="font-family: Arial, sans-serif; padding: 24px;">
+                    <h1>${title}</h1>
+                    <p>Arquivo: ${fileName}</p>
+                    <p>Use o botao abaixo para baixar/abrir o arquivo e imprimir pelo aplicativo correspondente.</p>
+                    <a href="${file.file_data}" download="${fileName}" style="display:inline-block; padding:12px 16px; background:#1e40af; color:white; text-decoration:none; border-radius:8px;">Baixar arquivo</a>
+                </body></html>
+            `);
+            win.document.close();
+        }
+
         function updateAdminNoticeTodoPanel() {
             const list = document.getElementById('adminNoticeTodoList');
             const todoTab = document.getElementById('adminTodoTab');
             const noticeTab = document.getElementById('adminNoticeTab');
+            const printTab = document.getElementById('adminPrintTab');
             const typeInput = document.getElementById('adminNoticeTodoType');
+            const noticeTodoForm = document.getElementById('adminNoticeTodoForm');
+            const printFileForm = document.getElementById('adminPrintFileForm');
             const todoCount = document.getElementById('adminTodoCount');
             const noticeCount = document.getElementById('adminNoticeCount');
+            const printCount = document.getElementById('adminPrintCount');
             const todoOpenCount = document.getElementById('adminTodoOpenCount');
             const todoDoneCount = document.getElementById('adminTodoDoneCount');
             const highPriorityCount = document.getElementById('adminHighPriorityCount');
             if (!list) return;
 
             const allItems = getAdminNoticeTodoItems();
+            const printFiles = getAdminPrintFiles();
             const todos = allItems.filter(item => item.type === 'todo');
             const notices = allItems.filter(item => item.type === 'notice');
             const openTodos = todos.filter(item => !item.done);
@@ -4658,19 +4935,72 @@
 
             if (todoCount) todoCount.textContent = todos.length;
             if (noticeCount) noticeCount.textContent = notices.length;
+            if (printCount) printCount.textContent = printFiles.length;
             if (todoOpenCount) todoOpenCount.textContent = openTodos.length;
             if (todoDoneCount) todoDoneCount.textContent = doneTodos.length;
             if (highPriorityCount) highPriorityCount.textContent = highPriorityItems.length;
 
             if (typeInput) {
-                typeInput.value = adminNoticeTodoTab;
+                typeInput.value = adminNoticeTodoTab === 'notice' ? 'notice' : 'todo';
             }
 
-            if (todoTab && noticeTab) {
+            if (noticeTodoForm && printFileForm) {
+                noticeTodoForm.style.display = adminNoticeTodoTab === 'print' ? 'none' : '';
+                printFileForm.style.display = adminNoticeTodoTab === 'print' ? '' : 'none';
+            }
+
+            if (todoTab && noticeTab && printTab) {
                 todoTab.classList.toggle('btn-primary', adminNoticeTodoTab === 'todo');
                 todoTab.classList.toggle('btn-secondary', adminNoticeTodoTab !== 'todo');
                 noticeTab.classList.toggle('btn-primary', adminNoticeTodoTab === 'notice');
                 noticeTab.classList.toggle('btn-secondary', adminNoticeTodoTab !== 'notice');
+                printTab.classList.toggle('btn-primary', adminNoticeTodoTab === 'print');
+                printTab.classList.toggle('btn-secondary', adminNoticeTodoTab !== 'print');
+            }
+
+            if (adminNoticeTodoTab === 'print') {
+                if (!printFiles.length) {
+                    list.innerHTML = `
+                        <div class="admin-empty">
+                            <div style="font-weight: 800; color: var(--text-dark); margin-bottom: 5px;">Nenhum impresso salvo</div>
+                            <div>Suba regras, avisos e documentos usados com frequencia para imprimir quando precisar.</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                list.innerHTML = printFiles.map(file => {
+                    const createdAt = file.created_at ? formatDateTimeBR(new Date(file.created_at)) : '';
+                    const createdBy = file.created_by ? `por ${escapeHtml(file.created_by)}` : '';
+                    const isPrintable = (file.mime_type || '').startsWith('image/') || (file.mime_type || '').includes('pdf');
+                    return `
+                        <div class="admin-workspace-item">
+                            <div class="alert-icon info"><i class="fas fa-file-lines"></i></div>
+                            <div>
+                                <div class="admin-workspace-item-title">${escapeHtml(file.title || file.file_name || 'Arquivo')}</div>
+                                <div class="admin-workspace-meta">
+                                    <span class="badge blue"><i class="fas fa-paperclip"></i> ${escapeHtml(file.file_name || '-')}</span>
+                                    <span class="badge gray">${escapeHtml(formatFileSize(file.file_size))}</span>
+                                    ${file.notes ? `<span><i class="fas fa-note-sticky"></i> ${escapeHtml(file.notes)}</span>` : ''}
+                                    <span><i class="fas fa-clock"></i> ${createdAt ? `Salvo em ${escapeHtml(createdAt)}` : 'Salvo recentemente'}</span>
+                                    ${createdBy ? `<span><i class="fas fa-user"></i> ${createdBy}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="admin-workspace-actions">
+                                <button type="button" class="btn btn-small btn-secondary" onclick="openAdminPrintFile(${parseInt(file.id)}, false)" title="Abrir">
+                                    <i class="fas fa-up-right-from-square"></i>
+                                </button>
+                                <button type="button" class="btn btn-small btn-primary" onclick="openAdminPrintFile(${parseInt(file.id)}, true)" title="${isPrintable ? 'Imprimir' : 'Baixar'}">
+                                    <i class="fas fa-${isPrintable ? 'print' : 'download'}"></i>
+                                </button>
+                                <button type="button" class="btn btn-small btn-secondary" onclick="deleteAdminPrintFile(${parseInt(file.id)})" title="Remover">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                return;
             }
 
             const items = allItems
