@@ -751,6 +751,10 @@
             margin-bottom: 14px;
         }
 
+        .admin-print-form {
+            grid-template-columns: minmax(160px, 1fr) minmax(220px, 1.4fr) minmax(160px, 1fr) auto;
+        }
+
         .admin-workspace-list {
             display: grid;
             gap: 10px;
@@ -765,6 +769,45 @@
             border-radius: 8px;
             padding: 14px;
             background: var(--surface);
+        }
+
+        .admin-print-item {
+            grid-template-columns: 112px 1fr auto;
+            align-items: stretch;
+        }
+
+        .admin-print-preview {
+            width: 112px;
+            min-height: 86px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            background: rgba(148, 163, 184, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .admin-print-preview img {
+            width: 100%;
+            height: 100%;
+            min-height: 86px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .admin-print-placeholder {
+            flex-direction: column;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .admin-print-placeholder i {
+            font-size: 24px;
+            color: #1e40af;
         }
 
         .admin-workspace-item.done {
@@ -2256,6 +2299,11 @@
                 grid-template-columns: 1fr;
             }
 
+            .admin-print-preview {
+                width: 100%;
+                min-height: 180px;
+            }
+
             .card-header .form-input,
             .card-header input[type="date"].form-input,
             .card-header select.form-input {
@@ -2403,6 +2451,10 @@
             <div class="nav-item" onclick="showScreen('teachers')" data-screen="teachers">
                 <i class="fas fa-user-tie"></i>
                 <span>Professores</span>
+            </div>
+            <div class="nav-item" onclick="showScreen('admin-prints')" data-screen="admin-prints" data-admin-only="true">
+                <i class="fas fa-print"></i>
+                <span>Impressos</span>
             </div>
             <div class="nav-item" onclick="showScreen('users')" data-screen="users" data-admin-only="true">
                 <i class="fas fa-user-shield"></i>
@@ -3297,6 +3349,53 @@
                         <tbody id="users-table"></tbody>
                     </table>
                     <div id="users-cards" class="simple-card-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Print Files Screen -->
+        <div id="admin-prints" class="screen">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Impressos</div>
+                    <div class="page-subtitle">Arquivos de avisos, regras e documentos prontos para imprimir</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="admin-workspace" style="border-top: 0; margin-top: 0; padding-top: 0;">
+                        <div class="admin-workspace-header">
+                            <div>
+                                <div class="admin-workspace-title">
+                                    <i class="fas fa-print"></i>
+                                    Avisos para impressao
+                                </div>
+                                <div class="admin-workspace-subtitle">Suba imagens, PDFs ou documentos usados com frequencia. Imagens ficam visiveis na lista automaticamente.</div>
+                            </div>
+                        </div>
+
+                        <form id="adminPrintFileForm" class="admin-workspace-form admin-print-form" onsubmit="addAdminPrintFile(event)">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Titulo</label>
+                                <input class="form-input" id="adminPrintFileTitle" type="text" maxlength="120" placeholder="Ex: Regras da sala de informatica" required>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Arquivo</label>
+                                <input class="form-input" id="adminPrintFileInput" type="file" accept=".pdf,image/*,.txt,.doc,.docx" required>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Observacao</label>
+                                <input class="form-input" id="adminPrintFileNotes" type="text" maxlength="160" placeholder="Opcional">
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i>
+                                Salvar
+                            </button>
+                        </form>
+
+                        <div id="adminPrintPageList" class="admin-workspace-list"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -4381,7 +4480,7 @@
             if (isAlunoAccess() && !['dashboard', 'loan', 'return', 'device-detail'].includes(screenId)) {
                 screenId = 'loan';
             }
-            if (screenId === 'users' && !canManageDevices()) {
+            if (['users', 'admin-prints'].includes(screenId) && !canManageDevices()) {
                 screenId = 'dashboard';
             }
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -4411,6 +4510,7 @@
             updateTeachersList();
             updateTeachersCards();
             updateUsersList();
+            updateAdminPrintPage();
             updateReturnSelect();
             applyRoleRestrictions();
         }
@@ -4472,10 +4572,6 @@
                                     <i class="fas fa-bullhorn"></i>
                                     Avisos <span id="adminNoticeCount">0</span>
                                 </button>
-                                <button type="button" class="btn btn-small btn-secondary" id="adminPrintTab" onclick="setAdminNoticeTodoTab('print')">
-                                    <i class="fas fa-print"></i>
-                                    Impressos <span id="adminPrintCount">0</span>
-                                </button>
                             </div>
                         </div>
 
@@ -4521,25 +4617,6 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-plus"></i>
                                 Adicionar
-                            </button>
-                        </form>
-
-                        <form id="adminPrintFileForm" class="admin-workspace-form" onsubmit="addAdminPrintFile(event)" style="display: none;">
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label>Titulo</label>
-                                <input class="form-input" id="adminPrintFileTitle" type="text" maxlength="120" placeholder="Ex: Regras da sala de informatica" required>
-                            </div>
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label>Arquivo</label>
-                                <input class="form-input" id="adminPrintFileInput" type="file" accept=".pdf,image/*,.txt,.doc,.docx" required>
-                            </div>
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label>Observacao</label>
-                                <input class="form-input" id="adminPrintFileNotes" type="text" maxlength="160" placeholder="Opcional">
-                            </div>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-upload"></i>
-                                Salvar
                             </button>
                         </form>
 
@@ -4594,7 +4671,7 @@
         }
 
         function setAdminNoticeTodoTab(tab) {
-            adminNoticeTodoTab = ['notice', 'todo', 'print'].includes(tab) ? tab : 'todo';
+            adminNoticeTodoTab = ['notice', 'todo'].includes(tab) ? tab : 'todo';
             updateAdminNoticeTodoPanel();
         }
 
@@ -4815,7 +4892,7 @@
                 if (titleInput) titleInput.value = '';
                 if (fileInput) fileInput.value = '';
                 if (notesInput) notesInput.value = '';
-                updateAdminNoticeTodoPanel();
+                updateAdminPrintPage();
             } catch (error) {
                 adminPrintFilesRemoteAvailable = false;
                 if (pendingFile) {
@@ -4823,7 +4900,7 @@
                     if (titleInput) titleInput.value = '';
                     if (fileInput) fileInput.value = '';
                     if (notesInput) notesInput.value = '';
-                    updateAdminNoticeTodoPanel();
+                    updateAdminPrintPage();
                     console.warn('Nao foi possivel salvar impresso no Supabase, salvando localmente:', error.message || error);
                     return;
                 }
@@ -4858,7 +4935,7 @@
                 removeLocalFile();
             }
 
-            updateAdminNoticeTodoPanel();
+            updateAdminPrintPage();
         }
 
         function openAdminPrintFile(fileId, shouldPrint = false) {
@@ -4909,24 +4986,89 @@
             win.document.close();
         }
 
+        function renderAdminPrintFilesList(containerId) {
+            const list = document.getElementById(containerId);
+            if (!list) return;
+
+            const printFiles = getAdminPrintFiles();
+            if (!canManageDevices()) {
+                list.innerHTML = `
+                    <div class="admin-empty">
+                        <div style="font-weight: 800; color: var(--text-dark); margin-bottom: 5px;">Acesso restrito</div>
+                        <div>Apenas administradores podem gerenciar impressos.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            if (!printFiles.length) {
+                list.innerHTML = `
+                    <div class="admin-empty">
+                        <div style="font-weight: 800; color: var(--text-dark); margin-bottom: 5px;">Nenhum impresso salvo</div>
+                        <div>Suba regras, avisos e documentos usados com frequencia para imprimir quando precisar.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = printFiles.map(file => {
+                const createdAt = file.created_at ? formatDateTimeBR(new Date(file.created_at)) : '';
+                const createdBy = file.created_by ? `por ${escapeHtml(file.created_by)}` : '';
+                const mimeType = file.mime_type || '';
+                const isImage = mimeType.startsWith('image/');
+                const isPdf = mimeType.includes('pdf');
+                const isPrintable = isImage || isPdf;
+                const typeLabel = isImage ? 'Imagem' : (isPdf ? 'PDF' : 'Arquivo');
+                const preview = isImage && file.file_data
+                    ? `<div class="admin-print-preview"><img src="${file.file_data}" alt="${escapeHtml(file.title || file.file_name || 'Impresso')}"></div>`
+                    : `<div class="admin-print-preview admin-print-placeholder"><i class="fas fa-${isPdf ? 'file-pdf' : 'file-lines'}"></i><span>${typeLabel}</span></div>`;
+
+                return `
+                    <div class="admin-workspace-item admin-print-item">
+                        ${preview}
+                        <div>
+                            <div class="admin-workspace-item-title">${escapeHtml(file.title || file.file_name || 'Arquivo')}</div>
+                            <div class="admin-workspace-meta">
+                                <span class="badge blue"><i class="fas fa-paperclip"></i> ${escapeHtml(file.file_name || '-')}</span>
+                                <span class="badge gray">${escapeHtml(formatFileSize(file.file_size))}</span>
+                                ${file.notes ? `<span><i class="fas fa-note-sticky"></i> ${escapeHtml(file.notes)}</span>` : ''}
+                                <span><i class="fas fa-clock"></i> ${createdAt ? `Salvo em ${escapeHtml(createdAt)}` : 'Salvo recentemente'}</span>
+                                ${createdBy ? `<span><i class="fas fa-user"></i> ${createdBy}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="admin-workspace-actions">
+                            <button type="button" class="btn btn-small btn-secondary" onclick="openAdminPrintFile(${parseInt(file.id)}, false)" title="Abrir">
+                                <i class="fas fa-up-right-from-square"></i>
+                            </button>
+                            <button type="button" class="btn btn-small btn-primary" onclick="openAdminPrintFile(${parseInt(file.id)}, true)" title="${isPrintable ? 'Imprimir' : 'Baixar'}">
+                                <i class="fas fa-${isPrintable ? 'print' : 'download'}"></i>
+                            </button>
+                            <button type="button" class="btn btn-small btn-secondary" onclick="deleteAdminPrintFile(${parseInt(file.id)})" title="Remover">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateAdminPrintPage() {
+            renderAdminPrintFilesList('adminPrintPageList');
+        }
+
         function updateAdminNoticeTodoPanel() {
             const list = document.getElementById('adminNoticeTodoList');
             const todoTab = document.getElementById('adminTodoTab');
             const noticeTab = document.getElementById('adminNoticeTab');
-            const printTab = document.getElementById('adminPrintTab');
             const typeInput = document.getElementById('adminNoticeTodoType');
-            const noticeTodoForm = document.getElementById('adminNoticeTodoForm');
-            const printFileForm = document.getElementById('adminPrintFileForm');
             const todoCount = document.getElementById('adminTodoCount');
             const noticeCount = document.getElementById('adminNoticeCount');
-            const printCount = document.getElementById('adminPrintCount');
             const todoOpenCount = document.getElementById('adminTodoOpenCount');
             const todoDoneCount = document.getElementById('adminTodoDoneCount');
             const highPriorityCount = document.getElementById('adminHighPriorityCount');
             if (!list) return;
 
             const allItems = getAdminNoticeTodoItems();
-            const printFiles = getAdminPrintFiles();
             const todos = allItems.filter(item => item.type === 'todo');
             const notices = allItems.filter(item => item.type === 'notice');
             const openTodos = todos.filter(item => !item.done);
@@ -4935,7 +5077,6 @@
 
             if (todoCount) todoCount.textContent = todos.length;
             if (noticeCount) noticeCount.textContent = notices.length;
-            if (printCount) printCount.textContent = printFiles.length;
             if (todoOpenCount) todoOpenCount.textContent = openTodos.length;
             if (todoDoneCount) todoDoneCount.textContent = doneTodos.length;
             if (highPriorityCount) highPriorityCount.textContent = highPriorityItems.length;
@@ -4944,63 +5085,11 @@
                 typeInput.value = adminNoticeTodoTab === 'notice' ? 'notice' : 'todo';
             }
 
-            if (noticeTodoForm && printFileForm) {
-                noticeTodoForm.style.display = adminNoticeTodoTab === 'print' ? 'none' : '';
-                printFileForm.style.display = adminNoticeTodoTab === 'print' ? '' : 'none';
-            }
-
-            if (todoTab && noticeTab && printTab) {
+            if (todoTab && noticeTab) {
                 todoTab.classList.toggle('btn-primary', adminNoticeTodoTab === 'todo');
                 todoTab.classList.toggle('btn-secondary', adminNoticeTodoTab !== 'todo');
                 noticeTab.classList.toggle('btn-primary', adminNoticeTodoTab === 'notice');
                 noticeTab.classList.toggle('btn-secondary', adminNoticeTodoTab !== 'notice');
-                printTab.classList.toggle('btn-primary', adminNoticeTodoTab === 'print');
-                printTab.classList.toggle('btn-secondary', adminNoticeTodoTab !== 'print');
-            }
-
-            if (adminNoticeTodoTab === 'print') {
-                if (!printFiles.length) {
-                    list.innerHTML = `
-                        <div class="admin-empty">
-                            <div style="font-weight: 800; color: var(--text-dark); margin-bottom: 5px;">Nenhum impresso salvo</div>
-                            <div>Suba regras, avisos e documentos usados com frequencia para imprimir quando precisar.</div>
-                        </div>
-                    `;
-                    return;
-                }
-
-                list.innerHTML = printFiles.map(file => {
-                    const createdAt = file.created_at ? formatDateTimeBR(new Date(file.created_at)) : '';
-                    const createdBy = file.created_by ? `por ${escapeHtml(file.created_by)}` : '';
-                    const isPrintable = (file.mime_type || '').startsWith('image/') || (file.mime_type || '').includes('pdf');
-                    return `
-                        <div class="admin-workspace-item">
-                            <div class="alert-icon info"><i class="fas fa-file-lines"></i></div>
-                            <div>
-                                <div class="admin-workspace-item-title">${escapeHtml(file.title || file.file_name || 'Arquivo')}</div>
-                                <div class="admin-workspace-meta">
-                                    <span class="badge blue"><i class="fas fa-paperclip"></i> ${escapeHtml(file.file_name || '-')}</span>
-                                    <span class="badge gray">${escapeHtml(formatFileSize(file.file_size))}</span>
-                                    ${file.notes ? `<span><i class="fas fa-note-sticky"></i> ${escapeHtml(file.notes)}</span>` : ''}
-                                    <span><i class="fas fa-clock"></i> ${createdAt ? `Salvo em ${escapeHtml(createdAt)}` : 'Salvo recentemente'}</span>
-                                    ${createdBy ? `<span><i class="fas fa-user"></i> ${createdBy}</span>` : ''}
-                                </div>
-                            </div>
-                            <div class="admin-workspace-actions">
-                                <button type="button" class="btn btn-small btn-secondary" onclick="openAdminPrintFile(${parseInt(file.id)}, false)" title="Abrir">
-                                    <i class="fas fa-up-right-from-square"></i>
-                                </button>
-                                <button type="button" class="btn btn-small btn-primary" onclick="openAdminPrintFile(${parseInt(file.id)}, true)" title="${isPrintable ? 'Imprimir' : 'Baixar'}">
-                                    <i class="fas fa-${isPrintable ? 'print' : 'download'}"></i>
-                                </button>
-                                <button type="button" class="btn btn-small btn-secondary" onclick="deleteAdminPrintFile(${parseInt(file.id)})" title="Remover">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                return;
             }
 
             const items = allItems
