@@ -1219,6 +1219,167 @@
             min-height: 48px;
         }
 
+        .organization-layout {
+            display: grid;
+            grid-template-columns: minmax(260px, 340px) 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .organization-panel,
+        .organization-workspace {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .organization-panel-header,
+        .organization-toolbar,
+        .organization-actions,
+        .organization-summary {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .organization-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .organization-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text-dark);
+        }
+
+        .organization-subtitle {
+            margin-top: 3px;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .organization-group-list {
+            display: grid;
+            gap: 8px;
+            padding: 12px;
+        }
+
+        .organization-group-button {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--text-dark);
+            padding: 12px;
+            display: grid;
+            gap: 6px;
+            text-align: left;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .organization-group-button:hover,
+        .organization-group-button.active {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.08);
+        }
+
+        .organization-group-name {
+            font-size: 14px;
+            font-weight: 800;
+            overflow-wrap: anywhere;
+        }
+
+        .organization-group-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .organization-toolbar {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr 1fr;
+            gap: 12px;
+        }
+
+        .organization-toolbar .form-group {
+            margin-bottom: 0;
+        }
+
+        .organization-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .organization-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .organization-device-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 12px;
+            padding: 16px;
+        }
+
+        .organization-device-item {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px;
+            align-items: start;
+            background: var(--surface);
+            cursor: pointer;
+        }
+
+        .organization-device-item.selected {
+            border-color: #2563eb;
+            background: rgba(37, 99, 235, 0.08);
+        }
+
+        .organization-device-item input {
+            margin-top: 3px;
+        }
+
+        .organization-device-title {
+            font-weight: 800;
+            color: var(--text-dark);
+            line-height: 1.35;
+            overflow-wrap: anywhere;
+        }
+
+        .organization-device-meta {
+            margin-top: 6px;
+            display: grid;
+            gap: 4px;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 650;
+        }
+
+        @media (max-width: 900px) {
+            .organization-layout,
+            .organization-toolbar {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .report-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2444,6 +2605,10 @@
                 <i class="fas fa-laptop"></i>
                 <span>Dispositivos</span>
             </div>
+            <div class="nav-item" onclick="showScreen('organization')" data-screen="organization" data-admin-only="true">
+                <i class="fas fa-layer-group"></i>
+                <span>Organizacao</span>
+            </div>
             <div class="nav-item" onclick="showScreen('classes')" data-screen="classes">
                 <i class="fas fa-users"></i>
                 <span>Turmas</span>
@@ -3124,6 +3289,72 @@
             </div>
         </div>
 
+        <!-- Organization Screen -->
+        <div id="organization" class="screen">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Organizacao</div>
+                    <div class="page-subtitle">Monte bases, anexos e salas selecionando os dispositivos em lote</div>
+                </div>
+            </div>
+
+            <div class="organization-layout">
+                <section class="organization-panel">
+                    <div class="organization-panel-header">
+                        <div>
+                            <div class="organization-title">Agrupamentos</div>
+                            <div class="organization-subtitle">Clique em uma base ou sala para editar o conteudo dela</div>
+                        </div>
+                        <span class="badge blue" id="organizationGroupCount">0</span>
+                    </div>
+                    <div class="organization-group-list" id="organizationGroupList"></div>
+                </section>
+
+                <section class="organization-workspace">
+                    <div class="organization-toolbar">
+                        <div class="form-group">
+                            <label class="form-label">Base, anexo ou sala</label>
+                            <input type="text" id="organizationGroupName" class="form-input" list="deviceGroupSuggestions" placeholder="Ex: Base 1, Anexo, Sala 17" oninput="handleOrganizationGroupNameInput()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tipo</label>
+                            <select id="organizationTypeFilter" class="form-input" onchange="renderOrganizationDevices()">
+                                <option value="">Todos os tipos</option>
+                                <option value="Notebook">Notebook</option>
+                                <option value="Notebook Positivo (Novos)">Notebook Positivo (Novos)</option>
+                                <option value="Notebook Ultra">Notebook Ultra</option>
+                                <option value="Tablet">Tablet</option>
+                                <option value="Desktop">Desktop</option>
+                                <option value="Desktop Gestao">Desktop Gestao</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Buscar</label>
+                            <input type="text" id="organizationSearchInput" class="form-input" placeholder="Contador, patrimonio, serie ou ID" oninput="renderOrganizationDevices()">
+                        </div>
+                    </div>
+
+                    <div class="organization-actions">
+                        <button class="btn btn-secondary" type="button" onclick="selectVisibleOrganizationDevices(true)">
+                            <i class="fas fa-check-square"></i>
+                            Selecionar visiveis
+                        </button>
+                        <button class="btn btn-secondary" type="button" onclick="selectVisibleOrganizationDevices(false)">
+                            <i class="fas fa-square"></i>
+                            Limpar visiveis
+                        </button>
+                        <button class="btn btn-primary" type="button" onclick="saveOrganizationGroup()">
+                            <i class="fas fa-save"></i>
+                            Salvar organizacao
+                        </button>
+                    </div>
+
+                    <div class="organization-summary" id="organizationSummary"></div>
+                    <div class="organization-device-list" id="organizationDeviceList"></div>
+                </section>
+            </div>
+        </div>
+
         <!-- Device Detail Screen -->
         <div id="device-detail" class="screen">
             <div class="page-header">
@@ -3535,6 +3766,8 @@
         let deviceStatusFilter = '';
         let selectedDeviceId = null;
         let selectedLabelDeviceIds = new Set();
+        let organizationSelectedDeviceIds = new Set();
+        let organizationActiveGroupName = '';
         let pendingDeviceDetailId = null;
         const DEVICE_MAINTENANCE_HISTORY_KEY = 'deviceMaintenanceHistory';
         const ADMIN_NOTICE_TODO_KEY = 'adminNoticeTodoItems';
@@ -3790,7 +4023,7 @@
         }
 
         function applyRoleRestrictions() {
-            const hiddenForAluno = ['history', 'active', 'maintenance', 'devices', 'classes', 'teachers'];
+            const hiddenForAluno = ['history', 'active', 'maintenance', 'devices', 'organization', 'classes', 'teachers'];
             hiddenForAluno.forEach(screenId => {
                 const navItem = document.querySelector(`.nav-item[data-screen="${screenId}"]`);
                 if (navItem) {
@@ -4498,7 +4731,7 @@
             if (isAlunoAccess() && !['dashboard', 'loan', 'return', 'device-detail'].includes(screenId)) {
                 screenId = 'loan';
             }
-            if (['users', 'admin-prints'].includes(screenId) && !canManageDevices()) {
+            if (['users', 'admin-prints', 'organization'].includes(screenId) && !canManageDevices()) {
                 screenId = 'dashboard';
             }
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -4522,6 +4755,7 @@
             updateHistoryTable();
             updateDevicesTable();
             updateDevicesCards();
+            updateOrganizationScreen();
             renderSelectedDeviceDetails();
             updateClassesList();
             updateClassesCards();
@@ -5373,10 +5607,20 @@
                 .filter(d => !isFixedDevice(d.type))
                 .map(d => d.group)
                 .filter(Boolean)
-            )];
+            )].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }));
             let groupOptions = '<option value="">Selecione um agrupamento</option>';
-            groups.forEach(g => groupOptions += `<option value="${g}">${g}</option>`);
+            groups.forEach(g => {
+                const availableCount = data.devices.filter(d => !isFixedDevice(d.type) && d.group === g && d.status === 'DisponÃ­vel').length;
+                groupOptions += `<option value="${escapeHtml(g)}">${escapeHtml(g)}${availableCount ? ` (${availableCount} disponiveis)` : ''}</option>`;
+            });
             document.getElementById('loanGroup').innerHTML = groupOptions;
+
+            const datalist = document.getElementById('deviceGroupSuggestions');
+            if (datalist) {
+                const baseSuggestions = ['Fora', 'Base 1', 'Base 2', 'Base 3', 'Anexo', 'Sala de Informatica'];
+                const suggestions = [...new Set([...baseSuggestions, ...groups])];
+                datalist.innerHTML = suggestions.map(group => `<option value="${escapeHtml(group)}"></option>`).join('');
+            }
         }
 
         function getDeviceTypeOrder(type) {
@@ -5447,6 +5691,14 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#039;');
+        }
+
+        function escapeJsString(value) {
+            return (value ?? '').toString()
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/\n/g, '\\n')
+                .replace(/\r/g, '');
         }
 
         function renderDetailInfoItem(label, value) {
@@ -5872,6 +6124,259 @@
 
                 return searchableValues.includes(searchTerm);
             });
+        }
+
+        function getDeviceIdentityLabel(device) {
+            return [
+                device.counter_number ? `Contador ${device.counter_number}` : '',
+                device.patrimony ? `Patrimonio ${device.patrimony}` : '',
+                device.serial_number ? `Serie ${device.serial_number}` : '',
+                `ID ${device.id}`
+            ].filter(Boolean).join(' - ');
+        }
+
+        function getOrganizationGroups() {
+            const map = new Map();
+            data.devices.forEach(device => {
+                const groupName = (device.group || 'Sem agrupamento').trim();
+                if (!map.has(groupName)) {
+                    map.set(groupName, {
+                        name: groupName,
+                        total: 0,
+                        available: 0,
+                        inUse: 0,
+                        types: new Set()
+                    });
+                }
+                const item = map.get(groupName);
+                item.total += 1;
+                if (device.status === 'DisponÃ­vel') item.available += 1;
+                if (device.status === 'Em uso') item.inUse += 1;
+                item.types.add(device.type || 'Outros');
+            });
+
+            return [...map.values()]
+                .map(item => ({ ...item, types: [...item.types].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })) }))
+                .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true, sensitivity: 'base' }));
+        }
+
+        function getVisibleOrganizationDevices() {
+            const selectedType = document.getElementById('organizationTypeFilter')?.value || '';
+            const searchTerm = normalizeDeviceText(document.getElementById('organizationSearchInput')?.value || '');
+            return sortDevicesForDisplay(data.devices).filter(device => {
+                if (selectedType && normalizeDeviceText(device.type) !== normalizeDeviceText(selectedType)) return false;
+                if (!searchTerm) return true;
+
+                const searchableValues = [
+                    device.id,
+                    device.serial_number,
+                    device.counter_number,
+                    device.patrimony,
+                    device.group,
+                    device.type,
+                    device.status
+                ].map(normalizeDeviceText).join(' ');
+                return searchableValues.includes(searchTerm);
+            });
+        }
+
+        function setOrganizationGroup(groupName) {
+            organizationActiveGroupName = (groupName || '').trim();
+            const input = document.getElementById('organizationGroupName');
+            if (input) input.value = organizationActiveGroupName;
+            organizationSelectedDeviceIds = new Set(
+                data.devices
+                    .filter(device => normalizeDeviceText(device.group) === normalizeDeviceText(organizationActiveGroupName))
+                    .map(device => parseInt(device.id))
+            );
+            updateOrganizationScreen();
+        }
+
+        function handleOrganizationGroupNameInput() {
+            const value = document.getElementById('organizationGroupName')?.value || '';
+            organizationActiveGroupName = value.trim();
+            renderOrganizationGroups();
+            renderOrganizationSummary();
+        }
+
+        function toggleOrganizationDevice(deviceId, checked) {
+            const parsedId = parseInt(deviceId);
+            if (checked) {
+                organizationSelectedDeviceIds.add(parsedId);
+            } else {
+                organizationSelectedDeviceIds.delete(parsedId);
+            }
+            renderOrganizationSummary();
+            const item = document.querySelector(`[data-organization-device-id="${parsedId}"]`);
+            if (item) item.classList.toggle('selected', checked);
+        }
+
+        function selectVisibleOrganizationDevices(checked) {
+            getVisibleOrganizationDevices().forEach(device => {
+                const parsedId = parseInt(device.id);
+                if (checked) {
+                    organizationSelectedDeviceIds.add(parsedId);
+                } else {
+                    organizationSelectedDeviceIds.delete(parsedId);
+                }
+            });
+            renderOrganizationDevices();
+            renderOrganizationSummary();
+        }
+
+        function renderOrganizationGroups() {
+            const container = document.getElementById('organizationGroupList');
+            const count = document.getElementById('organizationGroupCount');
+            if (!container) return;
+
+            const groups = getOrganizationGroups();
+            if (count) count.textContent = groups.length;
+
+            if (!groups.length) {
+                container.innerHTML = '<div class="admin-empty">Nenhum agrupamento encontrado.</div>';
+                return;
+            }
+
+            const activeName = normalizeDeviceText(organizationActiveGroupName);
+            container.innerHTML = groups.map(group => {
+                const isActive = normalizeDeviceText(group.name) === activeName;
+                return `
+                    <button type="button" class="organization-group-button ${isActive ? 'active' : ''}" onclick="setOrganizationGroup(${escapeHtml(JSON.stringify(group.name))})">
+                        <span class="organization-group-name">${escapeHtml(group.name)}</span>
+                        <span class="organization-group-meta">
+                            <span>${group.total} disp.</span>
+                            <span>${group.available} disponiveis</span>
+                            ${group.inUse ? `<span>${group.inUse} em uso</span>` : ''}
+                        </span>
+                        <span class="organization-group-meta">${escapeHtml(group.types.join(', '))}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderOrganizationSummary() {
+            const container = document.getElementById('organizationSummary');
+            if (!container) return;
+
+            const groupName = (document.getElementById('organizationGroupName')?.value || organizationActiveGroupName || '').trim();
+            const selectedDevices = data.devices.filter(device => organizationSelectedDeviceIds.has(parseInt(device.id)));
+            const selectedAvailable = selectedDevices.filter(device => device.status === 'DisponÃ­vel').length;
+            const selectedByType = selectedDevices.reduce((acc, device) => {
+                acc[device.type || 'Outros'] = (acc[device.type || 'Outros'] || 0) + 1;
+                return acc;
+            }, {});
+            const typeText = Object.entries(selectedByType)
+                .map(([type, total]) => `${total} ${type}`)
+                .join(', ');
+
+            container.innerHTML = `
+                <span class="badge ${groupName ? 'blue' : 'gray'}">${groupName ? escapeHtml(groupName) : 'Informe um agrupamento'}</span>
+                <span>${selectedDevices.length} dispositivo(s) selecionado(s)</span>
+                <span>${selectedAvailable} disponivel(is) para emprestimo</span>
+                ${typeText ? `<span>${escapeHtml(typeText)}</span>` : ''}
+            `;
+        }
+
+        function renderOrganizationDevices() {
+            const container = document.getElementById('organizationDeviceList');
+            if (!container) return;
+
+            const devices = getVisibleOrganizationDevices();
+            if (!devices.length) {
+                container.innerHTML = '<div class="admin-empty" style="grid-column: 1 / -1;">Nenhum dispositivo encontrado.</div>';
+                renderOrganizationSummary();
+                return;
+            }
+
+            container.innerHTML = devices.map(device => {
+                const parsedId = parseInt(device.id);
+                const checked = organizationSelectedDeviceIds.has(parsedId);
+                const badgeColor = getDeviceStatusBadgeColor(device.status);
+                return `
+                    <label class="organization-device-item ${checked ? 'selected' : ''}" data-organization-device-id="${parsedId}">
+                        <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleOrganizationDevice(${parsedId}, this.checked)">
+                        <span>
+                            <span class="organization-device-title">
+                                <i class="fas fa-${getDeviceIcon(device.type)}"></i>
+                                ${escapeHtml(device.type || '-')}
+                            </span>
+                            <span class="organization-device-meta">
+                                <span>${escapeHtml(getDeviceIdentityLabel(device))}</span>
+                                <span>Atual: ${escapeHtml(device.group || '-')}</span>
+                                <span><span class="badge ${badgeColor}">${escapeHtml(device.status || '-')}</span></span>
+                            </span>
+                        </span>
+                    </label>
+                `;
+            }).join('');
+            renderOrganizationSummary();
+        }
+
+        function updateOrganizationScreen() {
+            const input = document.getElementById('organizationGroupName');
+            if (!input) return;
+
+            if (!organizationActiveGroupName) {
+                const firstGroup = getOrganizationGroups()[0]?.name || '';
+                if (firstGroup) {
+                    organizationActiveGroupName = firstGroup;
+                    input.value = firstGroup;
+                    organizationSelectedDeviceIds = new Set(
+                        data.devices
+                            .filter(device => normalizeDeviceText(device.group) === normalizeDeviceText(firstGroup))
+                            .map(device => parseInt(device.id))
+                    );
+                }
+            } else if (!input.value) {
+                input.value = organizationActiveGroupName;
+            }
+
+            renderOrganizationGroups();
+            renderOrganizationDevices();
+        }
+
+        async function saveOrganizationGroup() {
+            if (!requireDeviceAdminPermission()) return;
+
+            const groupName = (document.getElementById('organizationGroupName')?.value || '').trim();
+            if (!groupName) {
+                alert('Informe o nome da base, anexo ou sala.');
+                document.getElementById('organizationGroupName')?.focus();
+                return;
+            }
+
+            const selectedIds = [...organizationSelectedDeviceIds];
+            if (!selectedIds.length) {
+                alert('Selecione ao menos um dispositivo para colocar neste agrupamento.');
+                return;
+            }
+
+            const selectedDevices = data.devices.filter(device => selectedIds.includes(parseInt(device.id)));
+            const devicesToUpdate = selectedDevices.filter(device => device.group !== groupName);
+            if (!devicesToUpdate.length) {
+                alert('Os dispositivos selecionados ja estao neste agrupamento.');
+                return;
+            }
+
+            try {
+                const { error } = await client
+                    .from('devices')
+                    .update({ group: groupName })
+                    .in('id', devicesToUpdate.map(device => device.id));
+                if (error) throw error;
+
+                await Promise.all(devicesToUpdate.map(device =>
+                    recordDeviceChangeEvent('updated', device, device, { ...device, group: groupName }, `Movido para ${groupName} pela organizacao`)
+                ));
+
+                organizationActiveGroupName = groupName;
+                organizationSelectedDeviceIds = new Set(selectedIds.map(id => parseInt(id)));
+                await showAppAlert(`${devicesToUpdate.length} dispositivo(s) organizados em ${groupName}.`, { type: 'success' });
+                await loadData();
+            } catch (error) {
+                console.error('Erro ao salvar organizacao:', error);
+                alert('Erro ao salvar organizacao: ' + error.message);
+            }
         }
 
         function applyDeviceFilters() {
@@ -7208,6 +7713,10 @@
                 }
             } else {
                 groupName = document.getElementById('loanGroup').value;
+                if (!groupName) {
+                    alert('Selecione um agrupamento para emprestar a base completa.');
+                    return;
+                }
                 const loanableDevices = getAvailableDevicesForLoan(deviceType, Number.MAX_SAFE_INTEGER, groupName);
                 selectedLoanDevices = loanableDevices;
                 if (!loanableDevices.length) {
