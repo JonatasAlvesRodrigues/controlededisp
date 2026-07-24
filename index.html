@@ -6354,33 +6354,60 @@
             }
 
             const selectedIds = [...organizationSelectedDeviceIds];
-            if (!selectedIds.length) {
-                alert('Selecione ao menos um dispositivo para colocar neste agrupamento.');
+            const activeGroupName = (organizationActiveGroupName || '').trim();
+            if (!selectedIds.length && !activeGroupName) {
+                alert('Selecione ao menos um dispositivo ou clique em uma base/sala para organizar.');
                 return;
             }
 
             const selectedDevices = data.devices.filter(device => selectedIds.includes(parseInt(device.id)));
-            const devicesToUpdate = selectedDevices.filter(device => device.group !== groupName);
-            if (!devicesToUpdate.length) {
-                alert('Os dispositivos selecionados ja estao neste agrupamento.');
+            const devicesInActiveGroup = activeGroupName
+                ? data.devices.filter(device => normalizeDeviceText(device.group) === normalizeDeviceText(activeGroupName))
+                : [];
+            const selectedIdSet = new Set(selectedIds.map(id => parseInt(id)));
+            const devicesToMoveIntoGroup = selectedDevices.filter(device => device.group !== groupName);
+            const devicesToMoveOut = devicesInActiveGroup.filter(device =>
+                !selectedIdSet.has(parseInt(device.id)) &&
+                normalizeDeviceText(device.group) !== normalizeDeviceText('Fora')
+            );
+            const totalChanges = devicesToMoveIntoGroup.length + devicesToMoveOut.length;
+
+            if (!totalChanges) {
+                alert('Nenhuma alteracao para salvar nessa organizacao.');
                 return;
             }
 
             try {
-                const { error } = await client
-                    .from('devices')
-                    .update({ group: groupName })
-                    .in('id', devicesToUpdate.map(device => device.id));
-                if (error) throw error;
+                if (devicesToMoveIntoGroup.length) {
+                    const { error } = await client
+                        .from('devices')
+                        .update({ group: groupName })
+                        .in('id', devicesToMoveIntoGroup.map(device => device.id));
+                    if (error) throw error;
+                }
 
-                await Promise.all(devicesToUpdate.map(device =>
-                    recordDeviceChangeEvent('updated', device, device, { ...device, group: groupName }, `Movido para ${groupName} pela organizacao`)
-                ));
+                if (devicesToMoveOut.length) {
+                    const { error } = await client
+                        .from('devices')
+                        .update({ group: 'Fora' })
+                        .in('id', devicesToMoveOut.map(device => device.id));
+                    if (error) throw error;
+                }
+
+                await Promise.all([
+                    ...devicesToMoveIntoGroup.map(device =>
+                        recordDeviceChangeEvent('updated', device, device, { ...device, group: groupName }, `Movido para ${groupName} pela organizacao`)
+                    ),
+                    ...devicesToMoveOut.map(device =>
+                        recordDeviceChangeEvent('updated', device, device, { ...device, group: 'Fora' }, `Removido de ${activeGroupName} pela organizacao`)
+                    )
+                ]);
 
                 organizationActiveGroupName = groupName;
                 organizationDraftGroupName = groupName;
                 organizationSelectedDeviceIds = new Set(selectedIds.map(id => parseInt(id)));
-                await showAppAlert(`${devicesToUpdate.length} dispositivo(s) organizados em ${groupName}.`, { type: 'success' });
+                const outMessage = devicesToMoveOut.length ? ` ${devicesToMoveOut.length} removido(s) para Fora.` : '';
+                await showAppAlert(`${devicesToMoveIntoGroup.length} dispositivo(s) em ${groupName}.${outMessage}`, { type: 'success' });
                 await loadData();
             } catch (error) {
                 console.error('Erro ao salvar organizacao:', error);
