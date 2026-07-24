@@ -3343,6 +3343,10 @@
                             <i class="fas fa-square"></i>
                             Limpar visiveis
                         </button>
+                        <button class="btn btn-secondary" type="button" onclick="renameOrganizationGroup()">
+                            <i class="fas fa-pen"></i>
+                            Renomear base/sala
+                        </button>
                         <button class="btn btn-primary" type="button" onclick="saveOrganizationGroup()">
                             <i class="fas fa-save"></i>
                             Salvar organizacao
@@ -3768,6 +3772,7 @@
         let selectedLabelDeviceIds = new Set();
         let organizationSelectedDeviceIds = new Set();
         let organizationActiveGroupName = '';
+        let organizationDraftGroupName = '';
         let pendingDeviceDetailId = null;
         const DEVICE_MAINTENANCE_HISTORY_KEY = 'deviceMaintenanceHistory';
         const ADMIN_NOTICE_TODO_KEY = 'adminNoticeTodoItems';
@@ -6182,8 +6187,9 @@
 
         function setOrganizationGroup(groupName) {
             organizationActiveGroupName = (groupName || '').trim();
+            organizationDraftGroupName = organizationActiveGroupName;
             const input = document.getElementById('organizationGroupName');
-            if (input) input.value = organizationActiveGroupName;
+            if (input) input.value = organizationDraftGroupName;
             organizationSelectedDeviceIds = new Set(
                 data.devices
                     .filter(device => normalizeDeviceText(device.group) === normalizeDeviceText(organizationActiveGroupName))
@@ -6194,7 +6200,7 @@
 
         function handleOrganizationGroupNameInput() {
             const value = document.getElementById('organizationGroupName')?.value || '';
-            organizationActiveGroupName = value.trim();
+            organizationDraftGroupName = value.trim();
             renderOrganizationGroups();
             renderOrganizationSummary();
         }
@@ -6258,7 +6264,7 @@
             const container = document.getElementById('organizationSummary');
             if (!container) return;
 
-            const groupName = (document.getElementById('organizationGroupName')?.value || organizationActiveGroupName || '').trim();
+            const groupName = (document.getElementById('organizationGroupName')?.value || organizationDraftGroupName || organizationActiveGroupName || '').trim();
             const selectedDevices = data.devices.filter(device => organizationSelectedDeviceIds.has(parseInt(device.id)));
             const selectedAvailable = selectedDevices.filter(device => device.status === 'DisponÃ­vel').length;
             const selectedByType = selectedDevices.reduce((acc, device) => {
@@ -6320,7 +6326,8 @@
                 const firstGroup = getOrganizationGroups()[0]?.name || '';
                 if (firstGroup) {
                     organizationActiveGroupName = firstGroup;
-                    input.value = firstGroup;
+                    organizationDraftGroupName = firstGroup;
+                    input.value = organizationDraftGroupName;
                     organizationSelectedDeviceIds = new Set(
                         data.devices
                             .filter(device => normalizeDeviceText(device.group) === normalizeDeviceText(firstGroup))
@@ -6328,7 +6335,8 @@
                     );
                 }
             } else if (!input.value) {
-                input.value = organizationActiveGroupName;
+                organizationDraftGroupName = organizationDraftGroupName || organizationActiveGroupName;
+                input.value = organizationDraftGroupName;
             }
 
             renderOrganizationGroups();
@@ -6370,12 +6378,72 @@
                 ));
 
                 organizationActiveGroupName = groupName;
+                organizationDraftGroupName = groupName;
                 organizationSelectedDeviceIds = new Set(selectedIds.map(id => parseInt(id)));
                 await showAppAlert(`${devicesToUpdate.length} dispositivo(s) organizados em ${groupName}.`, { type: 'success' });
                 await loadData();
             } catch (error) {
                 console.error('Erro ao salvar organizacao:', error);
                 alert('Erro ao salvar organizacao: ' + error.message);
+            }
+        }
+
+        async function renameOrganizationGroup() {
+            if (!requireDeviceAdminPermission()) return;
+
+            const oldGroupName = (organizationActiveGroupName || '').trim();
+            if (!oldGroupName) {
+                alert('Clique em uma base ou sala antes de renomear.');
+                return;
+            }
+
+            const devicesInGroup = data.devices.filter(device => normalizeDeviceText(device.group) === normalizeDeviceText(oldGroupName));
+            if (!devicesInGroup.length) {
+                alert('Nenhum dispositivo encontrado nessa base ou sala.');
+                return;
+            }
+
+            const currentInputValue = (document.getElementById('organizationGroupName')?.value || '').trim();
+            const suggestedName = currentInputValue && normalizeDeviceText(currentInputValue) !== normalizeDeviceText(oldGroupName)
+                ? currentInputValue
+                : oldGroupName;
+            const newGroupName = (prompt(`Novo nome para "${oldGroupName}":`, suggestedName) || '').trim();
+            if (!newGroupName) return;
+
+            if (newGroupName === oldGroupName) {
+                alert('O novo nome e igual ao nome atual.');
+                return;
+            }
+
+            const targetExists = data.devices.some(device =>
+                normalizeDeviceText(device.group) === normalizeDeviceText(newGroupName) &&
+                normalizeDeviceText(device.group) !== normalizeDeviceText(oldGroupName)
+            );
+            if (targetExists && !confirm(`Ja existe um agrupamento chamado "${newGroupName}". Deseja juntar os dispositivos de "${oldGroupName}" nele?`)) {
+                return;
+            }
+
+            try {
+                const { error } = await client
+                    .from('devices')
+                    .update({ group: newGroupName })
+                    .eq('group', oldGroupName);
+                if (error) throw error;
+
+                await Promise.all(devicesInGroup.map(device =>
+                    recordDeviceChangeEvent('updated', device, device, { ...device, group: newGroupName }, `Agrupamento renomeado de ${oldGroupName} para ${newGroupName}`)
+                ));
+
+                organizationActiveGroupName = newGroupName;
+                organizationDraftGroupName = newGroupName;
+                organizationSelectedDeviceIds = new Set(devicesInGroup.map(device => parseInt(device.id)));
+                const input = document.getElementById('organizationGroupName');
+                if (input) input.value = newGroupName;
+                await showAppAlert(`"${oldGroupName}" foi renomeado para "${newGroupName}".`, { type: 'success' });
+                await loadData();
+            } catch (error) {
+                console.error('Erro ao renomear agrupamento:', error);
+                alert('Erro ao renomear base/sala: ' + error.message);
             }
         }
 
