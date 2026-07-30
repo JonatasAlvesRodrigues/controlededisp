@@ -1,4 +1,4 @@
-const CACHE_NAME = 'controle-dispositivos-v19';
+const CACHE_NAME = 'controle-dispositivos-v20';
 const APP_SHELL = [
     './',
     './index.html',
@@ -6,7 +6,15 @@ const APP_SHELL = [
     './manifest.json',
     './icon.png',
     './logo-percio.jpg',
-    './config.js'
+    './config.js',
+    './css/styles.css',
+    './js/core.js',
+    './js/database.js',
+    './js/interface.js',
+    './js/reports.js',
+    './js/loans.js',
+    './js/returns.js',
+    './js/management.js'
 ];
 
 const EXTERNAL_CACHEABLE_HOSTS = new Set([

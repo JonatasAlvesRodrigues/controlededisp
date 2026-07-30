@@ -40,3 +40,14 @@ Execute os scripts nesta ordem:
 
 - O `server.js` está preparado para rotas com query string, como as usadas no refresh do app.
 - O `service worker` faz cache do shell da aplicação e tenta aproveitar bibliotecas externas em modo offline.
+
+## Organização do código
+
+- `css/styles.css`: estilos visuais, responsividade e modo escuro.
+- `js/core.js`: configuração, estado global, autenticação e inicialização.
+- `js/database.js`: carregamento, sincronização e verificação do banco.
+- `js/interface.js`: navegação, dashboard, agendamentos e interface de dispositivos.
+- `js/loans.js`: criação, listagem e regras de empréstimos.
+- `js/returns.js`: devoluções completas, parciais e por dispositivo.
+- `js/reports.js`: relatórios, etiquetas e backups.
+- `js/management.js`: cadastros e manutenção de turmas, professores e dispositivos.
