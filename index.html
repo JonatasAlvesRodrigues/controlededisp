@@ -620,6 +620,24 @@
             margin-top: 2px;
         }
 
+        .deadline-alert-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .deadline-alert-list .alert-item {
+            margin-bottom: 0;
+            cursor: pointer;
+        }
+
+        .loan-overdue-row td {
+            background: rgba(239, 68, 68, 0.06);
+        }
+
+        .loan-due-soon-row td {
+            background: rgba(245, 158, 11, 0.06);
+        }
+
         /* Quick Actions */
         .quick-actions {
             display: grid;
@@ -1870,6 +1888,54 @@
             color: var(--text-muted);
         }
 
+        .return-device-section {
+            margin-bottom: 20px;
+        }
+
+        .return-device-summary {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .return-device-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .return-device-item {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(170px, 220px);
+            gap: 14px;
+            align-items: center;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--card-bg);
+        }
+
+        .return-device-item.processed {
+            opacity: 0.72;
+        }
+
+        .return-device-name {
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .return-device-meta {
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 640px) {
+            .return-device-item {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .choice-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -2739,7 +2805,7 @@
                         <div class="card-header">
                             <div class="card-title">Alertas</div>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body" id="loanDeadlineAlerts">
                             <div class="alert-item">
                                 <div class="alert-icon warning">
                                     <i class="fas fa-info-circle"></i>
@@ -2869,6 +2935,11 @@
                                 <label class="form-label">Responsável pela Liberação</label>
                                 <input type="text" id="loanReleaser" class="form-input" required placeholder="Seu nome">
                             </div>
+                            <div class="form-group">
+                                <label class="form-label">Previsão de Devolução (opcional)</label>
+                                <input type="datetime-local" id="loanDueAt" class="form-input">
+                                <small class="field-hint">O painel avisará quando faltar 30 minutos e quando o prazo estiver atrasado.</small>
+                            </div>
                             <div class="form-group full">
                                 <label class="form-label">Observações (opcional)</label>
                                 <textarea id="loanObs" class="form-input" rows="3" placeholder="Digite observações importantes"></textarea>
@@ -2919,20 +2990,30 @@
                                     <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Data da Retirada</div>
                                     <div style="font-weight: 600;" id="returnDateLoan">-</div>
                                 </div>
+                                <div>
+                                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Previsão de Devolução</div>
+                                    <div style="font-weight: 600;" id="returnDueLoan">Sem prazo</div>
+                                </div>
                             </div>
                         </div>
                         <div class="form-grid">
-                            <div class="form-group">
+                            <div class="form-group" id="returnQuantityGroup">
                                 <label class="form-label">Quantidade Devolvida</label>
                                 <input type="number" id="returnQuantity" class="form-input" min="1">
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" id="returnStatusGroup">
                                 <label class="form-label">Status da Devolução</label>
                                 <select id="returnStatus" class="form-input">
                                     <option value="complete">Completa (todos os dispositivos)</option>
                                     <option value="incomplete">Incompleta (faltam dispositivos)</option>
                                     <option value="damaged">Com danos</option>
                                 </select>
+                            </div>
+                            <div class="form-group full return-device-section" id="returnDeviceSelection" style="display: none;">
+                                <label class="form-label">Situação de cada dispositivo</label>
+                                <div class="return-device-summary" id="returnDeviceSummary"></div>
+                                <div class="return-device-list" id="returnDeviceList"></div>
+                                <small class="field-hint">Escolha “Devolvido” ou “Com danos” apenas nos aparelhos que estão sendo entregues agora. Os demais continuam pendentes no mesmo empréstimo.</small>
                             </div>
                             <div class="form-group full">
                                 <label class="form-label">Observações</label>
@@ -2967,6 +3048,7 @@
                                 <th>Tipo</th>
                                 <th>Quantidade</th>
                                 <th>Retirada em</th>
+                                <th>Prazo</th>
                                 <th>Responsável</th>
                                 <th>Ação</th>
                             </tr>
@@ -3928,6 +4010,11 @@
             setupDevicesRealtime();
             await checkAuth();
             setupLoginForms();
+            window.setInterval(() => {
+                if (!currentUser) return;
+                updateLoanDeadlineAlerts();
+                updateActiveLoans();
+            }, 60000);
 
             // Registrar Service Worker para PWA
             if (location.protocol !== 'file:' && 'serviceWorker' in navigator) {
@@ -4744,6 +4831,7 @@
             document.getElementById(screenId).classList.add('active');
             const navItem = document.querySelector(`.nav-item[data-screen="${screenId}"]`);
             if (navItem) navItem.classList.add('active');
+            if (screenId === 'loan') setLoanDueMinimum();
             closeSidebar();
         }
 
@@ -4755,6 +4843,7 @@
             updateProfileDashboard();
             updateSelects();
             updateActiveLoans();
+            updateLoanDeadlineAlerts();
             updateMaintenanceCenter();
             updateLatestLoans();
             updateHistoryTable();
@@ -4780,6 +4869,7 @@
             const activeLoans = data.loans.filter(loan => !loan.returned);
             const available = data.devices.filter(device => device.status === 'Disponível').length;
             const maintenance = data.devices.filter(device => device.status === 'Manutenção').length;
+            const overdueLoans = activeLoans.filter(loan => getLoanDeadlineInfo(loan).key === 'overdue').length;
 
             if (isAlunoAccess()) {
                 panel.innerHTML = `
@@ -4890,7 +4980,7 @@
                             <div class="alert-icon info"><i class="fas fa-user-check"></i></div>
                             <div class="alert-content">
                                 <div class="alert-title">Perfil: ${escapeHtml(getRoleLabel())}</div>
-                                <div class="alert-desc">${activeLoans.length} empréstimo(s) ativo(s), ${available} dispositivo(s) disponíveis e ${maintenance} em manutenção.</div>
+                                <div class="alert-desc">${activeLoans.length} empréstimo(s) ativo(s), ${overdueLoans} atrasado(s), ${available} dispositivo(s) disponíveis e ${maintenance} em manutenção.</div>
                             </div>
                         </div>
                         <div class="quick-actions">
@@ -5581,7 +5671,9 @@
         }
         function updateStats() {
             const available = data.devices.filter(d => d.status === 'Disponível').length;
-            const inUse = data.loans.filter(l => !l.returned).reduce((sum, l) => sum + l.quantity, 0);
+            const inUse = data.loans
+                .filter(loan => !loan.returned)
+                .reduce((sum, loan) => sum + getLoanPendingQuantity(loan), 0);
             const maintenance = data.devices.filter(d => d.status === 'Manutenção').length;
             const outOfUse = data.devices.filter(d => d.status === 'Fora de uso').length;
             const total = data.devices.length;
@@ -5903,7 +5995,9 @@
 
         function getCurrentDeviceResponsible(device, relatedLoans = null) {
             const loans = relatedLoans || getDeviceRelatedLoans(device);
-            const activeLoan = loans.find(loan => !loan.returned);
+            const activeLoan = loans.find(loan =>
+                !loan.returned && isDevicePendingInLoan(device.id, loan.id)
+            );
             if (!activeLoan) return '-';
             const className = data.classes.find(c => c.id === activeLoan.class_id)?.name || '-';
             const teacherName = data.teachers.find(t => t.id === activeLoan.teacher_id)?.name || '-';
@@ -5939,7 +6033,9 @@
             const changeHistory = (data.deviceChangeHistory || []).filter(item => parseInt(item.device_id) === parseInt(device.id));
             const currentResponsible = getCurrentDeviceResponsible(device, relatedLoans);
             const isCurrentlyMaintenance = device.status === 'Manutenção';
-            const activeLoan = relatedLoans.find(loan => !loan.returned);
+            const activeLoan = relatedLoans.find(loan =>
+                !loan.returned && isDevicePendingInLoan(device.id, loan.id)
+            );
             const quickDeviceActionHtml = activeLoan
                 ? `<button class="btn btn-success btn-full" onclick="startReturnFromDevice(${device.id})">
                         <i class="fas fa-undo"></i>
@@ -5957,17 +6053,34 @@
                     ${relatedLoans.map(loan => {
                         const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
                         const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name || '-';
-                        const statusText = loan.returned
-                            ? (loan.return_status === 'complete' ? 'Devolvido' : loan.return_status === 'incomplete' ? 'Incompleto' : 'Com danos')
-                            : 'Em uso';
+                        const deviceLoanLink = (data.loanDevices || []).find(item =>
+                            parseInt(item.loan_id) === parseInt(loan.id) &&
+                            parseInt(item.device_id) === parseInt(device.id)
+                        );
+                        const individualStatus = deviceLoanLink
+                            ? getLoanDeviceReturnStatus(deviceLoanLink, loan)
+                            : null;
+                        const statusText = individualStatus === 'returned'
+                            ? 'Devolvido'
+                            : individualStatus === 'damaged'
+                                ? 'Com danos'
+                                : loan.returned
+                                    ? (loan.return_status === 'complete' ? 'Devolvido' : loan.return_status === 'incomplete' ? 'Incompleto' : 'Com danos')
+                                    : 'Em uso';
+                        const statusColor = statusText === 'Devolvido'
+                            ? 'green'
+                            : statusText === 'Com danos'
+                                ? 'red'
+                                : 'yellow';
                         return `
                             <div class="detail-timeline-item">
                                 <div class="detail-timeline-title">
                                     <span>${escapeHtml(className)} - ${escapeHtml(teacherName)}</span>
-                                    <span class="badge ${loan.returned ? 'green' : 'yellow'}">${escapeHtml(statusText)}</span>
+                                    <span class="badge ${statusColor}">${escapeHtml(statusText)}</span>
                                 </div>
                                 <div class="detail-timeline-meta">
                                     ${escapeHtml(loan.date_time)} - ${escapeHtml(loan.quantity)} dispositivo(s) - ${escapeHtml(loan.loan_type === 'full' ? (loan.group_name || device.group) : 'Quantidade específica')}
+                                    ${deviceLoanLink?.returned_at ? `<br>Este dispositivo foi processado em: ${escapeHtml(formatDateTimeBR(new Date(deviceLoanLink.returned_at)))}` : ''}
                                     ${loan.return_date_time ? `<br>Devolução: ${escapeHtml(loan.return_date_time)} (${escapeHtml(loan.return_quantity || loan.quantity)} dispositivo(s))` : ''}
                                     ${loan.observations ? `<br>Obs. saída: ${escapeHtml(loan.observations)}` : ''}
                                     ${loan.return_observations ? `<br>Obs. devolução: ${escapeHtml(loan.return_observations)}` : ''}
@@ -6968,6 +7081,115 @@
             return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
         }
 
+        const LOAN_DUE_SOON_MS = 30 * 60 * 1000;
+
+        function parseLoanDueAt(loan) {
+            if (!loan?.due_at) return null;
+            const dueDate = new Date(loan.due_at);
+            return Number.isNaN(dueDate.getTime()) ? null : dueDate;
+        }
+
+        function formatDeadlineDistance(milliseconds) {
+            const totalMinutes = Math.max(1, Math.ceil(Math.abs(milliseconds) / 60000));
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            if (!hours) return `${minutes} min`;
+            if (!minutes) return `${hours}h`;
+            return `${hours}h ${minutes}min`;
+        }
+
+        function getLoanDeadlineInfo(loan, referenceTime = Date.now()) {
+            const dueDate = parseLoanDueAt(loan);
+            if (!dueDate || loan?.returned) {
+                return {
+                    key: 'none',
+                    shortLabel: loan?.returned ? 'Encerrado' : 'Em uso',
+                    detail: 'Sem prazo definido',
+                    badgeColor: loan?.returned ? 'green' : 'blue',
+                    rowClass: ''
+                };
+            }
+
+            const remaining = dueDate.getTime() - referenceTime;
+            const formattedDue = formatDateTimeBR(dueDate);
+            if (remaining < 0) {
+                return {
+                    key: 'overdue',
+                    shortLabel: `Atrasado ${formatDeadlineDistance(remaining)}`,
+                    detail: `Prazo: ${formattedDue} — atraso de ${formatDeadlineDistance(remaining)}`,
+                    badgeColor: 'red',
+                    rowClass: 'loan-overdue-row'
+                };
+            }
+            if (remaining <= LOAN_DUE_SOON_MS) {
+                return {
+                    key: 'due-soon',
+                    shortLabel: `Vence em ${formatDeadlineDistance(remaining)}`,
+                    detail: `Prazo: ${formattedDue}`,
+                    badgeColor: 'yellow',
+                    rowClass: 'loan-due-soon-row'
+                };
+            }
+
+            return {
+                key: 'on-time',
+                shortLabel: formattedDue,
+                detail: `Prazo: ${formattedDue}`,
+                badgeColor: 'blue',
+                rowClass: ''
+            };
+        }
+
+        function startReturnForLoan(loanId) {
+            showScreen('return');
+            document.getElementById('returnLoan').value = loanId;
+            loadReturnDetails();
+        }
+
+        function updateLoanDeadlineAlerts() {
+            const container = document.getElementById('loanDeadlineAlerts');
+            if (!container) return;
+
+            const deadlineLoans = data.loans
+                .filter(loan => !loan.returned && parseLoanDueAt(loan))
+                .map(loan => ({ loan, deadline: getLoanDeadlineInfo(loan) }))
+                .filter(item => ['overdue', 'due-soon'].includes(item.deadline.key))
+                .sort((a, b) => {
+                    if (a.deadline.key !== b.deadline.key) return a.deadline.key === 'overdue' ? -1 : 1;
+                    return parseLoanDueAt(a.loan) - parseLoanDueAt(b.loan);
+                });
+
+            if (!deadlineLoans.length) {
+                container.innerHTML = `
+                    <div class="alert-item">
+                        <div class="alert-icon info"><i class="fas fa-circle-check"></i></div>
+                        <div class="alert-content">
+                            <div class="alert-title">Nenhum prazo crítico</div>
+                            <div class="alert-desc">Não há empréstimos atrasados ou vencendo nos próximos 30 minutos.</div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `<div class="deadline-alert-list">${deadlineLoans.map(({ loan, deadline }) => {
+                const className = data.classes.find(item => item.id === loan.class_id)?.name || '-';
+                const teacherName = data.teachers.find(item => item.id === loan.teacher_id)?.name || '-';
+                const isOverdue = deadline.key === 'overdue';
+                return `
+                    <div class="alert-item" onclick="startReturnForLoan(${loan.id})" role="button" tabindex="0">
+                        <div class="alert-icon ${isOverdue ? 'danger' : 'warning'}">
+                            <i class="fas fa-${isOverdue ? 'triangle-exclamation' : 'clock'}"></i>
+                        </div>
+                        <div class="alert-content">
+                            <div class="alert-title">${isOverdue ? 'Empréstimo atrasado' : 'Prazo próximo'}: ${escapeHtml(className)}</div>
+                            <div class="alert-desc">${escapeHtml(teacherName)} — ${escapeHtml(deadline.detail)}. Clique para devolver.</div>
+                        </div>
+                    </div>
+                `;
+            }).join('')}</div>`;
+        }
+
         function getLoanReturnStatusLabel(loan) {
             if (!loan?.returned) return 'Em uso';
             if (loan.return_status === 'complete') return 'Devolvido';
@@ -7300,7 +7522,17 @@
             const loanRows = data.loans.map(loan => {
                 const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
                 const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name || '-';
-                return [loan.id, loan.date_time, className, teacherName, loan.device_type, loan.quantity, loan.releaser, loan.returned ? 'Devolvido' : 'Em uso'];
+                return [
+                    loan.id,
+                    loan.date_time,
+                    loan.due_at ? formatDateTimeBR(new Date(loan.due_at)) : '-',
+                    className,
+                    teacherName,
+                    loan.device_type,
+                    loan.quantity,
+                    loan.releaser,
+                    loan.returned ? 'Devolvido' : 'Em uso'
+                ];
             });
 
             return [
@@ -7311,8 +7543,21 @@
                 },
                 {
                     title: 'Empréstimos',
-                    head: ['ID', 'Data', 'Turma', 'Professor', 'Tipo', 'Qtd.', 'Responsável', 'Status'],
+                    head: ['ID', 'Data', 'Prazo', 'Turma', 'Professor', 'Tipo', 'Qtd.', 'Responsável', 'Status'],
                     rows: loanRows
+                },
+                {
+                    title: 'Devoluções por dispositivo',
+                    head: ['Vínculo', 'Empréstimo', 'Dispositivo', 'Status', 'Devolvido em', 'Responsável', 'Observações'],
+                    rows: (data.loanDevices || []).map(item => [
+                        item.id || '-',
+                        item.loan_id,
+                        item.device_id,
+                        item.return_status || 'pending',
+                        item.returned_at ? formatDateTimeBR(new Date(item.returned_at)) : '-',
+                        item.returned_by || '-',
+                        item.return_observations || '-'
+                    ])
                 },
                 {
                     title: 'Professores',
@@ -7464,20 +7709,25 @@
             const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
             const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name || '-';
             const loanTypeLabel = loan.loan_type === 'full' ? 'Base completa' : 'Quantidade';
-            const statusColor = loan.returned
+            let statusColor = loan.returned
                 ? loan.return_status === 'complete'
                     ? 'green'
                     : loan.return_status === 'incomplete'
                         ? 'yellow'
                         : 'red'
                 : 'yellow';
-            const statusText = loan.returned
+            let statusText = loan.returned
                 ? loan.return_status === 'complete'
                     ? 'Devolvido'
                     : loan.return_status === 'incomplete'
                         ? 'Incompleto'
                         : 'Com danos'
                 : 'Em uso';
+            const deadline = getLoanDeadlineInfo(loan);
+            if (!loan.returned && ['overdue', 'due-soon'].includes(deadline.key)) {
+                statusColor = deadline.badgeColor;
+                statusText = deadline.shortLabel;
+            }
 
             return {
                 className,
@@ -7509,6 +7759,12 @@
 
             container.innerHTML = loans.map(loan => {
                 const info = getLoanInfo(loan);
+                const pendingQuantity = getLoanPendingQuantity(loan);
+                const displayQuantity = loan.returned ? loan.quantity : pendingQuantity;
+                const quantityLabel = !loan.returned && pendingQuantity !== Number(loan.quantity)
+                    ? 'Pendentes'
+                    : 'Quantidade';
+                const deadline = getLoanDeadlineInfo(loan);
                 const actionButton = showAction
                     ? `<button class="btn btn-primary btn-small" onclick="showScreen('return'); document.getElementById('returnLoan').value=${loan.id}; loadReturnDetails();">
                             <i class="fas fa-undo"></i>
@@ -7531,8 +7787,8 @@
                                 <span>${info.loanTypeLabel}</span>
                             </div>
                             <div class="loan-card-field">
-                                <small>Quantidade</small>
-                                <span>${loan.quantity}</span>
+                                <small>${quantityLabel}</small>
+                                <span>${displayQuantity}</span>
                             </div>
                             <div class="loan-card-field">
                                 <small>Data/Hora</small>
@@ -7542,6 +7798,12 @@
                                 <small>Responsável</small>
                                 <span>${loan.releaser || '-'}</span>
                             </div>
+                            ${loan.due_at ? `
+                                <div class="loan-card-field" style="grid-column: 1 / -1;">
+                                    <small>Previsão de devolução</small>
+                                    <span>${escapeHtml(deadline.detail.replace('Prazo: ', ''))}</span>
+                                </div>
+                            ` : ''}
                             ${showReleaser ? `
                                 <div class="loan-card-field" style="grid-column: 1 / -1;">
                                     <small>Observações</small>
@@ -7566,15 +7828,17 @@
                     const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
                     const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name || '-';
                     const loanTypeLabel = loan.loan_type === 'full' ? 'Base completa' : 'Quantidade';
+                    const pendingQuantity = getLoanPendingQuantity(loan);
+                    const deadline = getLoanDeadlineInfo(loan);
                     
                     html += `
-                        <tr>
+                        <tr class="${deadline.rowClass}">
                             <td style="font-weight: 600;">${className}</td>
                             <td>${teacherName}</td>
                             <td>${loanTypeLabel}</td>
-                            <td style="font-weight: 600;">${loan.quantity}</td>
+                            <td style="font-weight: 600;">${pendingQuantity}</td>
                             <td>${loan.date_time}</td>
-                            <td><span class="badge yellow">Em uso</span></td>
+                            <td><span class="badge ${deadline.badgeColor}">${escapeHtml(deadline.shortLabel)}</span></td>
                         </tr>
                     `;
                 });
@@ -7585,22 +7849,25 @@
             // Todos os empréstimos ativos
             let allHtml = '';
             if (activeLoans.length === 0) {
-                allHtml = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum empréstimo ativo no momento</td></tr>';
+                allHtml = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum empréstimo ativo no momento</td></tr>';
             } else {
                 activeLoans.forEach(loan => {
                     const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
                     const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name || '-';
                     const loanTypeLabel = loan.loan_type === 'full' ? 'Base completa' : 'Quantidade';
+                    const pendingQuantity = getLoanPendingQuantity(loan);
+                    const deadline = getLoanDeadlineInfo(loan);
                     
                     allHtml += `
-                        <tr>
+                        <tr class="${deadline.rowClass}">
                             <td style="font-weight: 600;">${className}</td>
                             <td>${teacherName}</td>
                             <td>${loanTypeLabel}</td>
-                            <td style="font-weight: 600;">${loan.quantity}</td>
+                            <td style="font-weight: 600;">${pendingQuantity}</td>
                             <td>${loan.date_time}</td>
+                            <td><span class="badge ${deadline.badgeColor}">${escapeHtml(deadline.shortLabel)}</span></td>
                             <td>${loan.releaser}</td>
-                            <td><button class="btn btn-small btn-primary" onclick="showScreen('return'); document.getElementById('returnLoan').value=${loan.id}; loadReturnDetails();">Devolver</button></td>
+                            <td><button class="btn btn-small btn-primary" onclick="startReturnForLoan(${loan.id})">Devolver</button></td>
                         </tr>
                     `;
                 });
@@ -7625,6 +7892,10 @@
                     if (loan.returned) {
                         badgeColor = loan.return_status === 'complete' ? 'green' : loan.return_status === 'incomplete' ? 'yellow' : 'red';
                         badgeText = loan.return_status === 'complete' ? 'Devolvido' : loan.return_status === 'incomplete' ? 'Incompleto' : 'Com danos';
+                    } else {
+                        const deadline = getLoanDeadlineInfo(loan);
+                        badgeColor = deadline.badgeColor;
+                        badgeText = deadline.shortLabel;
                     }
                     
                     html += `
@@ -7649,9 +7920,77 @@
             data.loans.filter(l => !l.returned).forEach(loan => {
                 const className = data.classes.find(c => c.id === loan.class_id)?.name;
                 const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name;
-                options += `<option value="${loan.id}">${className} - ${teacherName} (${loan.date_time})</option>`;
+                const pendingQuantity = getLoanPendingQuantity(loan);
+                options += `<option value="${loan.id}">${className} - ${teacherName} (${pendingQuantity} pendente(s) - ${loan.date_time})</option>`;
             });
             document.getElementById('returnLoan').innerHTML = options;
+        }
+
+        function updateReturnDeviceSummary() {
+            const selects = [...document.querySelectorAll('.return-device-status')];
+            const counts = selects.reduce((summary, select) => {
+                summary[select.value] = (summary[select.value] || 0) + 1;
+                return summary;
+            }, { pending: 0, returned: 0, damaged: 0 });
+
+            document.getElementById('returnDeviceSummary').innerHTML = `
+                <span class="badge yellow">${counts.pending} pendente(s)</span>
+                <span class="badge green">${counts.returned} devolvido(s)</span>
+                <span class="badge red">${counts.damaged} com danos</span>
+            `;
+        }
+
+        function renderReturnDeviceSelection(loan) {
+            const entries = getLoanDeviceEntries(loan.id);
+            const selection = document.getElementById('returnDeviceSelection');
+            const quantityGroup = document.getElementById('returnQuantityGroup');
+            const statusGroup = document.getElementById('returnStatusGroup');
+
+            selection.style.display = entries.length ? 'block' : 'none';
+            quantityGroup.style.display = entries.length ? 'none' : '';
+            statusGroup.style.display = entries.length ? 'none' : '';
+
+            if (!entries.length) {
+                document.getElementById('returnDeviceList').innerHTML = '';
+                document.getElementById('returnDeviceSummary').innerHTML = '';
+                return;
+            }
+
+            document.getElementById('returnDeviceList').innerHTML = entries.map(({ link, device }) => {
+                const status = getLoanDeviceReturnStatus(link, loan);
+                const isProcessed = status !== 'pending';
+                const processedMeta = isProcessed
+                    ? [
+                        link.returned_at ? formatDateTimeBR(new Date(link.returned_at)) : '',
+                        link.returned_by || ''
+                    ].filter(Boolean).join(' por ')
+                    : '';
+
+                return `
+                    <div class="return-device-item ${isProcessed ? 'processed' : ''}">
+                        <div>
+                            <div class="return-device-name">${escapeHtml(device.type || 'Dispositivo')}</div>
+                            <div class="return-device-meta">${escapeHtml(getDeviceIdentityLabel(device))}</div>
+                            ${device.group ? `<div class="return-device-meta">Agrupamento: ${escapeHtml(device.group)}</div>` : ''}
+                            ${processedMeta ? `<div class="return-device-meta">Processado em ${escapeHtml(processedMeta)}</div>` : ''}
+                        </div>
+                        <select
+                            class="form-input return-device-status"
+                            data-loan-device-id="${escapeHtml(String(link.id))}"
+                            data-device-id="${escapeHtml(String(device.id))}"
+                            data-original-status="${escapeHtml(status)}"
+                            onchange="updateReturnDeviceSummary()"
+                            ${isProcessed ? 'disabled' : ''}
+                        >
+                            <option value="pending" ${status === 'pending' ? 'selected' : ''}>Ainda não devolvido</option>
+                            <option value="returned" ${status === 'returned' ? 'selected' : ''}>Devolvido</option>
+                            <option value="damaged" ${status === 'damaged' ? 'selected' : ''}>Com danos</option>
+                        </select>
+                    </div>
+                `;
+            }).join('');
+
+            updateReturnDeviceSummary();
         }
 
         function loadReturnDetails() {
@@ -7665,16 +8004,32 @@
 
             document.getElementById('returnClassName').textContent = data.classes.find(c => c.id === loan.class_id)?.name;
             document.getElementById('returnTeacherName').textContent = data.teachers.find(t => t.id === loan.teacher_id)?.name;
-            document.getElementById('returnQtyLoan').textContent = loan.quantity + ' dispositivos';
+            const pendingQuantity = getLoanPendingQuantity(loan);
+            document.getElementById('returnQtyLoan').textContent = pendingQuantity === Number(loan.quantity)
+                ? `${loan.quantity} dispositivos`
+                : `${pendingQuantity} pendente(s) de ${loan.quantity}`;
             document.getElementById('returnDateLoan').textContent = loan.date_time;
-            document.getElementById('returnQuantity').value = loan.quantity;
+            const dueDate = parseLoanDueAt(loan);
+            const deadline = getLoanDeadlineInfo(loan);
+            const returnDueLoan = document.getElementById('returnDueLoan');
+            returnDueLoan.textContent = dueDate ? deadline.detail.replace('Prazo: ', '') : 'Sem prazo';
+            returnDueLoan.style.color = deadline.key === 'overdue'
+                ? '#dc2626'
+                : deadline.key === 'due-soon'
+                    ? '#d97706'
+                    : '';
+            document.getElementById('returnQuantity').value = pendingQuantity;
+            document.getElementById('returnObs').value = '';
+            renderReturnDeviceSelection(loan);
             document.getElementById('returnDetails').style.display = 'block';
         }
 
         function startReturnFromDevice(deviceId) {
             const device = data.devices.find(item => parseInt(item.id) === parseInt(deviceId));
             if (!device) return;
-            const activeLoan = getDeviceRelatedLoans(device).find(loan => !loan.returned);
+            const activeLoan = getDeviceRelatedLoans(device).find(loan =>
+                !loan.returned && isDevicePendingInLoan(device.id, loan.id)
+            );
             if (!activeLoan) {
                 alert('Este dispositivo não possui empréstimo ativo para devolução.');
                 return;
@@ -7711,6 +8066,16 @@
             });
             document.getElementById('quantityGroup').style.display = type === 'quantity' ? 'block' : 'none';
             document.getElementById('groupGroup').style.display = type === 'full' ? 'block' : 'none';
+        }
+
+        function toLocalDateTimeInputValue(date) {
+            const offsetMilliseconds = date.getTimezoneOffset() * 60000;
+            return new Date(date.getTime() - offsetMilliseconds).toISOString().slice(0, 16);
+        }
+
+        function setLoanDueMinimum() {
+            const input = document.getElementById('loanDueAt');
+            if (input) input.min = toLocalDateTimeInputValue(new Date());
         }
 
         function getAvailableDevicesForLoan(deviceType, quantity, groupName = '') {
@@ -7755,6 +8120,39 @@
             return data.devices.filter(device => linkedDeviceIds.includes(parseInt(device.id)));
         }
 
+        function getLoanDeviceEntries(loanId) {
+            return (data.loanDevices || [])
+                .filter(item => parseInt(item.loan_id) === parseInt(loanId))
+                .map(link => ({
+                    link,
+                    device: data.devices.find(device => parseInt(device.id) === parseInt(link.device_id))
+                }))
+                .filter(entry => entry.device);
+        }
+
+        function getLoanDeviceReturnStatus(link, loan = null) {
+            if (link?.return_status) return link.return_status;
+            if (!loan?.returned) return 'pending';
+            return loan.return_status === 'damaged' ? 'damaged' : 'returned';
+        }
+
+        function isDevicePendingInLoan(deviceId, loanId) {
+            const link = (data.loanDevices || []).find(item =>
+                parseInt(item.loan_id) === parseInt(loanId) &&
+                parseInt(item.device_id) === parseInt(deviceId)
+            );
+            if (!link) return true;
+
+            const loan = data.loans.find(item => parseInt(item.id) === parseInt(loanId));
+            return getLoanDeviceReturnStatus(link, loan) === 'pending';
+        }
+
+        function getLoanPendingQuantity(loan) {
+            const entries = getLoanDeviceEntries(loan.id);
+            if (!entries.length) return loan.returned ? 0 : (Number(loan.quantity) || 0);
+            return entries.filter(entry => getLoanDeviceReturnStatus(entry.link, loan) === 'pending').length;
+        }
+
         async function applyReturnStatusToLinkedDevices(loan, returnQuantity, returnStatus) {
             const linkedDevices = getLinkedDevicesForLoan(loan.id);
             if (!linkedDevices.length) return;
@@ -7776,6 +8174,25 @@
             await updateLoanDeviceStatuses(linkedDevices, 'Disponível');
         }
 
+        function findOpenLoanForResponsible(classId, teacherId) {
+            return data.loans
+                .filter(loan =>
+                    !loan.returned &&
+                    parseInt(loan.class_id) === parseInt(classId) &&
+                    parseInt(loan.teacher_id) === parseInt(teacherId)
+                )
+                .sort((a, b) => parseInt(b.id) - parseInt(a.id))[0] || null;
+        }
+
+        function buildMergedLoanObservations(existingLoan, addition) {
+            const additionDetails = [
+                `Acréscimo em ${addition.dateTime} por ${addition.releaser}: +${addition.quantity} ${addition.deviceType}`,
+                addition.observations ? `Obs.: ${addition.observations}` : ''
+            ].filter(Boolean).join(' - ');
+
+            return [existingLoan.observations, additionDetails].filter(Boolean).join('\n');
+        }
+
         // ------------------------------
         // 9. Formulários
         // ------------------------------
@@ -7786,6 +8203,8 @@
             const deviceType = document.getElementById('loanDeviceType').value;
             const releaser = document.getElementById('loanReleaser').value;
             const obs = document.getElementById('loanObs').value;
+            const dueAtValue = document.getElementById('loanDueAt').value;
+            let dueAt = null;
             let quantity = 0;
             let groupName = '';
             let selectedLoanDevices = [];
@@ -7793,6 +8212,15 @@
             if (isFixedDevice(deviceType)) {
                 alert('Desktops e Desktop Gestão são fixos na sala de informática e não podem ser emprestados.');
                 return;
+            }
+
+            if (dueAtValue) {
+                const parsedDueAt = new Date(dueAtValue);
+                if (Number.isNaN(parsedDueAt.getTime()) || parsedDueAt.getTime() <= Date.now()) {
+                    alert('A previsão de devolução deve estar no futuro.');
+                    return;
+                }
+                dueAt = parsedDueAt.toISOString();
             }
 
             if (currentLoanType === 'quantity') {
@@ -7823,6 +8251,18 @@
 
             const now = new Date();
             const dateTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth()+1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            const existingOpenLoan = findOpenLoanForResponsible(classId, teacherId);
+            let shouldMergeWithOpenLoan = false;
+
+            if (existingOpenLoan) {
+                const className = data.classes.find(item => parseInt(item.id) === classId)?.name || 'turma selecionada';
+                const teacherName = data.teachers.find(item => parseInt(item.id) === teacherId)?.name || 'professor selecionado';
+                shouldMergeWithOpenLoan = confirm(
+                    `Já existe um empréstimo em aberto para ${teacherName} na turma ${className}, com ${existingOpenLoan.quantity} dispositivo(s).\n\n` +
+                    `Deseja adicionar estes ${quantity} dispositivo(s) ao mesmo empréstimo?\n\n` +
+                    'Clique em Cancelar para criar um registro separado.'
+                );
+            }
 
             const loan = {
                 class_id: classId,
@@ -7832,12 +8272,59 @@
                 loan_type: currentLoanType,
                 group_name: groupName,
                 date_time: dateTime,
+                due_at: dueAt,
                 releaser,
                 observations: obs,
                 returned: false
             };
 
             try {
+                if (shouldMergeWithOpenLoan) {
+                    const existingQuantity = Number(existingOpenLoan.quantity) || 0;
+                    const sameDeviceType = existingOpenLoan.device_type === deviceType;
+                    const mergedLoan = {
+                        quantity: existingQuantity + quantity,
+                        device_type: sameDeviceType ? existingOpenLoan.device_type : 'Diversos',
+                        loan_type: sameDeviceType && existingOpenLoan.loan_type === currentLoanType
+                            ? existingOpenLoan.loan_type
+                            : 'quantity',
+                        group_name: sameDeviceType && existingOpenLoan.group_name === groupName
+                            ? existingOpenLoan.group_name
+                            : '',
+                        due_at: dueAt || existingOpenLoan.due_at || null,
+                        observations: buildMergedLoanObservations(existingOpenLoan, {
+                            dateTime,
+                            releaser,
+                            quantity,
+                            deviceType,
+                            observations: obs
+                        })
+                    };
+
+                    const { data: updatedLoan, error: updateError } = await client
+                        .from('loans')
+                        .update(mergedLoan)
+                        .eq('id', existingOpenLoan.id)
+                        .select()
+                        .single();
+                    if (updateError) throw updateError;
+
+                    await linkDevicesToLoan(updatedLoan.id, selectedLoanDevices);
+                    await updateLoanDeviceStatuses(selectedLoanDevices, 'Em uso');
+                    await showAppAlert(
+                        `${quantity} dispositivo(s) adicionado(s) ao empréstimo em aberto. Total atual: ${mergedLoan.quantity}.`,
+                        { type: 'success' }
+                    );
+                    await loadData();
+                    if (isAlunoAccess()) {
+                        await logout();
+                        return;
+                    }
+                    showScreen('dashboard');
+                    this.reset();
+                    return;
+                }
+
                 const { data: createdLoan, error } = await client.from('loans').insert(loan).select().single();
                 if (error) throw error;
                 await linkDevicesToLoan(createdLoan.id, selectedLoanDevices);
@@ -7856,12 +8343,115 @@
             }
         });
 
+        function appendLoanReturnObservation(loan, returnDateTime, returnedBy, selectedCount, returnObs) {
+            const batchDetails = [
+                `Devolução em ${returnDateTime}`,
+                returnedBy ? `por ${returnedBy}` : '',
+                `${selectedCount} dispositivo(s) processado(s)`,
+                returnObs ? `Obs.: ${returnObs}` : ''
+            ].filter(Boolean).join(' - ');
+
+            return [loan.return_observations, batchDetails].filter(Boolean).join('\n');
+        }
+
+        async function confirmIndividualReturn(loan) {
+            const editableSelects = [...document.querySelectorAll('.return-device-status')]
+                .filter(select => select.dataset.originalStatus === 'pending');
+            const selectedItems = editableSelects
+                .filter(select => select.value === 'returned' || select.value === 'damaged')
+                .map(select => ({
+                    loanDeviceId: parseInt(select.dataset.loanDeviceId),
+                    deviceId: parseInt(select.dataset.deviceId),
+                    status: select.value
+                }));
+
+            if (!selectedItems.length) {
+                alert('Selecione pelo menos um dispositivo como devolvido ou com danos.');
+                return;
+            }
+
+            const returnObs = document.getElementById('returnObs').value.trim();
+            if (selectedItems.some(item => item.status === 'damaged') && !returnObs) {
+                alert('Descreva nas observações o dano encontrado.');
+                return;
+            }
+            const now = new Date();
+            const returnedAt = now.toISOString();
+            const returnDateTime = now.toLocaleString('pt-BR');
+            const returnedBy = getCurrentActorName();
+
+            for (const status of ['returned', 'damaged']) {
+                const items = selectedItems.filter(item => item.status === status);
+                if (!items.length) continue;
+
+                const { error } = await client
+                    .from('loan_devices')
+                    .update({
+                        return_status: status,
+                        returned_at: returnedAt,
+                        returned_by: returnedBy,
+                        return_observations: returnObs || null
+                    })
+                    .in('id', items.map(item => item.loanDeviceId));
+                if (error) throw error;
+            }
+
+            const returnedDevices = selectedItems
+                .filter(item => item.status === 'returned')
+                .map(item => data.devices.find(device => parseInt(device.id) === item.deviceId))
+                .filter(Boolean);
+            const damagedDevices = selectedItems
+                .filter(item => item.status === 'damaged')
+                .map(item => data.devices.find(device => parseInt(device.id) === item.deviceId))
+                .filter(Boolean);
+
+            await updateLoanDeviceStatuses(returnedDevices, 'Disponível');
+            await updateLoanDeviceStatuses(damagedDevices, 'Manutenção');
+            await Promise.all(damagedDevices.map(device =>
+                recordDeviceMaintenanceEvent(device, device.status, 'Manutenção')
+            ));
+
+            const selectedStatusByLinkId = new Map(
+                selectedItems.map(item => [item.loanDeviceId, item.status])
+            );
+            const finalStatuses = getLoanDeviceEntries(loan.id).map(({ link }) =>
+                selectedStatusByLinkId.get(parseInt(link.id)) || getLoanDeviceReturnStatus(link, loan)
+            );
+            const pendingCount = finalStatuses.filter(status => status === 'pending').length;
+            const processedCount = finalStatuses.length - pendingCount;
+            const damagedCount = finalStatuses.filter(status => status === 'damaged').length;
+            const isComplete = pendingCount === 0;
+
+            const { error: loanError } = await client.from('loans').update({
+                returned: isComplete,
+                return_date_time: returnDateTime,
+                return_quantity: processedCount,
+                return_status: isComplete
+                    ? (damagedCount ? 'damaged' : 'complete')
+                    : 'incomplete',
+                return_observations: appendLoanReturnObservation(
+                    loan,
+                    returnDateTime,
+                    returnedBy,
+                    selectedItems.length,
+                    returnObs
+                )
+            }).eq('id', loan.id);
+            if (loanError) throw loanError;
+
+            const message = isComplete
+                ? `Devolução concluída. ${processedCount} dispositivo(s) processado(s).`
+                : `Devolução parcial registrada. Ainda faltam ${pendingCount} dispositivo(s).`;
+            await showAppAlert(message, { type: 'success' });
+        }
+
         async function confirmReturn() {
             const loanId = parseInt(document.getElementById('returnLoan').value);
             if (!loanId) return;
             const loan = data.loans.find(item => parseInt(item.id) === loanId);
             if (!loan) return;
 
+            const hasIndividualDevices = getLoanDeviceEntries(loan.id).length > 0;
             const returnQty = parseInt(document.getElementById('returnQuantity').value);
             const returnStatus = document.getElementById('returnStatus').value;
             const returnObs = document.getElementById('returnObs').value;
@@ -7869,6 +8459,22 @@
             const returnDateTime = now.toLocaleString('pt-BR');
 
             try {
+                if (hasIndividualDevices) {
+                    await confirmIndividualReturn(loan);
+                    await loadData();
+                    if (isAlunoAccess()) {
+                        await logout();
+                        return;
+                    }
+                    showScreen('dashboard');
+                    return;
+                }
+
+                if (!returnQty || returnQty < 1 || returnQty > Number(loan.quantity)) {
+                    alert(`Informe uma quantidade entre 1 e ${loan.quantity}.`);
+                    return;
+                }
+
                 const { error } = await client.from('loans').update({
                     returned: true,
                     return_date_time: returnDateTime,
@@ -8621,6 +9227,10 @@
                     if (loan.returned) {
                         badgeColor = loan.return_status === 'complete' ? 'green' : loan.return_status === 'incomplete' ? 'yellow' : 'red';
                         badgeText = loan.return_status === 'complete' ? 'Devolvido' : loan.return_status === 'incomplete' ? 'Incompleto' : 'Com danos';
+                    } else {
+                        const deadline = getLoanDeadlineInfo(loan);
+                        badgeColor = deadline.badgeColor;
+                        badgeText = deadline.shortLabel;
                     }
                     
                     html += `
