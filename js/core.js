@@ -55,6 +55,7 @@
         let pendingDeviceDetailId = null;
         let reservationReminderQueue = [];
         let activeReservationReminder = null;
+        const reservationLoanRegistrationsInProgress = new Set();
         const DEVICE_MAINTENANCE_HISTORY_KEY = 'deviceMaintenanceHistory';
         const ADMIN_NOTICE_TODO_KEY = 'adminNoticeTodoItems';
         const ADMIN_PRINT_FILES_KEY = 'adminPrintFiles';

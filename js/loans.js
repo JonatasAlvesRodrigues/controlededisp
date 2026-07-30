@@ -366,6 +366,9 @@ function getLoanInfo(loan) {
 
         function getLoanRegistrationErrorMessage(error) {
             const message = error?.message || String(error || '');
+            if (message.includes('SCHEDULE_GROUP_UNAVAILABLE')) {
+                return 'Nenhum dispositivo dessa base está disponível. O empréstimo do agendamento não foi registrado.';
+            }
             if (message.includes('DEVICE_NOT_AVAILABLE:')) {
                 const deviceLabels = message.split('DEVICE_NOT_AVAILABLE:')[1]?.trim();
                 return `O empréstimo não foi registrado porque outro usuário acabou de utilizar ${deviceLabels || 'um dos dispositivos selecionados'}. A lista será atualizada; tente novamente com os aparelhos disponíveis.`;
@@ -380,6 +383,68 @@ function getLoanInfo(loan) {
                 return 'A proteção contra registros simultâneos ainda não foi instalada no banco. Execute o arquivo protecao_emprestimos_simultaneos.sql no Supabase.';
             }
             return `Erro ao registrar empréstimo: ${message}`;
+        }
+
+        async function registerLoanFromWeeklyReservation(reservation, occurrence) {
+            const selectedDevices = getAvailableDevicesForLoan(
+                reservation.device_type,
+                Number.MAX_SAFE_INTEGER,
+                reservation.group_name
+            );
+            if (!selectedDevices.length) {
+                throw new Error('SCHEDULE_GROUP_UNAVAILABLE');
+            }
+
+            const now = new Date();
+            const dateTime =
+                `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ` +
+                `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            const quantity = selectedDevices.length;
+            const releaser = getCurrentActorName() || 'Agendamento semanal';
+            const marker = getReservationLoanMarker(reservation, occurrence);
+            const observations = [
+                marker,
+                `Empréstimo automático da ${reservation.group_name} pelo agendamento semanal.`,
+                reservation.notes ? `Observação do agendamento: ${reservation.notes}` : ''
+            ].filter(Boolean).join(' ');
+            const existingOpenLoan = findOpenLoanForResponsible(
+                reservation.class_id,
+                reservation.teacher_id
+            );
+            const loan = {
+                class_id: parseInt(reservation.class_id),
+                teacher_id: parseInt(reservation.teacher_id),
+                device_type: reservation.device_type,
+                quantity,
+                loan_type: 'full',
+                group_name: reservation.group_name,
+                date_time: dateTime,
+                due_at: null,
+                releaser,
+                observations,
+                returned: false
+            };
+            const mergeObservation = existingOpenLoan
+                ? buildLoanAdditionObservation({
+                    dateTime,
+                    releaser,
+                    quantity,
+                    deviceType: reservation.device_type,
+                    observations
+                })
+                : null;
+
+            await registerLoanAtomically(
+                loan,
+                selectedDevices,
+                existingOpenLoan?.id || null,
+                mergeObservation
+            );
+
+            return {
+                quantity,
+                merged: Boolean(existingOpenLoan)
+            };
         }
 
         // ------------------------------

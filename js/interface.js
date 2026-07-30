@@ -1129,6 +1129,36 @@ function getRequestedDeviceIdFromUrl() {
             return data.teachers.find(item => parseInt(item.id) === parseInt(reservation.teacher_id))?.name || '-';
         }
 
+        function formatReservationOccurrenceDate(occurrence) {
+            return [
+                occurrence.getFullYear(),
+                String(occurrence.getMonth() + 1).padStart(2, '0'),
+                String(occurrence.getDate()).padStart(2, '0')
+            ].join('-');
+        }
+
+        function getReservationLoanMarker(reservation, occurrence) {
+            return `[Agendamento #${reservation.id} · ${formatReservationOccurrenceDate(occurrence)}]`;
+        }
+
+        function isReservationOccurrenceRegistered(reservation, occurrence) {
+            const marker = getReservationLoanMarker(reservation, occurrence);
+            return (data.loans || []).some(loan => String(loan.observations || '').includes(marker));
+        }
+
+        function getActionableReservationOccurrence(reservation, referenceDate = new Date()) {
+            if (Number(reservation.weekday) !== referenceDate.getDay()) return null;
+
+            const [hours, minutes] = formatReservationTime(reservation.start_time).split(':').map(Number);
+            if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+
+            const occurrence = new Date(referenceDate);
+            occurrence.setHours(hours, minutes, 0, 0);
+            const distance = occurrence.getTime() - referenceDate.getTime();
+            const reminderWindow = (Number(reservation.reminder_minutes) || 10) * 60000;
+            return distance <= reminderWindow && distance >= -15 * 60000 ? occurrence : null;
+        }
+
         function updateWeeklyReservations() {
             const container = document.getElementById('weeklyReservationsList');
             if (!container) return;
@@ -1154,9 +1184,26 @@ function getRequestedDeviceIdFromUrl() {
                     ? dayReservations.map(reservation => {
                         const className = getReservationClassName(reservation);
                         const teacherName = getReservationTeacherName(reservation);
+                        const actionableOccurrence = reservation.active
+                            ? getActionableReservationOccurrence(reservation)
+                            : null;
+                        const occurrenceRegistered = actionableOccurrence
+                            ? isReservationOccurrenceRegistered(reservation, actionableOccurrence)
+                            : false;
                         const actionHtml = canManage
                             ? `
                                 <div class="schedule-item-actions">
+                                    ${actionableOccurrence ? `
+                                        <button
+                                            type="button"
+                                            class="btn btn-small ${occurrenceRegistered ? 'btn-secondary' : 'btn-success'}"
+                                            onclick="registerReservationLoanFromSchedule(${reservation.id}, ${actionableOccurrence.getTime()})"
+                                            ${occurrenceRegistered ? 'disabled' : ''}
+                                        >
+                                            <i class="fas fa-${occurrenceRegistered ? 'circle-check' : 'truck-ramp-box'}"></i>
+                                            ${occurrenceRegistered ? 'Empréstimo registrado' : 'Já levei'}
+                                        </button>
+                                    ` : ''}
                                     <button type="button" class="btn btn-small btn-secondary" onclick="toggleWeeklyReservation(${reservation.id}, ${!reservation.active})">
                                         <i class="fas fa-${reservation.active ? 'pause' : 'play'}"></i>
                                         ${reservation.active ? 'Pausar' : 'Ativar'}
@@ -1169,13 +1216,14 @@ function getRequestedDeviceIdFromUrl() {
                             `
                             : '';
                         return `
-                            <div class="schedule-item ${reservation.active ? '' : 'inactive'}">
+                            <div class="schedule-item ${reservation.active ? '' : 'inactive'} ${occurrenceRegistered ? 'completed' : ''}">
                                 <div class="schedule-item-time">${escapeHtml(formatReservationTime(reservation.start_time))}</div>
                                 <div class="schedule-item-title">${escapeHtml(reservation.group_name)} → ${escapeHtml(className)}</div>
                                 <div class="schedule-item-meta">
                                     ${escapeHtml(teacherName)}<br>
                                     ${escapeHtml(reservation.device_type)} · aviso ${escapeHtml(String(reservation.reminder_minutes))} min antes
                                     ${reservation.notes ? `<br>${escapeHtml(reservation.notes)}` : ''}
+                                    ${occurrenceRegistered ? '<br><strong>Empréstimo desta aula já registrado</strong>' : ''}
                                     ${reservation.active ? '' : '<br><strong>Pausado</strong>'}
                                 </div>
                                 ${actionHtml}
@@ -1322,7 +1370,7 @@ function getRequestedDeviceIdFromUrl() {
                     if (remainingMilliseconds > reminderWindow || remainingMilliseconds < -15 * 60000) return;
 
                     const key = getReservationReminderKey(reservation, occurrence);
-                    if (seen[key] || queuedKeys.has(key)) return;
+                    if (seen[key] || queuedKeys.has(key) || isReservationOccurrenceRegistered(reservation, occurrence)) return;
 
                     seen[key] = Date.now();
                     seenChanged = true;
@@ -1352,6 +1400,7 @@ function getRequestedDeviceIdFromUrl() {
             const remainingMinutes = Math.ceil((occurrence.getTime() - Date.now()) / 60000);
             const className = getReservationClassName(reservation);
             const teacherName = getReservationTeacherName(reservation);
+            const alreadyRegistered = isReservationOccurrenceRegistered(reservation, occurrence);
 
             document.getElementById('reservationReminderKicker').textContent = remainingMinutes > 1
                 ? `Aula em ${remainingMinutes} minutos`
@@ -1365,9 +1414,82 @@ function getRequestedDeviceIdFromUrl() {
             document.getElementById('reservationReminderMessage').textContent =
                 `${teacherName} · ${formatReservationTime(reservation.start_time)} · ${reservation.device_type}` +
                 (reservation.notes ? ` — ${reservation.notes}` : '');
+            const deliveredButton = document.getElementById('reservationAlreadyDeliveredButton');
+            deliveredButton.style.display = canManageWeeklyReservations() ? '' : 'none';
+            deliveredButton.disabled = alreadyRegistered;
+            deliveredButton.innerHTML = alreadyRegistered
+                ? '<i class="fas fa-circle-check"></i> Empréstimo registrado'
+                : '<i class="fas fa-truck-ramp-box"></i> Já levei';
             const modal = document.getElementById('reservationReminderModal');
             modal.classList.add('active');
             modal.setAttribute('aria-hidden', 'false');
+        }
+
+        async function registerReservationLoan(reservation, occurrence) {
+            if (!canManageWeeklyReservations()) {
+                alert('Entre com uma conta de funcionário ou administrador para registrar o empréstimo.');
+                return;
+            }
+            if (!reservation?.active || !occurrence) return;
+
+            const registrationKey = getReservationReminderKey(reservation, occurrence);
+            if (
+                reservationLoanRegistrationsInProgress.has(registrationKey) ||
+                isReservationOccurrenceRegistered(reservation, occurrence)
+            ) {
+                await showAppAlert('O empréstimo desta aula já foi registrado.', { type: 'info' });
+                return;
+            }
+
+            reservationLoanRegistrationsInProgress.add(registrationKey);
+            const deliveredButton = document.getElementById('reservationAlreadyDeliveredButton');
+            if (deliveredButton) {
+                deliveredButton.disabled = true;
+                deliveredButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registrando...';
+            }
+            updateWeeklyReservations();
+
+            try {
+                const result = await registerLoanFromWeeklyReservation(reservation, occurrence);
+                if (
+                    activeReservationReminder &&
+                    parseInt(activeReservationReminder.reservation.id) === parseInt(reservation.id)
+                ) {
+                    closeReservationReminder();
+                }
+                await loadData();
+                await showAppAlert(
+                    result.merged
+                        ? `${result.quantity} dispositivo(s) da ${reservation.group_name} foram adicionados ao empréstimo em aberto.`
+                        : `Empréstimo da ${reservation.group_name} registrado automaticamente com ${result.quantity} dispositivo(s).`,
+                    { type: 'success' }
+                );
+            } catch (error) {
+                console.error('Erro ao registrar empréstimo do agendamento:', error);
+                alert(getLoanRegistrationErrorMessage(error));
+                await loadData();
+            } finally {
+                reservationLoanRegistrationsInProgress.delete(registrationKey);
+                if (deliveredButton && activeReservationReminder) {
+                    deliveredButton.disabled = false;
+                    deliveredButton.innerHTML = '<i class="fas fa-truck-ramp-box"></i> Já levei';
+                }
+                updateWeeklyReservations();
+            }
+        }
+
+        async function registerActiveReservationLoan() {
+            if (!activeReservationReminder) return;
+            const { reservation, occurrence } = activeReservationReminder;
+            await registerReservationLoan(reservation, occurrence);
+        }
+
+        async function registerReservationLoanFromSchedule(reservationId, occurrenceTimestamp) {
+            const reservation = (data.weeklyReservations || []).find(item =>
+                parseInt(item.id) === parseInt(reservationId)
+            );
+            if (!reservation) return;
+            await registerReservationLoan(reservation, new Date(Number(occurrenceTimestamp)));
         }
 
         function closeReservationReminder() {

@@ -732,9 +732,18 @@
 
         .reservation-reminder-actions {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(3, 1fr);
             gap: 12px;
             margin-top: 28px;
+        }
+
+        .schedule-item.completed {
+            border-left-color: #16a34a;
+            background: rgba(220, 252, 231, 0.72);
+        }
+
+        body.dark-mode .schedule-item.completed {
+            background: rgba(20, 83, 45, 0.28);
         }
 
         @media (max-width: 640px) {
