@@ -210,6 +210,24 @@ function getLoanInfo(loan) {
         }
 
 
+        function clearSpecificLoanSelection() {
+            pendingSpecificLoanDeviceId = null;
+            const quantityInput = document.getElementById('loanQuantity');
+            const typeSelect = document.getElementById('loanDeviceType');
+            const notice = document.getElementById('loanSpecificDeviceNotice');
+            if (quantityInput) quantityInput.readOnly = false;
+            if (typeSelect) typeSelect.disabled = false;
+            if (notice) {
+                notice.style.display = 'none';
+                notice.textContent = '';
+            }
+        }
+
+        function openGeneralLoanScreen() {
+            clearSpecificLoanSelection();
+            showScreen('loan');
+        }
+
         function startLoanFromDevice(deviceId) {
             const device = data.devices.find(item => parseInt(item.id) === parseInt(deviceId));
             if (!device) return;
@@ -219,10 +237,16 @@ function getLoanInfo(loan) {
             }
 
             showScreen('loan');
+            pendingSpecificLoanDeviceId = parseInt(device.id);
             setLoanType('quantity');
             document.getElementById('loanDeviceType').value = device.type;
+            document.getElementById('loanDeviceType').disabled = true;
             document.getElementById('loanQuantity').value = 1;
+            document.getElementById('loanQuantity').readOnly = true;
             document.getElementById('loanObs').value = `Empréstimo iniciado pelo QR do dispositivo ${device.patrimony || device.counter_number || device.id}.`;
+            const notice = document.getElementById('loanSpecificDeviceNotice');
+            notice.textContent = `Dispositivo selecionado: ${getDeviceIdentityLabel(device)}`;
+            notice.style.display = 'block';
             document.getElementById('loanClass').focus();
         }
 
@@ -230,6 +254,10 @@ function getLoanInfo(loan) {
         // 8. Tipo de Empréstimo
         // ------------------------------
         function setLoanType(type) {
+            if (pendingSpecificLoanDeviceId && type !== 'quantity') {
+                alert('Este empréstimo foi iniciado por um notebook específico. Para emprestar uma base, abra “Novo Empréstimo” pelo menu.');
+                return;
+            }
             currentLoanType = type;
             document.querySelectorAll('.loan-type-option').forEach(opt => {
                 opt.classList.toggle('active', opt.dataset.type === type);
@@ -284,6 +312,12 @@ function getLoanInfo(loan) {
                 .filter(entry => entry.device);
         }
 
+        function shouldShowLoanDeviceNumbers(loan) {
+            return loan?.loan_type === 'full' ||
+                loan?.loan_type === 'specific' ||
+                String(loan?.observations || '').includes('Empréstimo iniciado pelo QR do dispositivo');
+        }
+
         function getLoanDeviceReturnStatus(link, loan = null) {
             if (link?.return_status) return link.return_status;
             if (!loan?.returned) return 'pending';
@@ -303,7 +337,13 @@ function getLoanInfo(loan) {
 
         function getLoanPendingQuantity(loan) {
             const entries = getLoanDeviceEntries(loan.id);
-            if (!entries.length) return loan.returned ? 0 : (Number(loan.quantity) || 0);
+            if (!entries.length) {
+                if (loan.returned) return 0;
+                return Math.max(
+                    (Number(loan.quantity) || 0) - (Number(loan.return_quantity) || 0),
+                    0
+                );
+            }
             return entries.filter(entry => getLoanDeviceReturnStatus(entry.link, loan) === 'pending').length;
         }
 
@@ -362,6 +402,40 @@ function getLoanInfo(loan) {
             });
             if (error) throw error;
             return registeredLoanId;
+        }
+
+        async function registerUnnumberedQuantityLoan(loan, existingLoan = null, mergeObservation = null) {
+            if (!existingLoan) {
+                const { data: registeredLoan, error } = await client
+                    .from('loans')
+                    .insert(loan)
+                    .select('id')
+                    .single();
+                if (error) throw error;
+                return registeredLoan.id;
+            }
+
+            const { data: updatedLoan, error } = await client
+                .from('loans')
+                .update({
+                    quantity: Number(existingLoan.quantity) + Number(loan.quantity),
+                    device_type: existingLoan.device_type === loan.device_type
+                        ? existingLoan.device_type
+                        : 'Diversos',
+                    loan_type: 'quantity',
+                    group_name: null,
+                    due_at: loan.due_at || existingLoan.due_at,
+                    observations: [existingLoan.observations, mergeObservation]
+                        .filter(Boolean)
+                        .join('\n') || null
+                })
+                .eq('id', existingLoan.id)
+                .eq('returned', false)
+                .select('id')
+                .maybeSingle();
+            if (error) throw error;
+            if (!updatedLoan) throw new Error('LOAN_ALREADY_RETURNED');
+            return updatedLoan.id;
         }
 
         function getLoanRegistrationErrorMessage(error) {
@@ -483,10 +557,22 @@ function getLoanInfo(loan) {
                     alert('Informe uma quantidade válida de dispositivos.');
                     return;
                 }
-                selectedLoanDevices = getAvailableDevicesForLoan(deviceType, quantity);
-                if (selectedLoanDevices.length < quantity) {
-                    alert(`Existem apenas ${selectedLoanDevices.length} dispositivo(s) disponível(is) desse tipo para empréstimo.`);
-                    return;
+
+                if (pendingSpecificLoanDeviceId) {
+                    const specificDevice = data.devices.find(device =>
+                        parseInt(device.id) === parseInt(pendingSpecificLoanDeviceId)
+                    );
+                    if (
+                        !specificDevice ||
+                        specificDevice.status !== 'Disponível' ||
+                        specificDevice.type !== deviceType
+                    ) {
+                        alert('O notebook selecionado não está mais disponível. Atualize a lista e tente novamente.');
+                        await loadData();
+                        return;
+                    }
+                    quantity = 1;
+                    selectedLoanDevices = [specificDevice];
                 }
             } else {
                 groupName = document.getElementById('loanGroup').value;
@@ -506,9 +592,15 @@ function getLoanInfo(loan) {
             const now = new Date();
             const dateTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth()+1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
             const existingOpenLoan = findOpenLoanForResponsible(classId, teacherId);
+            const newLoanTracksDeviceNumbers = selectedLoanDevices.length > 0;
+            const existingLoanTracksDeviceNumbers = existingOpenLoan
+                ? getLoanDeviceEntries(existingOpenLoan.id).length > 0
+                : false;
+            const canMergeWithOpenLoan = existingOpenLoan &&
+                newLoanTracksDeviceNumbers === existingLoanTracksDeviceNumbers;
             let shouldMergeWithOpenLoan = false;
 
-            if (existingOpenLoan) {
+            if (canMergeWithOpenLoan) {
                 const className = data.classes.find(item => parseInt(item.id) === classId)?.name || 'turma selecionada';
                 const teacherName = data.teachers.find(item => parseInt(item.id) === teacherId)?.name || 'professor selecionado';
                 shouldMergeWithOpenLoan = confirm(
@@ -523,7 +615,7 @@ function getLoanInfo(loan) {
                 teacher_id: teacherId,
                 device_type: deviceType,
                 quantity,
-                loan_type: currentLoanType,
+                loan_type: pendingSpecificLoanDeviceId ? 'specific' : currentLoanType,
                 group_name: groupName,
                 date_time: dateTime,
                 due_at: dueAt,
@@ -543,12 +635,20 @@ function getLoanInfo(loan) {
                     })
                     : null;
 
-                await registerLoanAtomically(
-                    loan,
-                    selectedLoanDevices,
-                    shouldMergeWithOpenLoan ? existingOpenLoan.id : null,
-                    mergeObservation
-                );
+                if (newLoanTracksDeviceNumbers) {
+                    await registerLoanAtomically(
+                        loan,
+                        selectedLoanDevices,
+                        shouldMergeWithOpenLoan ? existingOpenLoan.id : null,
+                        mergeObservation
+                    );
+                } else {
+                    await registerUnnumberedQuantityLoan(
+                        loan,
+                        shouldMergeWithOpenLoan ? existingOpenLoan : null,
+                        mergeObservation
+                    );
+                }
 
                 await showAppAlert(
                     shouldMergeWithOpenLoan
@@ -556,13 +656,14 @@ function getLoanInfo(loan) {
                         : 'Empréstimo registrado com sucesso!',
                     { type: 'success' }
                 );
+                this.reset();
+                clearSpecificLoanSelection();
                 await loadData();
                 if (isAlunoAccess()) {
                     await logout();
                     return;
                 }
                 showScreen('dashboard');
-                this.reset();
             } catch (error) {
                 console.error('Erro ao registrar empréstimo:', error);
                 alert(getLoanRegistrationErrorMessage(error));

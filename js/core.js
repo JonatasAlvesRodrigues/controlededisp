@@ -29,6 +29,7 @@
             weeklyReservations: []
         };
         let currentLoanType = 'quantity';
+        let pendingSpecificLoanDeviceId = null;
         let currentUser = null;
         let isQuickAccess = false;
         let currentUserProfile = null;

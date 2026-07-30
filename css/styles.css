@@ -2010,6 +2010,12 @@
             margin-bottom: 20px;
         }
 
+        .return-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
         .return-device-summary {
             display: flex;
             gap: 10px;
@@ -2049,6 +2055,10 @@
         }
 
         @media (max-width: 640px) {
+            .return-actions {
+                grid-template-columns: 1fr;
+            }
+
             .return-device-item {
                 grid-template-columns: 1fr;
             }

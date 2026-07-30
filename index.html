@@ -127,7 +127,7 @@
                 <i class="fas fa-home"></i>
                 <span>Dashboard</span>
             </div>
-            <div class="nav-item" onclick="showScreen('loan')" data-screen="loan">
+            <div class="nav-item" onclick="openGeneralLoanScreen()" data-screen="loan">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Novo Empréstimo</span>
             </div>
@@ -309,7 +309,7 @@
                         </div>
                         <div class="card-body">
                             <div class="quick-actions">
-                                <div class="quick-action primary" onclick="showScreen('loan')">
+                                <div class="quick-action primary" onclick="openGeneralLoanScreen()">
                                     <i class="fas fa-plus"></i>
                                     <span>Novo Empréstimo</span>
                                     <span style="font-size: 11px; opacity: 0.9; margin-top: 4px; display: block;">Registrar saída de dispositivos</span>
@@ -414,6 +414,7 @@
                                     <option value="Tablet">Tablet</option>
                                 </select>
                                 <small class="loan-note">Desktops e Desktop Gestão são fixos na sala de informática e não entram em empréstimo.</small>
+                                <small class="field-hint" id="loanSpecificDeviceNotice" style="display: none;"></small>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Responsável pela Liberação</label>
@@ -504,10 +505,16 @@
                                 <textarea id="returnObs" class="form-input" rows="3" placeholder="Descreva o estado dos dispositivos, se houver danos, etc."></textarea>
                             </div>
                         </div>
-                        <button class="btn btn-success btn-lg btn-full" onclick="confirmReturn()">
-                            <i class="fas fa-check"></i>
-                            Confirmar Devolução
-                        </button>
+                        <div class="return-actions">
+                            <button type="button" class="btn btn-success btn-lg" onclick="confirmReturn()">
+                                <i class="fas fa-check"></i>
+                                Confirmar seleção
+                            </button>
+                            <button type="button" class="btn btn-primary btn-lg" id="returnAllButton" onclick="returnEverything()">
+                                <i class="fas fa-rotate-left"></i>
+                                Devolver tudo
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -26,15 +26,16 @@ function updateReturnSelect() {
 
         function renderReturnDeviceSelection(loan) {
             const entries = getLoanDeviceEntries(loan.id);
+            const showIndividualDevices = entries.length > 0 && shouldShowLoanDeviceNumbers(loan);
             const selection = document.getElementById('returnDeviceSelection');
             const quantityGroup = document.getElementById('returnQuantityGroup');
             const statusGroup = document.getElementById('returnStatusGroup');
 
-            selection.style.display = entries.length ? 'block' : 'none';
-            quantityGroup.style.display = entries.length ? 'none' : '';
-            statusGroup.style.display = entries.length ? 'none' : '';
+            selection.style.display = showIndividualDevices ? 'block' : 'none';
+            quantityGroup.style.display = showIndividualDevices ? 'none' : '';
+            statusGroup.style.display = showIndividualDevices ? 'none' : '';
 
-            if (!entries.length) {
+            if (!showIndividualDevices) {
                 document.getElementById('returnDeviceList').innerHTML = '';
                 document.getElementById('returnDeviceSummary').innerHTML = '';
                 return;
@@ -227,17 +228,87 @@ function updateReturnSelect() {
             await showAppAlert(message, { type: 'success' });
         }
 
+        async function processHiddenLinkedDeviceReturn(
+            loan,
+            returnQuantity,
+            returnStatus,
+            returnObservations,
+            returnedAt,
+            returnedBy
+        ) {
+            const pendingEntries = getLoanDeviceEntries(loan.id)
+                .filter(({ link }) => getLoanDeviceReturnStatus(link, loan) === 'pending')
+                .slice(0, returnQuantity);
+            if (!pendingEntries.length) return;
+
+            const individualStatus = returnStatus === 'damaged' ? 'damaged' : 'returned';
+            const { error } = await client
+                .from('loan_devices')
+                .update({
+                    return_status: individualStatus,
+                    returned_at: returnedAt,
+                    returned_by: returnedBy,
+                    return_observations: returnObservations || null
+                })
+                .in('id', pendingEntries.map(({ link }) => link.id));
+            if (error) throw error;
+
+            const affectedDevices = pendingEntries.map(({ device }) => device);
+            const deviceStatus = individualStatus === 'damaged' ? 'Manutenção' : 'Disponível';
+            await updateLoanDeviceStatuses(affectedDevices, deviceStatus);
+            if (individualStatus === 'damaged') {
+                await Promise.all(affectedDevices.map(device =>
+                    recordDeviceMaintenanceEvent(device, device.status, 'Manutenção')
+                ));
+            }
+        }
+
+        async function returnEverything() {
+            const loanId = parseInt(document.getElementById('returnLoan').value);
+            const loan = data.loans.find(item => parseInt(item.id) === loanId);
+            if (!loan) return;
+
+            const pendingQuantity = getLoanPendingQuantity(loan);
+            if (!pendingQuantity) {
+                await showAppAlert('Este empréstimo não possui dispositivos pendentes.', { type: 'info' });
+                return;
+            }
+            if (!confirm(`Confirmar a devolução de todos os ${pendingQuantity} dispositivo(s) pendente(s)?`)) {
+                return;
+            }
+
+            const hasVisibleIndividualDevices =
+                getLoanDeviceEntries(loan.id).length > 0 &&
+                shouldShowLoanDeviceNumbers(loan);
+            if (hasVisibleIndividualDevices) {
+                document.querySelectorAll('.return-device-status').forEach(select => {
+                    if (!select.disabled && select.dataset.originalStatus === 'pending') {
+                        select.value = 'returned';
+                    }
+                });
+                updateReturnDeviceSummary();
+            } else {
+                document.getElementById('returnQuantity').value = pendingQuantity;
+                document.getElementById('returnStatus').value = 'complete';
+            }
+
+            await confirmReturn();
+        }
+
         async function confirmReturn() {
             const loanId = parseInt(document.getElementById('returnLoan').value);
             if (!loanId) return;
             const loan = data.loans.find(item => parseInt(item.id) === loanId);
             if (!loan) return;
 
-            const hasIndividualDevices = getLoanDeviceEntries(loan.id).length > 0;
+            const hasIndividualDevices =
+                getLoanDeviceEntries(loan.id).length > 0 &&
+                shouldShowLoanDeviceNumbers(loan);
             const returnQty = parseInt(document.getElementById('returnQuantity').value);
             const returnStatus = document.getElementById('returnStatus').value;
             const returnObs = document.getElementById('returnObs').value;
             const now = new Date();
+            const returnedAt = now.toISOString();
             const returnDateTime = now.toLocaleString('pt-BR');
 
             try {
@@ -252,23 +323,51 @@ function updateReturnSelect() {
                     return;
                 }
 
-                if (!returnQty || returnQty < 1 || returnQty > Number(loan.quantity)) {
-                    alert(`Informe uma quantidade entre 1 e ${loan.quantity}.`);
+                const pendingQuantity = getLoanPendingQuantity(loan);
+                if (!returnQty || returnQty < 1 || returnQty > pendingQuantity) {
+                    alert(`Informe uma quantidade entre 1 e ${pendingQuantity}.`);
                     return;
                 }
 
+                const previousReturnedQuantity = Number(loan.return_quantity) || 0;
+                const totalReturnedQuantity = Math.min(
+                    previousReturnedQuantity + returnQty,
+                    Number(loan.quantity)
+                );
+                const isComplete = totalReturnedQuantity >= Number(loan.quantity);
+                const effectiveReturnStatus = isComplete
+                    ? (returnStatus === 'damaged' ? 'damaged' : 'complete')
+                    : 'incomplete';
                 const { error } = await client.from('loans').update({
-                    returned: true,
+                    returned: isComplete,
                     return_date_time: returnDateTime,
-                    return_quantity: returnQty,
-                    return_status: returnStatus,
-                    return_observations: returnObs
+                    return_quantity: totalReturnedQuantity,
+                    return_status: effectiveReturnStatus,
+                    return_observations: appendLoanReturnObservation(
+                        loan,
+                        returnDateTime,
+                        getCurrentActorName(),
+                        returnQty,
+                        returnObs
+                    )
                 }).eq('id', loanId);
 
                 if (error) throw error;
-                await applyReturnStatusToLinkedDevices(loan, returnQty, returnStatus);
+                await processHiddenLinkedDeviceReturn(
+                    loan,
+                    returnQty,
+                    returnStatus,
+                    returnObs,
+                    returnedAt,
+                    getCurrentActorName()
+                );
 
-                await showAppAlert('Devolução registrada com sucesso!', { type: 'success' });
+                await showAppAlert(
+                    isComplete
+                        ? 'Devolução total registrada com sucesso!'
+                        : `Devolução parcial registrada. Ainda faltam ${Number(loan.quantity) - totalReturnedQuantity} dispositivo(s).`,
+                    { type: 'success' }
+                );
                 await loadData();
                 if (isAlunoAccess()) {
                     await logout();

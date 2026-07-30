@@ -240,7 +240,7 @@ function getRequestedDeviceIdFromUrl() {
                     <div class="card">
                         <div class="card-body">
                             <div class="quick-actions">
-                                <div class="quick-action primary" onclick="showScreen('loan')">
+                                <div class="quick-action primary" onclick="openGeneralLoanScreen()">
                                     <i class="fas fa-plus"></i>
                                     <span>Novo empréstimo</span>
                                     <span style="font-size: 11px; opacity: 0.9; margin-top: 4px; display: block;">Retirar dispositivos</span>
@@ -348,7 +348,7 @@ function getRequestedDeviceIdFromUrl() {
                             </div>
                         </div>
                         <div class="quick-actions">
-                            <div class="quick-action primary" onclick="showScreen('loan')">
+                            <div class="quick-action primary" onclick="openGeneralLoanScreen()">
                                 <i class="fas fa-plus"></i>
                                 <span>Novo empréstimo</span>
                             </div>
