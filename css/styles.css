@@ -2016,6 +2016,30 @@
             gap: 12px;
         }
 
+        .return-damage-device-section {
+            padding: 14px;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            background: rgba(254, 226, 226, 0.45);
+        }
+
+        body.dark-mode .return-damage-device-section {
+            background: rgba(127, 29, 29, 0.2);
+        }
+
+        .return-damage-device-fields {
+            display: grid;
+            gap: 10px;
+        }
+
+        .return-damage-device-row label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
         .return-device-summary {
             display: flex;
             gap: 10px;

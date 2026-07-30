@@ -1662,7 +1662,7 @@ function getRequestedDeviceIdFromUrl() {
             }
         }
 
-        async function recordDeviceMaintenanceEvent(device, previousStatus, newStatus) {
+        async function recordDeviceMaintenanceEvent(device, previousStatus, newStatus, notes = null) {
             if (!device || previousStatus === newStatus) return;
             if (![previousStatus, newStatus].includes('Manutenção')) return;
 
@@ -1670,7 +1670,7 @@ function getRequestedDeviceIdFromUrl() {
                 device_id: device.id,
                 previous_status: previousStatus,
                 new_status: newStatus,
-                notes: device.observations || null,
+                notes: notes || device.observations || null,
                 changed_by: getCurrentActorName()
             };
 

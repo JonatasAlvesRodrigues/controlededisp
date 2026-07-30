@@ -337,7 +337,7 @@ function getLoanInfo(loan) {
 
         function getLoanPendingQuantity(loan) {
             const entries = getLoanDeviceEntries(loan.id);
-            if (!entries.length) {
+            if (!entries.length || !shouldShowLoanDeviceNumbers(loan)) {
                 if (loan.returned) return 0;
                 return Math.max(
                     (Number(loan.quantity) || 0) - (Number(loan.return_quantity) || 0),

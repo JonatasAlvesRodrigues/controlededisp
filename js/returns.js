@@ -24,6 +24,118 @@ function updateReturnSelect() {
             `;
         }
 
+        function getCurrentReturnLoan() {
+            const loanId = parseInt(document.getElementById('returnLoan').value);
+            return data.loans.find(item => parseInt(item.id) === loanId) || null;
+        }
+
+        function getDamageDeviceCandidates(loan) {
+            const activeOtherLoanIds = new Set(
+                data.loans
+                    .filter(item => !item.returned && parseInt(item.id) !== parseInt(loan.id))
+                    .map(item => parseInt(item.id))
+            );
+            const linkedToOtherLoanIds = new Set(
+                (data.loanDevices || [])
+                    .filter(link =>
+                        activeOtherLoanIds.has(parseInt(link.loan_id)) &&
+                        getLoanDeviceReturnStatus(link) === 'pending'
+                    )
+                    .map(link => parseInt(link.device_id))
+            );
+
+            return sortDevicesForDisplay(data.devices).filter(device =>
+                (loan.device_type === 'Diversos' || device.type === loan.device_type) &&
+                !isFixedDevice(device.type) &&
+                device.status !== 'Fora de uso' &&
+                device.status !== 'Manutenção' &&
+                !linkedToOtherLoanIds.has(parseInt(device.id))
+            );
+        }
+
+        function updateReturnDamageFields() {
+            const section = document.getElementById('returnDamageDeviceSection');
+            const fields = document.getElementById('returnDamageDeviceFields');
+            if (!section || !fields) return;
+
+            const loan = getCurrentReturnLoan();
+            const hasVisibleIndividualDevices = loan &&
+                getLoanDeviceEntries(loan.id).length > 0 &&
+                shouldShowLoanDeviceNumbers(loan);
+            const shouldIdentifyDamage = loan &&
+                !hasVisibleIndividualDevices &&
+                document.getElementById('returnStatus').value === 'damaged';
+
+            section.style.display = shouldIdentifyDamage ? 'block' : 'none';
+            if (!shouldIdentifyDamage) {
+                fields.innerHTML = '';
+                return;
+            }
+
+            const pendingQuantity = getLoanPendingQuantity(loan);
+            const returnedQuantity = Math.min(
+                Math.max(parseInt(document.getElementById('returnQuantity').value) || 1, 1),
+                Math.max(pendingQuantity, 1)
+            );
+            const requestedQuantity = parseInt(document.getElementById('returnDamageQuantity').value);
+            const damageQuantity = Math.min(
+                Math.max(Number.isInteger(requestedQuantity) ? requestedQuantity : 1, 1),
+                returnedQuantity
+            );
+            const previousValues = fields.querySelectorAll
+                ? [...fields.querySelectorAll('.return-damaged-device')].map(select => select.value)
+                : [];
+            const candidates = getDamageDeviceCandidates(loan);
+            const options = candidates.map(device => `
+                <option value="${device.id}">
+                    ${escapeHtml(`${device.type} · ${getDeviceIdentityLabel(device)}${device.group ? ` · ${device.group}` : ''}`)}
+                </option>
+            `).join('');
+
+            const availabilityWarning = candidates.length < damageQuantity
+                ? `<div class="field-hint" style="color: #dc2626;">Há somente ${candidates.length} dispositivo(s) elegível(is). Reduza a quantidade com danos ou confira o cadastro.</div>`
+                : '';
+            fields.innerHTML = availabilityWarning + Array.from({ length: damageQuantity }, (_, index) => `
+                <div class="return-damage-device-row">
+                    <label for="returnDamagedDevice${index}">Dispositivo com danos ${index + 1}</label>
+                    <select id="returnDamagedDevice${index}" class="form-input return-damaged-device" required>
+                        <option value="">Selecione o dispositivo</option>
+                        ${options}
+                    </select>
+                </div>
+            `).join('');
+
+            [...fields.querySelectorAll('.return-damaged-device')].forEach((select, index) => {
+                if (previousValues[index] && candidates.some(device =>
+                    parseInt(device.id) === parseInt(previousValues[index])
+                )) {
+                    select.value = previousValues[index];
+                }
+            });
+        }
+
+        function getSelectedDamagedReturnDevices(expectedQuantity) {
+            const selects = [...document.querySelectorAll('.return-damaged-device')];
+            const selectedIds = selects.map(select => parseInt(select.value)).filter(Number.isInteger);
+            if (selectedIds.length !== expectedQuantity) {
+                alert(`Identifique os ${expectedQuantity} dispositivo(s) com danos.`);
+                return null;
+            }
+            if (new Set(selectedIds).size !== selectedIds.length) {
+                alert('Cada dispositivo com danos deve ser selecionado apenas uma vez.');
+                return null;
+            }
+
+            const selectedDevices = selectedIds
+                .map(id => data.devices.find(device => parseInt(device.id) === id))
+                .filter(Boolean);
+            if (selectedDevices.length !== expectedQuantity) {
+                alert('Um dos dispositivos informados não foi encontrado. Atualize os dados e tente novamente.');
+                return null;
+            }
+            return selectedDevices;
+        }
+
         function renderReturnDeviceSelection(loan) {
             const entries = getLoanDeviceEntries(loan.id);
             const showIndividualDevices = entries.length > 0 && shouldShowLoanDeviceNumbers(loan);
@@ -38,8 +150,12 @@ function updateReturnSelect() {
             if (!showIndividualDevices) {
                 document.getElementById('returnDeviceList').innerHTML = '';
                 document.getElementById('returnDeviceSummary').innerHTML = '';
+                updateReturnDamageFields();
                 return;
             }
+
+            document.getElementById('returnDamageDeviceSection').style.display = 'none';
+            document.getElementById('returnDamageDeviceFields').innerHTML = '';
 
             document.getElementById('returnDeviceList').innerHTML = entries.map(({ link, device }) => {
                 const status = getLoanDeviceReturnStatus(link, loan);
@@ -104,6 +220,8 @@ function updateReturnSelect() {
                     ? '#d97706'
                     : '';
             document.getElementById('returnQuantity').value = pendingQuantity;
+            document.getElementById('returnStatus').value = 'complete';
+            document.getElementById('returnDamageQuantity').value = 1;
             document.getElementById('returnObs').value = '';
             renderReturnDeviceSelection(loan);
             document.getElementById('returnDetails').style.display = 'block';
@@ -158,6 +276,17 @@ function updateReturnSelect() {
                 alert('Descreva nas observações o dano encontrado.');
                 return;
             }
+            const damagedDeviceLabels = selectedItems
+                .filter(item => item.status === 'damaged')
+                .map(item => data.devices.find(device => parseInt(device.id) === item.deviceId))
+                .filter(Boolean)
+                .map(device => getDeviceIdentityLabel(device));
+            const combinedReturnObs = [
+                returnObs,
+                damagedDeviceLabels.length
+                    ? `Dispositivo(s) com danos: ${damagedDeviceLabels.join('; ')}`
+                    : ''
+            ].filter(Boolean).join(' — ');
             const now = new Date();
             const returnedAt = now.toISOString();
             const returnDateTime = now.toLocaleString('pt-BR');
@@ -173,7 +302,7 @@ function updateReturnSelect() {
                         return_status: status,
                         returned_at: returnedAt,
                         returned_by: returnedBy,
-                        return_observations: returnObs || null
+                        return_observations: combinedReturnObs || null
                     })
                     .in('id', items.map(item => item.loanDeviceId));
                 if (error) throw error;
@@ -191,7 +320,7 @@ function updateReturnSelect() {
             await updateLoanDeviceStatuses(returnedDevices, 'Disponível');
             await updateLoanDeviceStatuses(damagedDevices, 'Manutenção');
             await Promise.all(damagedDevices.map(device =>
-                recordDeviceMaintenanceEvent(device, device.status, 'Manutenção')
+                recordDeviceMaintenanceEvent(device, device.status, 'Manutenção', combinedReturnObs)
             ));
 
             const selectedStatusByLinkId = new Map(
@@ -217,7 +346,7 @@ function updateReturnSelect() {
                     returnDateTime,
                     returnedBy,
                     selectedItems.length,
-                    returnObs
+                    combinedReturnObs
                 )
             }).eq('id', loan.id);
             if (loanError) throw loanError;
@@ -231,7 +360,6 @@ function updateReturnSelect() {
         async function processHiddenLinkedDeviceReturn(
             loan,
             returnQuantity,
-            returnStatus,
             returnObservations,
             returnedAt,
             returnedBy
@@ -241,7 +369,10 @@ function updateReturnSelect() {
                 .slice(0, returnQuantity);
             if (!pendingEntries.length) return;
 
-            const individualStatus = returnStatus === 'damaged' ? 'damaged' : 'returned';
+            // Em empréstimos antigos por quantidade, os vínculos individuais foram
+            // criados automaticamente e não representam necessariamente os aparelhos
+            // entregues. Eles são encerrados sem atribuir o dano a um número aleatório.
+            const individualStatus = 'returned';
             const { error } = await client
                 .from('loan_devices')
                 .update({
@@ -254,13 +385,20 @@ function updateReturnSelect() {
             if (error) throw error;
 
             const affectedDevices = pendingEntries.map(({ device }) => device);
-            const deviceStatus = individualStatus === 'damaged' ? 'Manutenção' : 'Disponível';
-            await updateLoanDeviceStatuses(affectedDevices, deviceStatus);
-            if (individualStatus === 'damaged') {
-                await Promise.all(affectedDevices.map(device =>
-                    recordDeviceMaintenanceEvent(device, device.status, 'Manutenção')
-                ));
-            }
+            await updateLoanDeviceStatuses(affectedDevices, 'Disponível');
+        }
+
+        async function recordReportedDamagedDevices(devices, returnObservations) {
+            if (!devices.length) return;
+            await updateLoanDeviceStatuses(devices, 'Manutenção');
+            await Promise.all(devices.map(device =>
+                recordDeviceMaintenanceEvent(
+                    device,
+                    device.status,
+                    'Manutenção',
+                    returnObservations
+                )
+            ));
         }
 
         async function returnEverything() {
@@ -329,14 +467,42 @@ function updateReturnSelect() {
                     return;
                 }
 
+                let damagedDevices = [];
+                if (returnStatus === 'damaged') {
+                    if (!returnObs.trim()) {
+                        alert('Descreva nas observações o dano encontrado.');
+                        return;
+                    }
+                    const damageQuantity = parseInt(
+                        document.getElementById('returnDamageQuantity').value
+                    );
+                    if (!damageQuantity || damageQuantity < 1 || damageQuantity > returnQty) {
+                        alert(`Informe uma quantidade com danos entre 1 e ${returnQty}.`);
+                        return;
+                    }
+                    damagedDevices = getSelectedDamagedReturnDevices(damageQuantity);
+                    if (!damagedDevices) return;
+                }
+                const damagedDeviceLabels = damagedDevices.map(device =>
+                    getDeviceIdentityLabel(device)
+                );
+                const combinedReturnObs = [
+                    returnObs.trim(),
+                    damagedDeviceLabels.length
+                        ? `Dispositivo(s) com danos: ${damagedDeviceLabels.join('; ')}`
+                        : ''
+                ].filter(Boolean).join(' — ');
                 const previousReturnedQuantity = Number(loan.return_quantity) || 0;
                 const totalReturnedQuantity = Math.min(
                     previousReturnedQuantity + returnQty,
                     Number(loan.quantity)
                 );
                 const isComplete = totalReturnedQuantity >= Number(loan.quantity);
+                const hasRecordedDamage =
+                    returnStatus === 'damaged' ||
+                    String(loan.return_observations || '').includes('Dispositivo(s) com danos:');
                 const effectiveReturnStatus = isComplete
-                    ? (returnStatus === 'damaged' ? 'damaged' : 'complete')
+                    ? (hasRecordedDamage ? 'damaged' : 'complete')
                     : 'incomplete';
                 const { error } = await client.from('loans').update({
                     returned: isComplete,
@@ -348,7 +514,7 @@ function updateReturnSelect() {
                         returnDateTime,
                         getCurrentActorName(),
                         returnQty,
-                        returnObs
+                        combinedReturnObs
                     )
                 }).eq('id', loanId);
 
@@ -356,11 +522,11 @@ function updateReturnSelect() {
                 await processHiddenLinkedDeviceReturn(
                     loan,
                     returnQty,
-                    returnStatus,
-                    returnObs,
+                    combinedReturnObs,
                     returnedAt,
                     getCurrentActorName()
                 );
+                await recordReportedDamagedDevices(damagedDevices, combinedReturnObs);
 
                 await showAppAlert(
                     isComplete

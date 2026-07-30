@@ -484,15 +484,24 @@
                         <div class="form-grid">
                             <div class="form-group" id="returnQuantityGroup">
                                 <label class="form-label">Quantidade Devolvida</label>
-                                <input type="number" id="returnQuantity" class="form-input" min="1">
+                                <input type="number" id="returnQuantity" class="form-input" min="1" oninput="updateReturnDamageFields()">
                             </div>
                             <div class="form-group" id="returnStatusGroup">
                                 <label class="form-label">Status da Devolução</label>
-                                <select id="returnStatus" class="form-input">
+                                <select id="returnStatus" class="form-input" onchange="updateReturnDamageFields()">
                                     <option value="complete">Completa (todos os dispositivos)</option>
                                     <option value="incomplete">Incompleta (faltam dispositivos)</option>
                                     <option value="damaged">Com danos</option>
                                 </select>
+                            </div>
+                            <div class="form-group full return-damage-device-section" id="returnDamageDeviceSection" style="display: none;">
+                                <label class="form-label">Identifique o(s) dispositivo(s) com danos</label>
+                                <div class="form-group" style="margin-bottom: 12px;">
+                                    <label class="form-label" for="returnDamageQuantity">Quantidade com danos</label>
+                                    <input type="number" id="returnDamageQuantity" class="form-input" min="1" value="1" oninput="updateReturnDamageFields()">
+                                </div>
+                                <div id="returnDamageDeviceFields" class="return-damage-device-fields"></div>
+                                <small class="field-hint">Selecione pelo número de série, patrimônio ou número de controle. O equipamento será colocado em manutenção.</small>
                             </div>
                             <div class="form-group full return-device-section" id="returnDeviceSelection" style="display: none;">
                                 <label class="form-label">Situação de cada dispositivo</label>
