@@ -76,6 +76,7 @@ DROP POLICY IF EXISTS "Operacao cria loans" ON public.loans;
 DROP POLICY IF EXISTS "Operacao devolve loans" ON public.loans;
 DROP POLICY IF EXISTS "Leitura geral loan_devices" ON public.loan_devices;
 DROP POLICY IF EXISTS "Operacao cria loan_devices" ON public.loan_devices;
+DROP POLICY IF EXISTS "Operacao atualiza devolucao loan_devices" ON public.loan_devices;
 DROP POLICY IF EXISTS "Leitura geral manutencao" ON public.device_maintenance_history;
 DROP POLICY IF EXISTS "Admin cria manutencao" ON public.device_maintenance_history;
 DROP POLICY IF EXISTS "Leitura geral alteracoes" ON public.device_change_history;
@@ -155,6 +156,12 @@ USING (true);
 CREATE POLICY "Operacao cria loan_devices"
 ON public.loan_devices FOR INSERT
 TO anon, authenticated
+WITH CHECK (true);
+
+CREATE POLICY "Operacao atualiza devolucao loan_devices"
+ON public.loan_devices FOR UPDATE
+TO anon, authenticated
+USING (true)
 WITH CHECK (true);
 
 CREATE POLICY "Leitura geral manutencao"
