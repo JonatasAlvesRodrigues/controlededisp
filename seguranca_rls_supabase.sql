@@ -61,6 +61,7 @@ ALTER TABLE public.device_change_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_notice_todos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_print_files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.weekly_reservations ENABLE ROW LEVEL SECURITY;
 
 -- Limpa políticas anteriores com os mesmos nomes.
 DROP POLICY IF EXISTS "Leitura geral classes" ON public.classes;
@@ -88,6 +89,10 @@ DROP POLICY IF EXISTS "Admins removem avisos e afazeres" ON public.admin_notice_
 DROP POLICY IF EXISTS "Admins veem impressos" ON public.admin_print_files;
 DROP POLICY IF EXISTS "Admins criam impressos" ON public.admin_print_files;
 DROP POLICY IF EXISTS "Admins removem impressos" ON public.admin_print_files;
+DROP POLICY IF EXISTS "Leitura geral reservas semanais" ON public.weekly_reservations;
+DROP POLICY IF EXISTS "Equipe cria reservas semanais" ON public.weekly_reservations;
+DROP POLICY IF EXISTS "Equipe atualiza reservas semanais" ON public.weekly_reservations;
+DROP POLICY IF EXISTS "Equipe remove reservas semanais" ON public.weekly_reservations;
 
 CREATE POLICY "Leitura geral classes"
 ON public.classes FOR SELECT
@@ -219,3 +224,24 @@ CREATE POLICY "Admins removem impressos"
 ON public.admin_print_files FOR DELETE
 TO authenticated
 USING (public.is_access_admin());
+
+CREATE POLICY "Leitura geral reservas semanais"
+ON public.weekly_reservations FOR SELECT
+TO anon, authenticated
+USING (true);
+
+CREATE POLICY "Equipe cria reservas semanais"
+ON public.weekly_reservations FOR INSERT
+TO authenticated
+WITH CHECK (public.is_access_staff());
+
+CREATE POLICY "Equipe atualiza reservas semanais"
+ON public.weekly_reservations FOR UPDATE
+TO authenticated
+USING (public.is_access_staff())
+WITH CHECK (public.is_access_staff());
+
+CREATE POLICY "Equipe remove reservas semanais"
+ON public.weekly_reservations FOR DELETE
+TO authenticated
+USING (public.is_access_staff());

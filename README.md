@@ -31,8 +31,10 @@ Execute os scripts nesta ordem:
 6. `admin_impressos_avisos.sql`
 7. `devolucao_individual_dispositivos.sql`
 8. `prazo_alertas_emprestimos.sql`
-9. `finalizar_config.sql` se quiser popular os dados de exemplo
-10. `seguranca_rls_supabase.sql`
+9. `protecao_emprestimos_simultaneos.sql`
+10. `agendamentos_reservas_semanais.sql`
+11. `finalizar_config.sql` se quiser popular os dados de exemplo
+12. `seguranca_rls_supabase.sql`
 
 ## Observações
 

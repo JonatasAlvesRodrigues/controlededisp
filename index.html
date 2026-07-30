@@ -638,6 +638,140 @@
             background: rgba(245, 158, 11, 0.06);
         }
 
+        .schedule-week {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(180px, 1fr));
+            gap: 14px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .schedule-day {
+            min-width: 180px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--card-bg);
+            overflow: hidden;
+        }
+
+        .schedule-day-header {
+            padding: 12px 14px;
+            background: rgba(37, 99, 235, 0.08);
+            color: var(--text-dark);
+            font-weight: 800;
+        }
+
+        .schedule-day-body {
+            display: grid;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .schedule-item {
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-left: 4px solid #2563eb;
+            border-radius: 10px;
+            background: rgba(248, 250, 252, 0.9);
+        }
+
+        body.dark-mode .schedule-item {
+            background: rgba(15, 23, 42, 0.72);
+        }
+
+        .schedule-item.inactive {
+            opacity: 0.55;
+            border-left-color: #94a3b8;
+        }
+
+        .schedule-item-time {
+            font-size: 18px;
+            font-weight: 900;
+            color: var(--primary);
+        }
+
+        .schedule-item-title {
+            margin-top: 5px;
+            font-weight: 800;
+            color: var(--text-dark);
+        }
+
+        .schedule-item-meta {
+            margin-top: 4px;
+            font-size: 12px;
+            line-height: 1.45;
+            color: var(--text-muted);
+        }
+
+        .schedule-item-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .reservation-reminder-modal {
+            width: min(680px, 100%);
+            border: 3px solid #f59e0b;
+            text-align: center;
+        }
+
+        .reservation-reminder-content {
+            padding: 38px 30px 30px;
+        }
+
+        .reservation-reminder-icon {
+            width: 88px;
+            height: 88px;
+            margin: 0 auto 18px;
+            border-radius: 24px;
+            display: grid;
+            place-items: center;
+            background: #fef3c7;
+            color: #d97706;
+            font-size: 42px;
+        }
+
+        .reservation-reminder-kicker {
+            color: #d97706;
+            font-size: 14px;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .reservation-reminder-title {
+            margin-top: 8px;
+            font-size: clamp(25px, 5vw, 38px);
+            line-height: 1.15;
+            font-weight: 900;
+            color: var(--text-dark);
+        }
+
+        .reservation-reminder-message {
+            margin-top: 16px;
+            font-size: 18px;
+            line-height: 1.55;
+            color: var(--text-muted);
+        }
+
+        .reservation-reminder-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 28px;
+        }
+
+        @media (max-width: 640px) {
+            .schedule-week {
+                grid-template-columns: 1fr;
+            }
+
+            .reservation-reminder-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* Quick Actions */
         .quick-actions {
             display: grid;
@@ -2659,6 +2793,10 @@
                 <i class="fas fa-list"></i>
                 <span>Em Uso</span>
             </div>
+            <div class="nav-item" onclick="showScreen('schedules')" data-screen="schedules">
+                <i class="fas fa-calendar-days"></i>
+                <span>Agendamentos</span>
+            </div>
             <div class="nav-item" onclick="showScreen('maintenance')" data-screen="maintenance">
                 <i class="fas fa-screwdriver-wrench"></i>
                 <span>Manutenção</span>
@@ -3025,6 +3163,98 @@
                             Confirmar Devolução
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Reservations Screen -->
+        <div id="schedules" class="screen">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Agendamentos Semanais</div>
+                    <div class="page-subtitle">Reservas recorrentes de bases e carrinhos por dia e horário</div>
+                </div>
+            </div>
+
+            <div class="card" id="reservationFormCard">
+                <div class="card-header">
+                    <div class="card-title">Novo agendamento</div>
+                </div>
+                <div class="card-body">
+                    <form id="weeklyReservationForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Dia da semana</label>
+                                <select id="reservationWeekday" class="form-input" required>
+                                    <option value="1">Segunda-feira</option>
+                                    <option value="2">Terça-feira</option>
+                                    <option value="3">Quarta-feira</option>
+                                    <option value="4">Quinta-feira</option>
+                                    <option value="5">Sexta-feira</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Horário da aula</label>
+                                <input type="time" id="reservationStartTime" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Turma / Sala</label>
+                                <select id="reservationClass" class="form-input" required>
+                                    <option value="">Selecione uma turma</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Professor</label>
+                                <select id="reservationTeacher" class="form-input" required>
+                                    <option value="">Selecione um professor</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Tipo de dispositivo</label>
+                                <select id="reservationDeviceType" class="form-input" onchange="updateReservationGroupOptions()" required>
+                                    <option value="Notebook">Notebook</option>
+                                    <option value="Notebook Positivo (Novos)">Notebook Positivo (Novos)</option>
+                                    <option value="Notebook Ultra">Notebook Ultra</option>
+                                    <option value="Tablet">Tablet</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Base / Carrinho</label>
+                                <select id="reservationGroup" class="form-input" required>
+                                    <option value="">Selecione uma base</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Avisar com antecedência</label>
+                                <select id="reservationReminderMinutes" class="form-input">
+                                    <option value="5">5 minutos antes</option>
+                                    <option value="10" selected>10 minutos antes</option>
+                                    <option value="15">15 minutos antes</option>
+                                    <option value="20">20 minutos antes</option>
+                                    <option value="30">30 minutos antes</option>
+                                </select>
+                            </div>
+                            <div class="form-group full">
+                                <label class="form-label">Observações (opcional)</label>
+                                <textarea id="reservationNotes" class="form-input" rows="2" placeholder="Ex.: entregar na porta da sala ou conferir carregadores"></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg btn-full">
+                            <i class="fas fa-calendar-plus"></i>
+                            Salvar agendamento semanal
+                        </button>
+                    </form>
+                    <div class="field-hint" id="reservationPermissionHint" style="display: none; margin-top: 12px;"></div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 24px;">
+                <div class="card-header">
+                    <div class="card-title">Agenda da semana</div>
+                    <span class="badge blue" id="reservationActiveCount">0 ativos</span>
+                </div>
+                <div class="card-body">
+                    <div class="schedule-week" id="weeklyReservationsList"></div>
                 </div>
             </div>
         </div>
@@ -3786,6 +4016,29 @@
             </div>
         </div>
 
+        <div class="modal-overlay" id="reservationReminderModal" aria-hidden="true">
+            <div class="modal reservation-reminder-modal" role="dialog" aria-modal="true" aria-labelledby="reservationReminderTitle">
+                <div class="reservation-reminder-content">
+                    <div class="reservation-reminder-icon">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <div class="reservation-reminder-kicker" id="reservationReminderKicker">Aula em 10 minutos</div>
+                    <div class="reservation-reminder-title" id="reservationReminderTitle">Levar carrinho</div>
+                    <div class="reservation-reminder-message" id="reservationReminderMessage"></div>
+                    <div class="reservation-reminder-actions">
+                        <button type="button" class="btn btn-secondary btn-lg" onclick="openSchedulesFromReminder()">
+                            <i class="fas fa-calendar-days"></i>
+                            Ver agendamentos
+                        </button>
+                        <button type="button" class="btn btn-primary btn-lg" onclick="closeReservationReminder()">
+                            <i class="fas fa-check"></i>
+                            Entendi
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="app-alert-overlay" id="appAlertOverlay" aria-hidden="true">
             <div class="app-alert info" id="appAlertBox" role="dialog" aria-modal="true" aria-labelledby="appAlertTitle">
                 <div class="app-alert-header">
@@ -3829,7 +4082,8 @@
             deviceChangeHistory: [],
             userProfiles: [],
             adminNoticeTodos: [],
-            adminPrintFiles: []
+            adminPrintFiles: [],
+            weeklyReservations: []
         };
         let currentLoanType = 'quantity';
         let currentUser = null;
@@ -3856,11 +4110,14 @@
         let organizationActiveGroupName = '';
         let organizationDraftGroupName = '';
         let pendingDeviceDetailId = null;
+        let reservationReminderQueue = [];
+        let activeReservationReminder = null;
         const DEVICE_MAINTENANCE_HISTORY_KEY = 'deviceMaintenanceHistory';
         const ADMIN_NOTICE_TODO_KEY = 'adminNoticeTodoItems';
         const ADMIN_PRINT_FILES_KEY = 'adminPrintFiles';
         const LABEL_SIZE_KEY = 'patrimonyLabelSize';
         const ADMIN_PRINT_FILE_MAX_BYTES = 4 * 1024 * 1024;
+        const RESERVATION_REMINDER_STORAGE_KEY = 'weeklyReservationRemindersSeen';
         let adminNoticeTodoTab = 'todo';
         let adminNoticeTodoRemoteAvailable = null;
         let adminPrintFilesRemoteAvailable = null;
@@ -4014,7 +4271,8 @@
                 if (!currentUser) return;
                 updateLoanDeadlineAlerts();
                 updateActiveLoans();
-            }, 60000);
+                checkScheduledReservationNotifications();
+            }, 30000);
 
             // Registrar Service Worker para PWA
             if (location.protocol !== 'file:' && 'serviceWorker' in navigator) {
@@ -4071,6 +4329,10 @@
             return isAdminAccess();
         }
 
+        function canManageWeeklyReservations() {
+            return !isQuickAccess && (isAdminAccess() || isFuncionarioAccess());
+        }
+
         function getRoleLabel(role = currentAccessRole) {
             const normalized = normalizeRole(role);
             if (normalized.includes('aluno')) return 'Aluno';
@@ -4115,7 +4377,7 @@
         }
 
         function applyRoleRestrictions() {
-            const hiddenForAluno = ['history', 'active', 'maintenance', 'devices', 'organization', 'classes', 'teachers'];
+            const hiddenForAluno = ['history', 'active', 'schedules', 'maintenance', 'devices', 'organization', 'classes', 'teachers'];
             hiddenForAluno.forEach(screenId => {
                 const navItem = document.querySelector(`.nav-item[data-screen="${screenId}"]`);
                 if (navItem) {
@@ -4416,6 +4678,13 @@
                         scheduleDataReload(200);
                     }
                 )
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'weekly_reservations' },
+                    () => {
+                        scheduleDataReload(200);
+                    }
+                )
                 .subscribe();
 
             window.addEventListener('focus', () => scheduleDataReload(150));
@@ -4602,9 +4871,15 @@
                 const adminPrintFiles = canManageDevices()
                     ? await fetchAdminPrintFiles()
                     : [];
+                const weeklyReservations = await fetchOptionalTable(
+                    'weekly_reservations',
+                    '*',
+                    { orderBy: 'start_time', ascending: true }
+                );
 
-                data = { classes, teachers, devices, loans, loanDevices, deviceMaintenanceHistory, deviceChangeHistory, userProfiles, adminNoticeTodos, adminPrintFiles };
+                data = { classes, teachers, devices, loans, loanDevices, deviceMaintenanceHistory, deviceChangeHistory, userProfiles, adminNoticeTodos, adminPrintFiles, weeklyReservations };
                 updateAll();
+                checkScheduledReservationNotifications();
                 await verifyDeviceSchema();
                 await verifyDeviceLabelSchema();
                 if (pendingDeviceDetailId) {
@@ -4844,6 +5119,7 @@
             updateSelects();
             updateActiveLoans();
             updateLoanDeadlineAlerts();
+            updateWeeklyReservations();
             updateMaintenanceCenter();
             updateLatestLoans();
             updateHistoryTable();
@@ -5692,12 +5968,14 @@
             data.classes.forEach(c => classOptions += `<option value="${c.id}">${c.name} (${c.shift})</option>`);
             document.getElementById('loanClass').innerHTML = classOptions;
             document.getElementById('filterClass').innerHTML = '<option value="">Todas as turmas</option>' + classOptions;
+            document.getElementById('reservationClass').innerHTML = classOptions;
 
             // Professores
             let teacherOptions = '<option value="">Selecione um professor</option>';
             data.teachers.forEach(t => teacherOptions += `<option value="${t.id}">${t.name}</option>`);
             document.getElementById('loanTeacher').innerHTML = teacherOptions;
             document.getElementById('filterTeacher').innerHTML = '<option value="">Todos os professores</option>' + teacherOptions;
+            document.getElementById('reservationTeacher').innerHTML = teacherOptions;
 
             // Grupos
             const groups = [...new Set(data.devices
@@ -5718,6 +5996,303 @@
                 const suggestions = [...new Set([...baseSuggestions, ...groups])];
                 datalist.innerHTML = suggestions.map(group => `<option value="${escapeHtml(group)}"></option>`).join('');
             }
+            updateReservationGroupOptions();
+        }
+
+        const WEEKDAY_LABELS = [
+            'Domingo',
+            'Segunda-feira',
+            'Terça-feira',
+            'Quarta-feira',
+            'Quinta-feira',
+            'Sexta-feira',
+            'Sábado'
+        ];
+
+        function updateReservationGroupOptions() {
+            const typeSelect = document.getElementById('reservationDeviceType');
+            const groupSelect = document.getElementById('reservationGroup');
+            if (!typeSelect || !groupSelect) return;
+
+            const currentValue = groupSelect.value;
+            const groups = [...new Set(data.devices
+                .filter(device =>
+                    !isFixedDevice(device.type) &&
+                    device.type === typeSelect.value &&
+                    device.group
+                )
+                .map(device => device.group)
+            )].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }));
+
+            groupSelect.innerHTML = '<option value="">Selecione uma base</option>' +
+                groups.map(group => `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`).join('');
+            if (groups.includes(currentValue)) groupSelect.value = currentValue;
+        }
+
+        function formatReservationTime(value) {
+            return (value || '').toString().slice(0, 5) || '--:--';
+        }
+
+        function getReservationClassName(reservation) {
+            return data.classes.find(item => parseInt(item.id) === parseInt(reservation.class_id))?.name || '-';
+        }
+
+        function getReservationTeacherName(reservation) {
+            return data.teachers.find(item => parseInt(item.id) === parseInt(reservation.teacher_id))?.name || '-';
+        }
+
+        function updateWeeklyReservations() {
+            const container = document.getElementById('weeklyReservationsList');
+            if (!container) return;
+
+            const canManage = canManageWeeklyReservations();
+            const form = document.getElementById('weeklyReservationForm');
+            const hint = document.getElementById('reservationPermissionHint');
+            form.style.display = canManage ? '' : 'none';
+            hint.style.display = canManage ? 'none' : 'block';
+            hint.textContent = 'Entre com uma conta de funcionário ou administrador para criar e alterar agendamentos.';
+
+            const reservations = [...(data.weeklyReservations || [])]
+                .sort((a, b) =>
+                    Number(a.weekday) - Number(b.weekday) ||
+                    String(a.start_time).localeCompare(String(b.start_time))
+                );
+            const activeCount = reservations.filter(item => item.active).length;
+            document.getElementById('reservationActiveCount').textContent = `${activeCount} ativo(s)`;
+
+            container.innerHTML = [1, 2, 3, 4, 5].map(weekday => {
+                const dayReservations = reservations.filter(item => Number(item.weekday) === weekday);
+                const itemsHtml = dayReservations.length
+                    ? dayReservations.map(reservation => {
+                        const className = getReservationClassName(reservation);
+                        const teacherName = getReservationTeacherName(reservation);
+                        const actionHtml = canManage
+                            ? `
+                                <div class="schedule-item-actions">
+                                    <button type="button" class="btn btn-small btn-secondary" onclick="toggleWeeklyReservation(${reservation.id}, ${!reservation.active})">
+                                        <i class="fas fa-${reservation.active ? 'pause' : 'play'}"></i>
+                                        ${reservation.active ? 'Pausar' : 'Ativar'}
+                                    </button>
+                                    <button type="button" class="btn btn-small btn-danger" onclick="deleteWeeklyReservation(${reservation.id})">
+                                        <i class="fas fa-trash"></i>
+                                        Remover
+                                    </button>
+                                </div>
+                            `
+                            : '';
+                        return `
+                            <div class="schedule-item ${reservation.active ? '' : 'inactive'}">
+                                <div class="schedule-item-time">${escapeHtml(formatReservationTime(reservation.start_time))}</div>
+                                <div class="schedule-item-title">${escapeHtml(reservation.group_name)} → ${escapeHtml(className)}</div>
+                                <div class="schedule-item-meta">
+                                    ${escapeHtml(teacherName)}<br>
+                                    ${escapeHtml(reservation.device_type)} · aviso ${escapeHtml(String(reservation.reminder_minutes))} min antes
+                                    ${reservation.notes ? `<br>${escapeHtml(reservation.notes)}` : ''}
+                                    ${reservation.active ? '' : '<br><strong>Pausado</strong>'}
+                                </div>
+                                ${actionHtml}
+                            </div>
+                        `;
+                    }).join('')
+                    : '<div class="schedule-item-meta" style="padding: 10px;">Nenhum agendamento.</div>';
+
+                return `
+                    <div class="schedule-day">
+                        <div class="schedule-day-header">${WEEKDAY_LABELS[weekday]}</div>
+                        <div class="schedule-day-body">${itemsHtml}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('weeklyReservationForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            if (!canManageWeeklyReservations()) {
+                alert('Entre com uma conta de funcionário ou administrador para salvar agendamentos.');
+                return;
+            }
+
+            const reservation = {
+                weekday: parseInt(document.getElementById('reservationWeekday').value),
+                start_time: document.getElementById('reservationStartTime').value,
+                class_id: parseInt(document.getElementById('reservationClass').value),
+                teacher_id: parseInt(document.getElementById('reservationTeacher').value),
+                device_type: document.getElementById('reservationDeviceType').value,
+                group_name: document.getElementById('reservationGroup').value,
+                reminder_minutes: parseInt(document.getElementById('reservationReminderMinutes').value) || 10,
+                notes: document.getElementById('reservationNotes').value.trim() || null,
+                active: true,
+                created_by: getCurrentActorName()
+            };
+
+            const duplicate = (data.weeklyReservations || []).find(item =>
+                item.active &&
+                Number(item.weekday) === reservation.weekday &&
+                formatReservationTime(item.start_time) === reservation.start_time &&
+                item.group_name === reservation.group_name
+            );
+            if (duplicate && !confirm('Essa base já possui um agendamento ativo no mesmo dia e horário. Deseja salvar mesmo assim?')) {
+                return;
+            }
+
+            try {
+                const { error } = await client.from('weekly_reservations').insert(reservation);
+                if (error) throw error;
+                await showAppAlert('Agendamento semanal salvo com sucesso!', { type: 'success' });
+                this.reset();
+                document.getElementById('reservationReminderMinutes').value = '10';
+                updateReservationGroupOptions();
+                await loadData();
+            } catch (error) {
+                console.error('Erro ao salvar agendamento:', error);
+                const message = error.message?.includes('weekly_reservations')
+                    ? 'Execute o arquivo agendamentos_reservas_semanais.sql no Supabase antes de usar os agendamentos.'
+                    : error.message;
+                alert('Erro ao salvar agendamento: ' + message);
+            }
+        });
+
+        async function toggleWeeklyReservation(reservationId, active) {
+            if (!canManageWeeklyReservations()) return;
+            try {
+                const { error } = await client
+                    .from('weekly_reservations')
+                    .update({ active, updated_at: new Date().toISOString() })
+                    .eq('id', reservationId);
+                if (error) throw error;
+                await loadData();
+            } catch (error) {
+                alert('Erro ao atualizar agendamento: ' + error.message);
+            }
+        }
+
+        async function deleteWeeklyReservation(reservationId) {
+            if (!canManageWeeklyReservations()) return;
+            if (!confirm('Remover este agendamento semanal?')) return;
+            try {
+                const { error } = await client
+                    .from('weekly_reservations')
+                    .delete()
+                    .eq('id', reservationId);
+                if (error) throw error;
+                await loadData();
+            } catch (error) {
+                alert('Erro ao remover agendamento: ' + error.message);
+            }
+        }
+
+        function getWeeklyReservationOccurrence(reservation, referenceDate = new Date()) {
+            const [hours, minutes] = formatReservationTime(reservation.start_time)
+                .split(':')
+                .map(Number);
+            if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+
+            const occurrence = new Date(referenceDate);
+            occurrence.setHours(hours, minutes, 0, 0);
+            const daysAhead = (Number(reservation.weekday) - referenceDate.getDay() + 7) % 7;
+            occurrence.setDate(referenceDate.getDate() + daysAhead);
+
+            if (daysAhead === 0 && occurrence.getTime() < referenceDate.getTime() - 15 * 60000) {
+                occurrence.setDate(occurrence.getDate() + 7);
+            }
+            return occurrence;
+        }
+
+        function getSeenReservationReminders() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(RESERVATION_REMINDER_STORAGE_KEY) || '{}');
+                const cutoff = Date.now() - 14 * 86400000;
+                return Object.fromEntries(
+                    Object.entries(parsed).filter(([, timestamp]) => Number(timestamp) >= cutoff)
+                );
+            } catch (error) {
+                return {};
+            }
+        }
+
+        function getReservationReminderKey(reservation, occurrence) {
+            return `${reservation.id}:${occurrence.getFullYear()}-${occurrence.getMonth() + 1}-${occurrence.getDate()}-${formatReservationTime(reservation.start_time)}`;
+        }
+
+        function checkScheduledReservationNotifications() {
+            if (!currentUser || !(data.weeklyReservations || []).length) return;
+
+            const now = new Date();
+            const seen = getSeenReservationReminders();
+            let seenChanged = false;
+            const queuedKeys = new Set(reservationReminderQueue.map(item => item.key));
+            if (activeReservationReminder) queuedKeys.add(activeReservationReminder.key);
+
+            (data.weeklyReservations || [])
+                .filter(reservation => reservation.active)
+                .forEach(reservation => {
+                    const occurrence = getWeeklyReservationOccurrence(reservation, now);
+                    if (!occurrence) return;
+
+                    const remainingMilliseconds = occurrence.getTime() - now.getTime();
+                    const reminderWindow = (Number(reservation.reminder_minutes) || 10) * 60000;
+                    if (remainingMilliseconds > reminderWindow || remainingMilliseconds < -15 * 60000) return;
+
+                    const key = getReservationReminderKey(reservation, occurrence);
+                    if (seen[key] || queuedKeys.has(key)) return;
+
+                    seen[key] = Date.now();
+                    seenChanged = true;
+                    queuedKeys.add(key);
+                    reservationReminderQueue.push({ reservation, occurrence, key });
+                });
+
+            if (seenChanged) {
+                localStorage.setItem(RESERVATION_REMINDER_STORAGE_KEY, JSON.stringify(seen));
+            }
+            showNextReservationReminder();
+        }
+
+        function showNextReservationReminder() {
+            if (activeReservationReminder || !reservationReminderQueue.length) return;
+
+            activeReservationReminder = reservationReminderQueue.shift();
+            const { reservation, occurrence } = activeReservationReminder;
+            const currentReservation = (data.weeklyReservations || []).find(item =>
+                parseInt(item.id) === parseInt(reservation.id) && item.active
+            );
+            if (!currentReservation) {
+                activeReservationReminder = null;
+                showNextReservationReminder();
+                return;
+            }
+            const remainingMinutes = Math.ceil((occurrence.getTime() - Date.now()) / 60000);
+            const className = getReservationClassName(reservation);
+            const teacherName = getReservationTeacherName(reservation);
+
+            document.getElementById('reservationReminderKicker').textContent = remainingMinutes > 1
+                ? `Aula em ${remainingMinutes} minutos`
+                : remainingMinutes === 1
+                    ? 'Aula em 1 minuto'
+                    : remainingMinutes === 0
+                        ? 'Aula começando agora'
+                        : `Aula iniciada há ${Math.abs(remainingMinutes)} minuto(s)`;
+            document.getElementById('reservationReminderTitle').textContent =
+                `Levar ${reservation.group_name} para ${className}`;
+            document.getElementById('reservationReminderMessage').textContent =
+                `${teacherName} · ${formatReservationTime(reservation.start_time)} · ${reservation.device_type}` +
+                (reservation.notes ? ` — ${reservation.notes}` : '');
+            const modal = document.getElementById('reservationReminderModal');
+            modal.classList.add('active');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeReservationReminder() {
+            const modal = document.getElementById('reservationReminderModal');
+            modal.classList.remove('active');
+            modal.setAttribute('aria-hidden', 'true');
+            activeReservationReminder = null;
+            setTimeout(showNextReservationReminder, 200);
+        }
+
+        function openSchedulesFromReminder() {
+            closeReservationReminder();
+            showScreen('schedules');
         }
 
         function getDeviceTypeOrder(type) {
@@ -7560,6 +8135,21 @@
                     ])
                 },
                 {
+                    title: 'Agendamentos semanais',
+                    head: ['ID', 'Dia', 'Horário', 'Turma/Sala', 'Professor', 'Base', 'Tipo', 'Aviso', 'Status'],
+                    rows: (data.weeklyReservations || []).map(item => [
+                        item.id || '-',
+                        WEEKDAY_LABELS[Number(item.weekday)] || item.weekday,
+                        formatReservationTime(item.start_time),
+                        getReservationClassName(item),
+                        getReservationTeacherName(item),
+                        item.group_name,
+                        item.device_type,
+                        `${item.reminder_minutes} min`,
+                        item.active ? 'Ativo' : 'Pausado'
+                    ])
+                },
+                {
                     title: 'Professores',
                     head: ['ID', 'Nome', 'Disciplina'],
                     rows: data.teachers.map(t => [t.id, t.name, t.subject || '-'])
@@ -8090,22 +8680,6 @@
             return availableDevices.slice(0, quantity);
         }
 
-        async function linkDevicesToLoan(loanId, devices) {
-            if (!loanId || !devices.length) return;
-
-            const rows = devices.map(device => ({
-                loan_id: loanId,
-                device_id: device.id
-            }));
-            const { error } = await client.from('loan_devices').insert(rows);
-            if (error) throw error;
-
-            data.loanDevices = [
-                ...(data.loanDevices || []),
-                ...rows.map((row, index) => ({ id: `local-${loanId}-${row.device_id}-${index}`, ...row }))
-            ];
-        }
-
         async function updateLoanDeviceStatuses(devices, status) {
             if (!devices.length) return;
             const deviceIds = devices.map(device => device.id);
@@ -8184,13 +8758,48 @@
                 .sort((a, b) => parseInt(b.id) - parseInt(a.id))[0] || null;
         }
 
-        function buildMergedLoanObservations(existingLoan, addition) {
-            const additionDetails = [
+        function buildLoanAdditionObservation(addition) {
+            return [
                 `Acréscimo em ${addition.dateTime} por ${addition.releaser}: +${addition.quantity} ${addition.deviceType}`,
                 addition.observations ? `Obs.: ${addition.observations}` : ''
             ].filter(Boolean).join(' - ');
+        }
 
-            return [existingLoan.observations, additionDetails].filter(Boolean).join('\n');
+        async function registerLoanAtomically(loan, devices, existingLoanId = null, mergeObservation = null) {
+            const { data: registeredLoanId, error } = await client.rpc('register_device_loan', {
+                p_class_id: loan.class_id,
+                p_teacher_id: loan.teacher_id,
+                p_device_type: loan.device_type,
+                p_quantity: loan.quantity,
+                p_loan_type: loan.loan_type,
+                p_group_name: loan.group_name || '',
+                p_date_time: loan.date_time,
+                p_due_at: loan.due_at,
+                p_releaser: loan.releaser,
+                p_observations: existingLoanId ? mergeObservation : loan.observations,
+                p_device_ids: devices.map(device => parseInt(device.id)),
+                p_existing_loan_id: existingLoanId
+            });
+            if (error) throw error;
+            return registeredLoanId;
+        }
+
+        function getLoanRegistrationErrorMessage(error) {
+            const message = error?.message || String(error || '');
+            if (message.includes('DEVICE_NOT_AVAILABLE:')) {
+                const deviceLabels = message.split('DEVICE_NOT_AVAILABLE:')[1]?.trim();
+                return `O empréstimo não foi registrado porque outro usuário acabou de utilizar ${deviceLabels || 'um dos dispositivos selecionados'}. A lista será atualizada; tente novamente com os aparelhos disponíveis.`;
+            }
+            if (message.includes('LOAN_ALREADY_RETURNED')) {
+                return 'O empréstimo aberto foi devolvido por outro usuário enquanto este registro era preenchido. A lista será atualizada.';
+            }
+            if (
+                message.includes('register_device_loan') &&
+                (message.includes('schema cache') || message.includes('Could not find'))
+            ) {
+                return 'A proteção contra registros simultâneos ainda não foi instalada no banco. Execute o arquivo protecao_emprestimos_simultaneos.sql no Supabase.';
+            }
+            return `Erro ao registrar empréstimo: ${message}`;
         }
 
         // ------------------------------
@@ -8279,57 +8888,29 @@
             };
 
             try {
-                if (shouldMergeWithOpenLoan) {
-                    const existingQuantity = Number(existingOpenLoan.quantity) || 0;
-                    const sameDeviceType = existingOpenLoan.device_type === deviceType;
-                    const mergedLoan = {
-                        quantity: existingQuantity + quantity,
-                        device_type: sameDeviceType ? existingOpenLoan.device_type : 'Diversos',
-                        loan_type: sameDeviceType && existingOpenLoan.loan_type === currentLoanType
-                            ? existingOpenLoan.loan_type
-                            : 'quantity',
-                        group_name: sameDeviceType && existingOpenLoan.group_name === groupName
-                            ? existingOpenLoan.group_name
-                            : '',
-                        due_at: dueAt || existingOpenLoan.due_at || null,
-                        observations: buildMergedLoanObservations(existingOpenLoan, {
-                            dateTime,
-                            releaser,
-                            quantity,
-                            deviceType,
-                            observations: obs
-                        })
-                    };
+                const mergeObservation = shouldMergeWithOpenLoan
+                    ? buildLoanAdditionObservation({
+                        dateTime,
+                        releaser,
+                        quantity,
+                        deviceType,
+                        observations: obs
+                    })
+                    : null;
 
-                    const { data: updatedLoan, error: updateError } = await client
-                        .from('loans')
-                        .update(mergedLoan)
-                        .eq('id', existingOpenLoan.id)
-                        .select()
-                        .single();
-                    if (updateError) throw updateError;
+                await registerLoanAtomically(
+                    loan,
+                    selectedLoanDevices,
+                    shouldMergeWithOpenLoan ? existingOpenLoan.id : null,
+                    mergeObservation
+                );
 
-                    await linkDevicesToLoan(updatedLoan.id, selectedLoanDevices);
-                    await updateLoanDeviceStatuses(selectedLoanDevices, 'Em uso');
-                    await showAppAlert(
-                        `${quantity} dispositivo(s) adicionado(s) ao empréstimo em aberto. Total atual: ${mergedLoan.quantity}.`,
-                        { type: 'success' }
-                    );
-                    await loadData();
-                    if (isAlunoAccess()) {
-                        await logout();
-                        return;
-                    }
-                    showScreen('dashboard');
-                    this.reset();
-                    return;
-                }
-
-                const { data: createdLoan, error } = await client.from('loans').insert(loan).select().single();
-                if (error) throw error;
-                await linkDevicesToLoan(createdLoan.id, selectedLoanDevices);
-                await updateLoanDeviceStatuses(selectedLoanDevices, 'Em uso');
-                await showAppAlert('Empréstimo registrado com sucesso!', { type: 'success' });
+                await showAppAlert(
+                    shouldMergeWithOpenLoan
+                        ? `${quantity} dispositivo(s) adicionado(s) ao empréstimo em aberto.`
+                        : 'Empréstimo registrado com sucesso!',
+                    { type: 'success' }
+                );
                 await loadData();
                 if (isAlunoAccess()) {
                     await logout();
@@ -8339,7 +8920,8 @@
                 this.reset();
             } catch (error) {
                 console.error('Erro ao registrar empréstimo:', error);
-                alert('Erro ao registrar empréstimo: ' + error.message);
+                alert(getLoanRegistrationErrorMessage(error));
+                await loadData();
             }
         });
 
