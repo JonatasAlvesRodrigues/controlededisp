@@ -209,14 +209,18 @@
             <button class="mobile-header-button" type="button" onclick="toggleSidebar()" aria-label="Abrir menu">
                 <i class="fas fa-bars"></i>
             </button>
-            <div class="mobile-header-brand">
-                <small>Escola Percio</small>
-                <strong id="mobileScreenTitle">Início</strong>
+            <div class="mobile-header-identity">
+                <span class="mobile-header-logo"><i class="fas fa-shield-halved"></i></span>
+                <span class="mobile-header-brand">
+                    <strong>Escola Percio</strong>
+                    <small>Controle de Dispositivos</small>
+                </span>
             </div>
             <button class="mobile-header-button" type="button" onclick="showScreen('team-workspace')" aria-label="Abrir avisos">
                 <i class="far fa-bell"></i>
-                <span class="mobile-header-dot"></span>
+                <span class="mobile-header-count">2</span>
             </button>
+            <button class="mobile-header-avatar" id="mobileUserAvatar" type="button" onclick="toggleSidebar()" aria-label="Abrir perfil">U</button>
         </header>
 
         <div class="app-topbar">
@@ -251,23 +255,23 @@
         <nav class="mobile-bottom-nav" aria-label="Navegação principal">
             <button class="mobile-bottom-item active" type="button" data-mobile-screen="dashboard" onclick="showScreen('dashboard')">
                 <i class="fas fa-house"></i>
-                <span>Início</span>
+                <span>Dashboard</span>
             </button>
             <button class="mobile-bottom-item" type="button" data-mobile-screen="loan" onclick="openGeneralLoanScreen()">
-                <i class="fas fa-arrow-up-from-bracket"></i>
-                <span>Emprestar</span>
-            </button>
-            <button class="mobile-bottom-item mobile-bottom-primary" type="button" data-mobile-screen="return" onclick="showScreen('return')">
-                <span class="mobile-bottom-primary-icon"><i class="fas fa-rotate-left"></i></span>
-                <span>Devolver</span>
+                <i class="fas fa-cart-shopping"></i>
+                <span>Empréstimos</span>
             </button>
             <button class="mobile-bottom-item" type="button" data-mobile-screen="devices" data-not-student="true" onclick="showScreen('devices')">
                 <i class="fas fa-laptop"></i>
                 <span>Dispositivos</span>
             </button>
+            <button class="mobile-bottom-item" type="button" data-mobile-screen="schedules" data-not-student="true" onclick="showScreen('schedules')">
+                <i class="far fa-calendar"></i>
+                <span>Agenda</span>
+            </button>
             <button class="mobile-bottom-item" type="button" data-mobile-menu="true" onclick="toggleSidebar()">
-                <i class="fas fa-grip"></i>
-                <span>Menu</span>
+                <i class="fas fa-ellipsis"></i>
+                <span>Mais</span>
             </button>
         </nav>
 
@@ -280,6 +284,18 @@
                 </div>
             </div>
 
+            <div class="mobile-dashboard-overview">
+                <div class="mobile-dashboard-hero">
+                    <div>
+                        <strong id="mobileDashboardGreeting">Olá! 👋</strong>
+                        <span>Veja o resumo do controle<br>de dispositivos da escola.</span>
+                    </div>
+                    <div class="mobile-hero-devices" aria-hidden="true">
+                        <span class="mobile-hero-laptop"><i class="fas fa-user"></i></span>
+                        <span class="mobile-hero-tablet"><i class="fas fa-user"></i></span>
+                    </div>
+                </div>
+
             <!-- Stats -->
             <div class="stats-grid" id="dashboardStatsGrid">
                 <button class="stat-card stat-card-button" type="button" onclick="openDevicesByStatus('Disponível')" aria-label="Ver dispositivos disponíveis">
@@ -289,6 +305,7 @@
                     <div class="stat-content">
                         <div class="stat-value" id="stat-available">0</div>
                         <div class="stat-label">Disponíveis</div>
+                        <div class="mobile-stat-trend positive"><i class="fas fa-arrow-up"></i> Prontos agora</div>
                     </div>
                 </button>
                 <button class="stat-card stat-card-button" type="button" onclick="openDevicesByStatus('Em uso')" aria-label="Ver dispositivos em uso">
@@ -298,6 +315,7 @@
                     <div class="stat-content">
                         <div class="stat-value" id="stat-inuse">0</div>
                         <div class="stat-label">Em uso</div>
+                        <div class="mobile-stat-trend positive"><i class="fas fa-arrow-up"></i> Em uso agora</div>
                     </div>
                 </button>
                 <button class="stat-card stat-card-button" type="button" onclick="openDevicesByStatus('Manutenção')" aria-label="Ver dispositivos em manutenção">
@@ -307,6 +325,7 @@
                     <div class="stat-content">
                         <div class="stat-value" id="stat-maintenance">0</div>
                         <div class="stat-label">Em manutenção</div>
+                        <div class="mobile-stat-trend negative"><i class="fas fa-arrow-down"></i> Atenção</div>
                     </div>
                 </button>
                 <button class="stat-card stat-card-button" type="button" onclick="openDevicesByStatus('Fora de uso')" aria-label="Ver dispositivos fora de uso">
@@ -316,6 +335,7 @@
                     <div class="stat-content">
                         <div class="stat-value" id="stat-outofuse">0</div>
                         <div class="stat-label">Fora de uso</div>
+                        <div class="mobile-stat-trend neutral">– Sem alteração</div>
                     </div>
                 </button>
                 <button class="stat-card stat-card-button" type="button" onclick="openDevicesByStatus('')" aria-label="Ver todos os dispositivos">
@@ -327,6 +347,7 @@
                         <div class="stat-label">Total de dispositivos</div>
                     </div>
                 </button>
+            </div>
             </div>
 
             <div class="dashboard-action-strip quick-actions" id="dashboardActionsCard">
@@ -343,8 +364,7 @@
                 </button>
                 <button class="dashboard-action-banner quick-action green" type="button" onclick="showScreen('return')">
                     <span class="dashboard-action-visual">
-                        <i class="fas fa-laptop"></i>
-                        <span class="dashboard-action-badge"><i class="fas fa-rotate-left"></i></span>
+                        <i class="fas fa-rotate-left"></i>
                     </span>
                     <span class="dashboard-action-copy">
                         <strong>Registrar devolução</strong>

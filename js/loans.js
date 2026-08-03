@@ -41,7 +41,8 @@ function getLoanInfo(loan) {
                 showAction = false,
                 emptyMessage = 'Nenhum empréstimo registrado',
                 mobileLimit = 0,
-                loadMoreAction = ''
+                loadMoreAction = '',
+                compactMobile = false
             } = options;
 
             if (!loans.length) {
@@ -71,6 +72,25 @@ function getLoanInfo(loan) {
                             Devolver
                         </button>`
                     : '';
+
+                if (isMobile && compactMobile) {
+                    const linkedDevice = getLoanDeviceEntries(loan.id)[0]?.device;
+                    const deviceLabel = linkedDevice
+                        ? (linkedDevice.counter_number || linkedDevice.patrimony || linkedDevice.serial_number || linkedDevice.type)
+                        : `${displayQuantity} ${displayQuantity === 1 ? 'dispositivo' : 'dispositivos'}`;
+                    return `
+                        <div class="dashboard-loan-row">
+                            <span class="dashboard-loan-icon"><i class="fas fa-user"></i></span>
+                            <span class="dashboard-loan-person">
+                                <strong>${escapeHtml(info.teacherName)}</strong>
+                                <small>${escapeHtml(info.className)}</small>
+                            </span>
+                            <span class="dashboard-loan-device">${escapeHtml(deviceLabel || '-')}</span>
+                            <span class="dashboard-loan-time">${escapeHtml(loan.date_time || '-')}</span>
+                            <span class="badge ${info.statusColor}">${escapeHtml(info.statusText)}</span>
+                        </div>
+                    `;
+                }
 
                 return `
                     <div class="loan-card">
@@ -183,7 +203,8 @@ function getLoanInfo(loan) {
             document.getElementById('all-active-loans').innerHTML = allHtml;
             renderLoanCards('active-loans-cards', activeLoans.slice(0, 5), {
                 emptyMessage: 'Nenhum empréstimo ativo no momento',
-                mobileLimit: 2
+                mobileLimit: 3,
+                compactMobile: true
             });
             renderLoanCards('all-active-loans-cards', activeLoans, {
                 showAction: true,

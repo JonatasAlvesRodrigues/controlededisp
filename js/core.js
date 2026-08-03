@@ -591,15 +591,21 @@
                 const topUserRole = document.getElementById('topUserRole');
                 const topUserAvatar = document.getElementById('topUserAvatar');
                 const sidebarUserAvatar = document.getElementById('sidebarUserAvatar');
+                const mobileUserAvatar = document.getElementById('mobileUserAvatar');
+                const mobileDashboardGreeting = document.getElementById('mobileDashboardGreeting');
                 const dashboardWelcome = document.getElementById('dashboardWelcome');
                 if (topUserName) topUserName.textContent = displayName;
                 if (topUserRole) topUserRole.textContent = displayRole;
                 if (topUserAvatar) topUserAvatar.textContent = initials;
                 if (sidebarUserAvatar) sidebarUserAvatar.textContent = initials;
+                if (mobileUserAvatar) mobileUserAvatar.textContent = initials;
                 if (dashboardWelcome) {
                     const firstName = displayName.split(/\s+/).filter(Boolean)[0] || displayName;
                     dashboardWelcome.textContent =
                         `Olá, ${firstName}! Veja o resumo do controle de dispositivos da escola.`;
+                    if (mobileDashboardGreeting) {
+                        mobileDashboardGreeting.textContent = `Olá, ${firstName}! 👋`;
+                    }
                 }
             }
 

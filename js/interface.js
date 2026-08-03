@@ -214,7 +214,7 @@ function getRequestedDeviceIdFromUrl() {
             };
             const mobileTitle = document.getElementById('mobileScreenTitle');
             if (mobileTitle) mobileTitle.textContent = mobileTitles[screenId] || 'Controle de dispositivos';
-            const primaryMobileScreens = ['dashboard', 'loan', 'return', 'devices'];
+            const primaryMobileScreens = ['dashboard', 'loan', 'devices', 'schedules'];
             document.querySelectorAll('.mobile-bottom-item').forEach(item => {
                 const isDirectScreen = item.dataset.mobileScreen === screenId;
                 const isMenuScreen = item.dataset.mobileMenu === 'true' && !primaryMobileScreens.includes(screenId);
