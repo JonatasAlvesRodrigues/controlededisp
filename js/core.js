@@ -58,6 +58,7 @@
         let mobileActiveLoanCardLimit = 10;
         let mobileMaintenanceCardLimit = 10;
         let mobileOrganizationDeviceLimit = 12;
+        let mobileInventoryLocationLimit = 6;
         let pendingDeviceDetailId = null;
         let reservationReminderQueue = [];
         let activeReservationReminder = null;
@@ -333,6 +334,7 @@
         }
 
         function applyRoleRestrictions() {
+            document.body.classList.toggle('student-access', isAlunoAccess());
             const hiddenForAluno = ['history', 'active', 'schedules', 'maintenance', 'devices', 'inventory', 'organization', 'classes', 'teachers'];
             hiddenForAluno.forEach(screenId => {
                 const navItem = document.querySelector(`.nav-item[data-screen="${screenId}"]`);

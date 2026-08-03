@@ -749,6 +749,39 @@
                                     Remover
                                 </button>`;
 
+                                if (isMobile) {
+                                    const identity = d.counter_number || d.patrimony || d.serial_number || `ID ${d.id}`;
+                                    const adminAction = canManageDevices() ? `
+                                        <button class="btn btn-primary btn-small" onclick="event.stopPropagation(); editDevice(${d.id})">
+                                            <i class="fas fa-edit"></i>
+                                            Editar
+                                        </button>
+                                    ` : '';
+                                    return `
+                                        <div class="device-card mobile-device-card device-card-clickable" onclick="openDeviceDetails(${d.id})">
+                                            <div class="mobile-device-summary">
+                                                <span class="mobile-device-icon"><i class="fas fa-${icon}"></i></span>
+                                                <span class="mobile-device-copy">
+                                                    <strong>${escapeHtml(d.type || '-')} · ${escapeHtml(identity)}</strong>
+                                                    <span>${escapeHtml(d.group || 'Sem agrupamento')}</span>
+                                                </span>
+                                                <span class="badge ${badgeColor}">${escapeHtml(d.status || '-')}</span>
+                                            </div>
+                                            <div class="mobile-device-actions">
+                                                <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); openDeviceDetails(${d.id})">
+                                                    <i class="fas fa-circle-info"></i>
+                                                    Detalhes
+                                                </button>
+                                                <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); generateSingleDeviceLabelPdf(${d.id})">
+                                                    <i class="fas fa-tag"></i>
+                                                    Etiqueta
+                                                </button>
+                                                ${adminAction}
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+
                                 return `
                                     <div class="device-card device-card-clickable" onclick="openDeviceDetails(${d.id})">
                                         <div class="device-card-top">

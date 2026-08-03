@@ -181,7 +181,10 @@ function getLoanInfo(loan) {
                 });
             }
             document.getElementById('all-active-loans').innerHTML = allHtml;
-            renderLoanCards('active-loans-cards', activeLoans.slice(0, 5), { emptyMessage: 'Nenhum empréstimo ativo no momento' });
+            renderLoanCards('active-loans-cards', activeLoans.slice(0, 5), {
+                emptyMessage: 'Nenhum empréstimo ativo no momento',
+                mobileLimit: 2
+            });
             renderLoanCards('all-active-loans-cards', activeLoans, {
                 showAction: true,
                 emptyMessage: 'Nenhum empréstimo ativo no momento',

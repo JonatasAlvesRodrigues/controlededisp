@@ -194,6 +194,32 @@ function getRequestedDeviceIdFromUrl() {
             document.getElementById(screenId).classList.add('active');
             const navItem = document.querySelector(`.nav-item[data-screen="${screenId}"]`);
             if (navItem) navItem.classList.add('active');
+            const mobileTitles = {
+                dashboard: 'Início',
+                loan: 'Novo empréstimo',
+                return: 'Devolução',
+                active: 'Dispositivos em uso',
+                schedules: 'Agendamentos',
+                maintenance: 'Manutenção',
+                history: 'Histórico',
+                devices: 'Dispositivos',
+                inventory: 'Inventário por local',
+                organization: 'Organização',
+                classes: 'Turmas',
+                teachers: 'Professores',
+                'admin-prints': 'Impressos',
+                users: 'Usuários',
+                'team-workspace': 'Avisos e tarefas',
+                'device-detail': 'Detalhes do dispositivo'
+            };
+            const mobileTitle = document.getElementById('mobileScreenTitle');
+            if (mobileTitle) mobileTitle.textContent = mobileTitles[screenId] || 'Controle de dispositivos';
+            const primaryMobileScreens = ['dashboard', 'loan', 'return', 'devices'];
+            document.querySelectorAll('.mobile-bottom-item').forEach(item => {
+                const isDirectScreen = item.dataset.mobileScreen === screenId;
+                const isMenuScreen = item.dataset.mobileMenu === 'true' && !primaryMobileScreens.includes(screenId);
+                item.classList.toggle('active', isDirectScreen || isMenuScreen);
+            });
             if (screenId === 'loan') setLoanDueMinimum();
             closeSidebar();
             window.scrollTo(0, 0);
@@ -408,7 +434,13 @@ function getRequestedDeviceIdFromUrl() {
                 return;
             }
 
-            grid.innerHTML = visibleLocations.map(location => {
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
+            const renderedLocations = isMobile
+                ? visibleLocations.slice(0, mobileInventoryLocationLimit)
+                : visibleLocations;
+            const remainingLocations = visibleLocations.length - renderedLocations.length;
+
+            grid.innerHTML = renderedLocations.map(location => {
                 const locationStatus = getInventoryStatusCounts(location.devices);
                 return `
                     <section class="inventory-location-card">
@@ -448,7 +480,25 @@ function getRequestedDeviceIdFromUrl() {
                         </div>
                     </section>
                 `;
-            }).join('');
+            }).join('') + (remainingLocations > 0 ? `
+                <div class="mobile-load-more">
+                    <span>Exibindo ${renderedLocations.length} de ${visibleLocations.length} locais</span>
+                    <button type="button" class="btn btn-secondary" onclick="loadMoreInventoryLocations()">
+                        <i class="fas fa-chevron-down"></i>
+                        Carregar mais (${remainingLocations})
+                    </button>
+                </div>
+            ` : '');
+        }
+
+        function applyLocationInventoryFilters() {
+            mobileInventoryLocationLimit = 6;
+            updateLocationInventory();
+        }
+
+        function loadMoreInventoryLocations() {
+            mobileInventoryLocationLimit += 6;
+            updateLocationInventory();
         }
 
         function clearLocationInventoryFilters() {
@@ -456,7 +506,7 @@ function getRequestedDeviceIdFromUrl() {
             const typeFilter = document.getElementById('inventoryTypeFilter');
             if (locationFilter) locationFilter.value = '';
             if (typeFilter) typeFilter.value = '';
-            updateLocationInventory();
+            applyLocationInventoryFilters();
         }
 
         function updateDashboardInsights() {

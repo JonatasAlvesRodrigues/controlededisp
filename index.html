@@ -205,6 +205,20 @@
 
     <!-- Main Content -->
     <main class="main-content hidden" id="mainContent">
+        <header class="mobile-app-header" aria-label="Cabeçalho do aplicativo">
+            <button class="mobile-header-button" type="button" onclick="toggleSidebar()" aria-label="Abrir menu">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="mobile-header-brand">
+                <small>Escola Percio</small>
+                <strong id="mobileScreenTitle">Início</strong>
+            </div>
+            <button class="mobile-header-button" type="button" onclick="showScreen('team-workspace')" aria-label="Abrir avisos">
+                <i class="far fa-bell"></i>
+                <span class="mobile-header-dot"></span>
+            </button>
+        </header>
+
         <div class="app-topbar">
             <div class="global-search" data-not-student="true">
                 <i class="fas fa-magnifying-glass"></i>
@@ -233,6 +247,29 @@
                 <i class="fas fa-chevron-down"></i>
             </div>
         </div>
+
+        <nav class="mobile-bottom-nav" aria-label="Navegação principal">
+            <button class="mobile-bottom-item active" type="button" data-mobile-screen="dashboard" onclick="showScreen('dashboard')">
+                <i class="fas fa-house"></i>
+                <span>Início</span>
+            </button>
+            <button class="mobile-bottom-item" type="button" data-mobile-screen="loan" onclick="openGeneralLoanScreen()">
+                <i class="fas fa-arrow-up-from-bracket"></i>
+                <span>Emprestar</span>
+            </button>
+            <button class="mobile-bottom-item mobile-bottom-primary" type="button" data-mobile-screen="return" onclick="showScreen('return')">
+                <span class="mobile-bottom-primary-icon"><i class="fas fa-rotate-left"></i></span>
+                <span>Devolver</span>
+            </button>
+            <button class="mobile-bottom-item" type="button" data-mobile-screen="devices" data-not-student="true" onclick="showScreen('devices')">
+                <i class="fas fa-laptop"></i>
+                <span>Dispositivos</span>
+            </button>
+            <button class="mobile-bottom-item" type="button" data-mobile-menu="true" onclick="toggleSidebar()">
+                <i class="fas fa-grip"></i>
+                <span>Menu</span>
+            </button>
+        </nav>
 
         <!-- Dashboard Screen -->
         <div id="dashboard" class="screen active">
@@ -1058,13 +1095,13 @@
                     <div class="inventory-filter">
                         <div class="form-group">
                             <label class="form-label">Local</label>
-                            <select id="inventoryLocationFilter" class="form-input" onchange="updateLocationInventory()">
+                            <select id="inventoryLocationFilter" class="form-input" onchange="applyLocationInventoryFilters()">
                                 <option value="">Todos os locais</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Tipo de dispositivo</label>
-                            <select id="inventoryTypeFilter" class="form-input" onchange="updateLocationInventory()">
+                            <select id="inventoryTypeFilter" class="form-input" onchange="applyLocationInventoryFilters()">
                                 <option value="">Todos os tipos</option>
                             </select>
                         </div>
