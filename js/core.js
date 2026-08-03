@@ -41,6 +41,7 @@
         let loadDataInProgress = false;
         let loadDataQueued = false;
         let loadDataRefreshTimer = null;
+        let secondaryDataLoadPromise = null;
         let devicesRealtimeChannel = null;
         let activeScannerField = null;
         let scannerStream = null;
@@ -72,6 +73,8 @@
         const ADMIN_PRINT_FILE_MAX_BYTES = 4 * 1024 * 1024;
         const RESERVATION_REMINDER_STORAGE_KEY = 'weeklyReservationRemindersSeen';
         const LOAN_DURATION_REMINDER_STORAGE_KEY = 'loanDurationRemindersSeen';
+        const APP_DATA_CACHE_KEY = 'controleDispositivosFastCache';
+        const APP_DATA_CACHE_MAX_AGE = 24 * 60 * 60 * 1000;
         let adminNoticeTodoTab = 'todo';
         let adminNoticeTodoRemoteAvailable = null;
         let adminPrintFilesRemoteAvailable = null;

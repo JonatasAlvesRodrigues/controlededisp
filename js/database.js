@@ -29,6 +29,20 @@ function scheduleDataReload(delay = 250) {
                         scheduleDataReload(200);
                     }
                 )
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'loans' },
+                    () => {
+                        scheduleDataReload(200);
+                    }
+                )
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'loan_devices' },
+                    () => {
+                        scheduleDataReload(200);
+                    }
+                )
                 .subscribe();
 
             window.addEventListener('focus', () => scheduleDataReload(150));
@@ -170,6 +184,95 @@ function scheduleDataReload(delay = 250) {
             }
         }
 
+        function saveFastDataCache() {
+            try {
+                localStorage.setItem(APP_DATA_CACHE_KEY, JSON.stringify({
+                    savedAt: Date.now(),
+                    classes: data.classes || [],
+                    teachers: data.teachers || [],
+                    devices: data.devices || [],
+                    loans: data.loans || [],
+                    loanDevices: data.loanDevices || [],
+                    weeklyReservations: data.weeklyReservations || []
+                }));
+            } catch (error) {
+                console.warn('Nao foi possivel salvar o cache rapido:', error);
+            }
+        }
+
+        function hydrateFastDataCache() {
+            if (data.devices.length || data.loans.length) return false;
+            try {
+                const cached = JSON.parse(localStorage.getItem(APP_DATA_CACHE_KEY) || 'null');
+                if (!cached?.savedAt || Date.now() - cached.savedAt > APP_DATA_CACHE_MAX_AGE) {
+                    localStorage.removeItem(APP_DATA_CACHE_KEY);
+                    return false;
+                }
+
+                data = {
+                    ...data,
+                    classes: Array.isArray(cached.classes) ? cached.classes : [],
+                    teachers: Array.isArray(cached.teachers) ? cached.teachers : [],
+                    devices: Array.isArray(cached.devices) ? cached.devices : [],
+                    loans: Array.isArray(cached.loans) ? cached.loans : [],
+                    loanDevices: Array.isArray(cached.loanDevices) ? cached.loanDevices : [],
+                    weeklyReservations: Array.isArray(cached.weeklyReservations) ? cached.weeklyReservations : []
+                };
+                updateAll();
+                return true;
+            } catch (error) {
+                localStorage.removeItem(APP_DATA_CACHE_KEY);
+                return false;
+            }
+        }
+
+        function loadSecondaryDataInBackground() {
+            if (secondaryDataLoadPromise) return secondaryDataLoadPromise;
+
+            secondaryDataLoadPromise = Promise.all([
+                client
+                    .from('device_maintenance_history')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .then(({ data: history, error }) => {
+                        if (error) {
+                            console.warn('Historico de manutencao indisponivel:', error.message);
+                            return data.deviceMaintenanceHistory || [];
+                        }
+                        return history || [];
+                    }),
+                fetchOptionalTable('device_change_history', '*', { orderBy: 'created_at' }),
+                canManageDevices()
+                    ? fetchOptionalTable('user_profiles', 'id, email, name, role, created_at, updated_at', { orderBy: 'created_at', ascending: true })
+                    : Promise.resolve([]),
+                canManageDevices() ? fetchAdminNoticeTodoItems() : Promise.resolve([]),
+                canManageDevices() ? fetchAdminPrintFiles() : Promise.resolve([])
+            ]).then(([
+                deviceMaintenanceHistory,
+                deviceChangeHistory,
+                userProfiles,
+                adminNoticeTodos,
+                adminPrintFiles
+            ]) => {
+                data = {
+                    ...data,
+                    deviceMaintenanceHistory,
+                    deviceChangeHistory,
+                    userProfiles,
+                    adminNoticeTodos,
+                    adminPrintFiles
+                };
+                const activeScreenId = document.querySelector('.screen.active')?.id;
+                if (activeScreenId) refreshScreenView(activeScreenId);
+            }).catch(error => {
+                console.warn('Dados secundarios nao puderam ser carregados:', error);
+            }).finally(() => {
+                secondaryDataLoadPromise = null;
+            });
+
+            return secondaryDataLoadPromise;
+        }
+
         async function loadData() {
             if (loadDataInProgress) {
                 loadDataQueued = true;
@@ -177,56 +280,52 @@ function scheduleDataReload(delay = 250) {
             }
 
             loadDataInProgress = true;
+            hydrateFastDataCache();
             try {
-                // Carrega Turmas
-                const { data: classes, error: errorClasses } = await client.from('classes').select('*');
-                if (errorClasses) throw errorClasses;
+                const [
+                    classesResult,
+                    teachersResult,
+                    devicesResult,
+                    loansResult,
+                    loanDevicesResult,
+                    weeklyReservations
+                ] = await Promise.all([
+                    client.from('classes').select('*'),
+                    client.from('teachers').select('*'),
+                    client.from('devices').select('*'),
+                    client.from('loans').select('*'),
+                    client.from('loan_devices').select('*'),
+                    fetchOptionalTable('weekly_reservations', '*', { orderBy: 'start_time', ascending: true })
+                ]);
 
-                // Carrega Professores
-                const { data: teachers, error: errorTeachers } = await client.from('teachers').select('*');
-                if (errorTeachers) throw errorTeachers;
+                const requiredResults = [
+                    ['turmas', classesResult],
+                    ['professores', teachersResult],
+                    ['dispositivos', devicesResult],
+                    ['emprestimos', loansResult],
+                    ['vinculos de dispositivos', loanDevicesResult]
+                ];
+                const failedResult = requiredResults.find(([, result]) => result.error);
+                if (failedResult) {
+                    throw new Error(`Falha ao carregar ${failedResult[0]}: ${failedResult[1].error.message}`);
+                }
 
-                // Carrega Dispositivos
-                const { data: devices, error: errorDevices } = await client.from('devices').select('*');
-                if (errorDevices) throw errorDevices;
-
-                // Carrega Empréstimos
-                const { data: loans, error: errorLoans } = await client.from('loans').select('*');
-                if (errorLoans) throw errorLoans;
-
-                const { data: loanDevices, error: errorLoanDevices } = await client.from('loan_devices').select('*');
-                if (errorLoanDevices) throw errorLoanDevices;
-
-                const { data: deviceMaintenanceHistory, error: errorMaintenanceHistory } = await client
-                    .from('device_maintenance_history')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                if (errorMaintenanceHistory) throw errorMaintenanceHistory;
-
-                const deviceChangeHistory = await fetchOptionalTable('device_change_history', '*', { orderBy: 'created_at' });
-                const userProfiles = canManageDevices()
-                    ? await fetchOptionalTable('user_profiles', 'id, email, name, role, created_at, updated_at', { orderBy: 'created_at', ascending: true })
-                    : [];
-
-                // Atualiza a variável de dados
-                const adminNoticeTodos = canManageDevices()
-                    ? await fetchAdminNoticeTodoItems()
-                    : [];
-                const adminPrintFiles = canManageDevices()
-                    ? await fetchAdminPrintFiles()
-                    : [];
-                const weeklyReservations = await fetchOptionalTable(
-                    'weekly_reservations',
-                    '*',
-                    { orderBy: 'start_time', ascending: true }
-                );
-
-                data = { classes, teachers, devices, loans, loanDevices, deviceMaintenanceHistory, deviceChangeHistory, userProfiles, adminNoticeTodos, adminPrintFiles, weeklyReservations };
+                data = {
+                    ...data,
+                    classes: classesResult.data || [],
+                    teachers: teachersResult.data || [],
+                    devices: devicesResult.data || [],
+                    loans: loansResult.data || [],
+                    loanDevices: loanDevicesResult.data || [],
+                    weeklyReservations
+                };
+                saveFastDataCache();
                 updateAll();
                 checkScheduledReservationNotifications();
                 checkLongRunningLoanNotifications();
-                await verifyDeviceSchema();
-                await verifyDeviceLabelSchema();
+                if (deviceSchemaReady === null) void verifyDeviceSchema();
+                if (deviceLabelSchemaReady === null) void verifyDeviceLabelSchema();
+                void loadSecondaryDataInBackground();
                 if (pendingDeviceDetailId) {
                     const deviceId = pendingDeviceDetailId;
                     pendingDeviceDetailId = null;

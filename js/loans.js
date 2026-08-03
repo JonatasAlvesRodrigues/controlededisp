@@ -569,6 +569,55 @@ function getLoanInfo(loan) {
             };
         }
 
+        function applyOptimisticLoanRegistration(
+            registeredLoanId,
+            loan,
+            selectedDevices,
+            existingLoan = null,
+            mergeObservation = null
+        ) {
+            const loanId = parseInt(registeredLoanId) || parseInt(existingLoan?.id) || Date.now();
+            if (existingLoan) {
+                data.loans = data.loans.map(item => {
+                    if (parseInt(item.id) !== parseInt(existingLoan.id)) return item;
+                    return {
+                        ...item,
+                        quantity: Number(item.quantity || 0) + Number(loan.quantity || 0),
+                        device_type: item.device_type === loan.device_type ? item.device_type : 'Diversos',
+                        due_at: loan.due_at || item.due_at,
+                        observations: [item.observations, mergeObservation].filter(Boolean).join('\n') || null
+                    };
+                });
+            } else {
+                data.loans = [{ ...loan, id: loanId, returned: false }, ...data.loans];
+            }
+
+            const selectedIds = new Set(selectedDevices.map(device => parseInt(device.id)));
+            if (selectedIds.size) {
+                data.devices = data.devices.map(device =>
+                    selectedIds.has(parseInt(device.id))
+                        ? { ...device, status: 'Em uso' }
+                        : device
+                );
+
+                const existingLinks = new Set((data.loanDevices || []).map(item =>
+                    `${parseInt(item.loan_id)}:${parseInt(item.device_id)}`
+                ));
+                const optimisticLinks = selectedDevices
+                    .filter(device => !existingLinks.has(`${loanId}:${parseInt(device.id)}`))
+                    .map((device, index) => ({
+                        id: -(Date.now() + index),
+                        loan_id: loanId,
+                        device_id: parseInt(device.id),
+                        return_status: 'pending'
+                    }));
+                data.loanDevices = [...(data.loanDevices || []), ...optimisticLinks];
+            }
+
+            saveFastDataCache();
+            updateStats();
+        }
+
         // ------------------------------
         // 9. Formulários
         // ------------------------------
@@ -691,7 +740,15 @@ function getLoanInfo(loan) {
                 returned: false
             };
 
+            const submitButton = this.querySelector('button[type="submit"]');
+            const submitButtonHtml = submitButton?.innerHTML || '';
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registrando...';
+            }
+
             try {
+                let registeredLoanId = null;
                 const mergeObservation = shouldMergeWithOpenLoan
                     ? buildLoanAdditionObservation({
                         dateTime,
@@ -703,19 +760,33 @@ function getLoanInfo(loan) {
                     : null;
 
                 if (newLoanTracksDeviceNumbers) {
-                    await registerLoanAtomically(
+                    registeredLoanId = await registerLoanAtomically(
                         loan,
                         selectedLoanDevices,
                         shouldMergeWithOpenLoan ? existingOpenLoan.id : null,
                         mergeObservation
                     );
                 } else {
-                    await registerUnnumberedQuantityLoan(
+                    registeredLoanId = await registerUnnumberedQuantityLoan(
                         loan,
                         shouldMergeWithOpenLoan ? existingOpenLoan : null,
                         mergeObservation
                     );
                 }
+
+                applyOptimisticLoanRegistration(
+                    registeredLoanId,
+                    loan,
+                    selectedLoanDevices,
+                    shouldMergeWithOpenLoan ? existingOpenLoan : null,
+                    mergeObservation
+                );
+                this.reset();
+                clearSpecificLoanSelection();
+                if (!isAlunoAccess()) {
+                    showScreen('dashboard');
+                }
+                scheduleDataReload(100);
 
                 await showAppAlert(
                     shouldMergeWithOpenLoan
@@ -723,17 +794,18 @@ function getLoanInfo(loan) {
                         : 'Empréstimo registrado com sucesso!',
                     { type: 'success' }
                 );
-                this.reset();
-                clearSpecificLoanSelection();
-                await loadData();
                 if (isAlunoAccess()) {
                     await logout();
                     return;
                 }
-                showScreen('dashboard');
             } catch (error) {
                 console.error('Erro ao registrar empréstimo:', error);
                 alert(getLoanRegistrationErrorMessage(error));
-                await loadData();
+                scheduleDataReload(100);
+            } finally {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = submitButtonHtml;
+                }
             }
         });

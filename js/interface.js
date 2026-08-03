@@ -221,6 +221,7 @@ function getRequestedDeviceIdFromUrl() {
                 item.classList.toggle('active', isDirectScreen || isMenuScreen);
             });
             if (screenId === 'loan') setLoanDueMinimum();
+            refreshScreenView(screenId);
             closeSidebar();
             window.scrollTo(0, 0);
         }
@@ -268,31 +269,75 @@ function getRequestedDeviceIdFromUrl() {
         // ------------------------------
         // 7. Atualizações de UI
         // ------------------------------
+        function refreshScreenView(screenId) {
+            switch (screenId) {
+                case 'dashboard':
+                    updateDashboardInsights();
+                    updateProfileDashboard();
+                    updateActiveLoans();
+                    updateLoanDeadlineAlerts();
+                    updateWeeklyReservations();
+                    updateLatestLoans();
+                    break;
+                case 'loan':
+                    updateSelects();
+                    break;
+                case 'return':
+                    updateReturnSelect();
+                    break;
+                case 'active':
+                    updateActiveLoans();
+                    break;
+                case 'schedules':
+                    updateSelects();
+                    updateWeeklyReservations();
+                    break;
+                case 'maintenance':
+                    updateMaintenanceCenter();
+                    break;
+                case 'history':
+                    updateSelects();
+                    updateHistoryTable();
+                    break;
+                case 'devices':
+                    updateDevicesTable();
+                    updateDevicesCards();
+                    syncLabelSizeControls();
+                    break;
+                case 'inventory':
+                    updateLocationInventory();
+                    break;
+                case 'organization':
+                    updateOrganizationScreen();
+                    break;
+                case 'device-detail':
+                    renderSelectedDeviceDetails();
+                    break;
+                case 'classes':
+                    updateClassesList();
+                    updateClassesCards();
+                    break;
+                case 'teachers':
+                    updateTeachersList();
+                    updateTeachersCards();
+                    break;
+                case 'users':
+                    updateUsersList();
+                    break;
+                case 'admin-prints':
+                    updateAdminPrintPage();
+                    break;
+                case 'team-workspace':
+                    updateProfileDashboard();
+                    break;
+            }
+        }
+
         function updateAll() {
             updateStats();
-            updateDashboardInsights();
-            updateProfileDashboard();
-            updateSelects();
-            updateActiveLoans();
-            updateLoanDeadlineAlerts();
-            updateWeeklyReservations();
-            updateMaintenanceCenter();
-            updateLatestLoans();
-            updateHistoryTable();
-            updateDevicesTable();
-            updateDevicesCards();
-            updateLocationInventory();
-            updateOrganizationScreen();
-            renderSelectedDeviceDetails();
-            updateClassesList();
-            updateClassesCards();
-            updateTeachersList();
-            updateTeachersCards();
-            updateUsersList();
-            updateAdminPrintPage();
-            syncLabelSizeControls();
-            updateReturnSelect();
             applyRoleRestrictions();
+            const activeScreenId = document.querySelector('.screen.active')?.id || 'dashboard';
+            refreshScreenView(activeScreenId);
         }
 
         function getInventoryStatusCounts(devices) {
