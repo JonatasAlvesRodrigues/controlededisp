@@ -878,6 +878,97 @@ function getJsPdfInstance() {
             });
         }
 
+        function buildDeviceSummaryMap(devices, labelResolver) {
+            const summary = new Map();
+            devices.forEach(device => {
+                const label = labelResolver(device) || 'Sem agrupamento';
+                if (!summary.has(label)) {
+                    summary.set(label, { label, total: 0, available: 0 });
+                }
+                const item = summary.get(label);
+                item.total += 1;
+                if (normalizeDeviceText(device.status) === 'disponivel') {
+                    item.available += 1;
+                }
+            });
+            return [...summary.values()].sort((a, b) =>
+                b.total - a.total || a.label.localeCompare(b.label, 'pt-BR', { numeric: true, sensitivity: 'base' })
+            );
+        }
+
+        function drawDeviceSummaryCard(doc, x, y, width, height, title, items, accent) {
+            doc.setFillColor(255);
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.3);
+            doc.roundedRect(x, y, width, height, 2.4, 2.4, 'FD');
+            doc.setFillColor(...accent);
+            doc.roundedRect(x + 3, y + 3, 6, 6, 1.4, 1.4, 'F');
+            doc.setTextColor(255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(5.5);
+            doc.text('=', x + 6, y + 7.1, { align: 'center' });
+            doc.setTextColor(8, 27, 66);
+            doc.setFontSize(7.5);
+            doc.text(title, x + 11, y + 7.3);
+
+            doc.setTextColor(100, 116, 139);
+            doc.setFontSize(4.6);
+            doc.text('Categoria', x + 3, y + 13);
+            doc.text('Disponíveis', x + width * 0.55, y + 13, { align: 'center' });
+            doc.text('Total', x + width - 3, y + 13, { align: 'right' });
+
+            const visibleItems = items.slice(0, 11);
+            const maxTotal = Math.max(1, ...visibleItems.map(item => item.total));
+            visibleItems.forEach((item, index) => {
+                const rowY = y + 18 + index * 6;
+                doc.setDrawColor(241, 245, 249);
+                doc.line(x + 3, rowY + 1.6, x + width - 3, rowY + 1.6);
+                doc.setTextColor(30, 41, 59);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(5);
+                doc.text(doc.splitTextToSize(item.label, width * 0.41)[0], x + 3, rowY);
+                doc.text(String(item.available), x + width * 0.55, rowY, { align: 'center' });
+                const barX = x + width * 0.61;
+                const barWidth = width * 0.22;
+                doc.setFillColor(226, 232, 240);
+                doc.roundedRect(barX, rowY - 1.6, barWidth, 1.8, 0.8, 0.8, 'F');
+                doc.setFillColor(...accent);
+                doc.roundedRect(barX, rowY - 1.6, Math.max(0.8, barWidth * item.total / maxTotal), 1.8, 0.8, 0.8, 'F');
+                doc.text(String(item.total), x + width - 3, rowY, { align: 'right' });
+            });
+
+            const totalDevices = items.reduce((sum, item) => sum + item.total, 0);
+            const footerY = y + height - 8;
+            doc.setFillColor(239, 246, 255);
+            doc.roundedRect(x + 3, footerY, width - 6, 5.5, 1.3, 1.3, 'F');
+            doc.setTextColor(...accent);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(5.3);
+            doc.text('Total de dispositivos', x + 9, footerY + 3.7);
+            doc.setFillColor(...accent);
+            doc.roundedRect(x + width - 17, footerY + 1, 12, 3.7, 1, 1, 'F');
+            doc.setTextColor(255);
+            doc.text(String(totalDevices), x + width - 11, footerY + 3.5, { align: 'center' });
+        }
+
+        function drawDeviceDetailTitle(doc, y, continuation = false) {
+            doc.setFillColor(112, 63, 205);
+            doc.roundedRect(8, y - 4.7, 6, 6, 1.3, 1.3, 'F');
+            doc.setTextColor(255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(5.5);
+            doc.text('=', 11, y - 0.7, { align: 'center' });
+            doc.setTextColor(112, 63, 205);
+            doc.setFontSize(8.5);
+            doc.text('Inventário detalhado', 17, y);
+            if (continuation) {
+                doc.setTextColor(100, 116, 139);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(6);
+                doc.text('(continuação)', 48, y);
+            }
+        }
+
         async function generateDeviceReportPdf() {
             try {
                 await ensurePdfLibraries();
@@ -890,54 +981,121 @@ function getJsPdfInstance() {
                     return;
                 }
 
-                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                const pageWidth = doc.internal.pageSize.getWidth();
                 const title = selectedType ? `Relatório de Dispositivos - ${selectedType}` : 'Relatório Geral de Dispositivos';
                 const generatedAt = new Date().toLocaleString('pt-BR');
                 const rows = buildDeviceReportRows(filteredDevices);
+                const statusCounts = filteredDevices.reduce((counts, device) => {
+                    const status = normalizeDeviceText(device.status);
+                    if (status === 'disponivel') counts.available += 1;
+                    else if (status.includes('manutencao')) counts.maintenance += 1;
+                    else if (status.includes('uso')) counts.inUse += 1;
+                    else counts.outOfUse += 1;
+                    return counts;
+                }, { available: 0, inUse: 0, maintenance: 0, outOfUse: 0 });
+                const typeSummary = buildDeviceSummaryMap(filteredDevices, device => device.type || 'Sem tipo');
+                const groupSummary = buildDeviceSummaryMap(filteredDevices, device => device.group || 'Sem agrupamento');
+                const accentBlue = [20, 101, 235];
+                const accentGreen = [16, 185, 108];
 
+                drawUsageReportHeader(doc);
+                doc.setTextColor(8, 27, 66);
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(16);
-                doc.text(title, 14, 16);
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(10);
-                doc.text(`Gerado em: ${generatedAt}`, 14, 22);
-                doc.text(`Total de dispositivos: ${filteredDevices.length}`, 14, 28);
+                doc.setFontSize(15);
+                doc.text(title, 10, 42);
+
+                const infoWidth = (pageWidth - 24) / 3;
+                drawUsageInfoCard(doc, 8, 48, infoWidth, 'Tipo selecionado:', selectedType || 'Todos os tipos', accentBlue);
+                drawUsageInfoCard(doc, 12 + infoWidth, 48, infoWidth, 'Escopo:', 'Inventário completo', accentBlue);
+                drawUsageInfoCard(doc, 16 + infoWidth * 2, 48, infoWidth, 'Gerado em:', generatedAt, accentBlue);
+
+                const metricWidth = (pageWidth - 28) / 4;
+                drawUsageMetricCard(doc, 8, 66, metricWidth, filteredDevices.length, 'Total', accentBlue, '#');
+                drawUsageMetricCard(doc, 12 + metricWidth, 66, metricWidth, statusCounts.available, 'Disponíveis', accentGreen, '=');
+                drawUsageMetricCard(doc, 16 + metricWidth * 2, 66, metricWidth, statusCounts.maintenance, 'Em manutenção', [249, 115, 22], 'M');
+                drawUsageMetricCard(doc, 20 + metricWidth * 3, 66, metricWidth, statusCounts.inUse + statusCounts.outOfUse, 'Em uso / fora', [112, 63, 205], 'U');
+
+                const summaryTop = 87;
+                const summaryHeight = 86;
+                const summaryWidth = (pageWidth - 20) / 2;
+                drawDeviceSummaryCard(doc, 8, summaryTop, summaryWidth, summaryHeight, 'Resumo por tipo', typeSummary, accentBlue);
+                drawDeviceSummaryCard(doc, 12 + summaryWidth, summaryTop, summaryWidth, summaryHeight, 'Resumo por agrupamento', groupSummary, accentGreen);
+
+                const detailTitleY = 183;
+                drawDeviceDetailTitle(doc, detailTitleY);
 
                 doc.autoTable({
-                    startY: 34,
+                    startY: detailTitleY + 4,
                     head: [[
-                        '#',
-                        'Tipo',
-                        'N/S',
-                        'Patrimônio',
-                        'Contador',
-                        'Agrupamento',
-                        'IMEI',
-                        'Estado',
-                        'Observações'
+                        '#', 'Tipo', 'N/S', 'Patrimônio', 'Contador',
+                        'Agrupamento', 'IMEI', 'Estado', 'Observações'
                     ]],
                     body: rows,
                     theme: 'grid',
-                    styles: { fontSize: 7, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
-                    headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: 'bold' },
-                    columnStyles: {
-                        0: { cellWidth: 10 },
-                        1: { cellWidth: 30 },
-                        2: { cellWidth: 28 },
-                        3: { cellWidth: 30 },
-                        4: { cellWidth: 22 },
-                        5: { cellWidth: 30 },
-                        6: { cellWidth: 28 },
-                        7: { cellWidth: 24 },
-                        8: { cellWidth: 'auto' }
+                    margin: { top: 47, right: 8, bottom: 18, left: 8 },
+                    styles: {
+                        font: 'helvetica',
+                        fontSize: 4.8,
+                        cellPadding: 1.3,
+                        minCellHeight: 7.5,
+                        textColor: [30, 41, 59],
+                        lineColor: [226, 232, 240],
+                        lineWidth: 0.25,
+                        overflow: 'linebreak',
+                        valign: 'middle'
                     },
-                    didDrawPage: (dataArg) => {
-                        doc.setFontSize(10);
-                        doc.text('Escola Percio - Controle de Dispositivos', 14, 8);
-                        const pageCount = doc.getNumberOfPages();
-                        doc.text(`Página ${dataArg.pageNumber} de ${pageCount}`, 265, 8, { align: 'right' });
+                    headStyles: {
+                        fillColor: [112, 63, 205],
+                        textColor: 255,
+                        fontStyle: 'bold',
+                        halign: 'center',
+                        minCellHeight: 8
+                    },
+                    alternateRowStyles: { fillColor: [250, 251, 253] },
+                    columnStyles: {
+                        0: { cellWidth: 6, halign: 'center' },
+                        1: { cellWidth: 22 },
+                        2: { cellWidth: 24 },
+                        3: { cellWidth: 22 },
+                        4: { cellWidth: 16 },
+                        5: { cellWidth: 24 },
+                        6: { cellWidth: 24 },
+                        7: { cellWidth: 20, halign: 'center' },
+                        8: { cellWidth: 36 }
+                    },
+                    didParseCell: hook => {
+                        if (hook.section === 'body' && hook.column.index === 7) {
+                            hook.cell.styles.fontStyle = 'bold';
+                            const status = normalizeDeviceText(hook.cell.raw);
+                            if (status === 'disponivel') {
+                                hook.cell.styles.fillColor = [225, 248, 235];
+                                hook.cell.styles.textColor = [21, 128, 61];
+                            } else if (status.includes('manutencao')) {
+                                hook.cell.styles.fillColor = [255, 237, 213];
+                                hook.cell.styles.textColor = [194, 65, 12];
+                            } else if (status.includes('uso')) {
+                                hook.cell.styles.fillColor = [219, 234, 254];
+                                hook.cell.styles.textColor = [29, 78, 216];
+                            } else {
+                                hook.cell.styles.fillColor = [226, 232, 240];
+                                hook.cell.styles.textColor = [71, 85, 105];
+                            }
+                        }
+                    },
+                    didDrawPage: hook => {
+                        if (hook.pageNumber > 1) {
+                            drawUsageReportHeader(doc);
+                            drawDeviceDetailTitle(doc, 41, true);
+                        }
                     }
                 });
+
+                const pageCount = doc.getNumberOfPages();
+                for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
+                    doc.setPage(pageNumber);
+                    drawUsageReportFooter(doc, pageNumber, pageCount);
+                }
 
                 const safeType = selectedType ? selectedType.replace(/[^a-z0-9]+/gi, '_') : 'todos_os_tipos';
                 doc.save(`relatorio_dispositivos_${safeType}.pdf`);
