@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#102d70">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -112,13 +112,13 @@
     <aside class="sidebar hidden" id="sidebar">
         <div class="sidebar-header">
             <div class="header-top">
+                <div class="sidebar-brand-mark" aria-hidden="true">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
                 <div>
                     <div class="school-name">Escola Percio</div>
                     <div class="system-name">Controle de Dispositivos</div>
                 </div>
-                <button class="dark-mode-toggle" id="darkModeToggle" onclick="toggleDarkMode()" title="Alternar Modo Escuro">
-                    <i class="fas fa-moon" id="darkModeIcon"></i>
-                </button>
             </div>
         </div>
 
@@ -182,35 +182,66 @@
         </nav>
 
         <div class="sidebar-footer">
-            <div class="user-info">
+            <div class="user-info sidebar-user-card">
+                <div class="user-avatar sidebar-user-avatar" id="sidebarUserAvatar">U</div>
                 <div class="user-details">
                     <div class="user-name" id="userName">Usuário</div>
                     <div class="user-email" id="userEmail">email@exemplo.com</div>
                 </div>
-                <i class="fas fa-bell" style="cursor: pointer; color: #94a3b8;"></i>
+                <i class="fas fa-chevron-down sidebar-user-chevron"></i>
             </div>
-            <button class="btn btn-secondary btn-full btn-small" onclick="forceRefreshApp()" style="margin-bottom: 10px;">
-                <i class="fas fa-rotate"></i>
-                Atualizar versão
-            </button>
-            <button class="btn btn-danger btn-full btn-small" onclick="logout()">
-                <i class="fas fa-sign-out-alt"></i>
-                Sair
-            </button>
+            <div class="sidebar-footer-actions">
+                <button class="sidebar-footer-button" onclick="forceRefreshApp()" title="Atualizar versão">
+                    <i class="fas fa-rotate"></i>
+                    <span>Atualizar</span>
+                </button>
+                <button class="sidebar-footer-button danger" onclick="logout()" title="Sair">
+                    <i class="fas fa-arrow-right-from-bracket"></i>
+                    <span>Sair</span>
+                </button>
+            </div>
         </div>
     </aside>
 
     <!-- Main Content -->
     <main class="main-content hidden" id="mainContent">
+        <div class="app-topbar">
+            <div class="global-search" data-not-student="true">
+                <i class="fas fa-magnifying-glass"></i>
+                <input
+                    type="search"
+                    id="globalSearchInput"
+                    placeholder="Buscar dispositivos..."
+                    aria-label="Buscar dispositivos"
+                    onkeydown="handleGlobalSearchKeydown(event)"
+                >
+                <span class="global-search-shortcut">⌘ K</span>
+            </div>
+            <button class="topbar-icon-button" type="button" title="Avisos e tarefas" onclick="showScreen('team-workspace')">
+                <i class="far fa-bell"></i>
+                <span class="topbar-notification-dot"></span>
+            </button>
+            <button class="topbar-icon-button" type="button" title="Alternar modo escuro" onclick="toggleDarkMode()">
+                <i class="fas fa-moon" id="darkModeIcon"></i>
+            </button>
+            <div class="topbar-profile">
+                <div class="topbar-avatar" id="topUserAvatar">U</div>
+                <div class="topbar-user-copy">
+                    <strong id="topUserName">Usuário</strong>
+                    <span id="topUserRole">Perfil</span>
+                </div>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+        </div>
+
         <!-- Dashboard Screen -->
         <div id="dashboard" class="screen active">
             <div class="page-header">
                 <div>
                     <div class="page-title">Dashboard</div>
-                    <div class="page-subtitle">Visão geral do controle de dispositivos</div>
+                    <div class="page-subtitle" id="dashboardWelcome">Veja o resumo do controle de dispositivos da escola.</div>
                 </div>
             </div>
-            <div id="profileDashboardPanel" style="margin-bottom: 24px;"></div>
 
             <!-- Stats -->
             <div class="stats-grid" id="dashboardStatsGrid">
@@ -261,12 +292,48 @@
                 </button>
             </div>
 
+            <div class="dashboard-action-strip quick-actions" id="dashboardActionsCard">
+                <button class="dashboard-action-banner quick-action blue" type="button" onclick="openGeneralLoanScreen()">
+                    <span class="dashboard-action-visual">
+                        <i class="fas fa-laptop"></i>
+                        <span class="dashboard-action-badge"><i class="fas fa-plus"></i></span>
+                    </span>
+                    <span class="dashboard-action-copy">
+                        <strong>Novo empréstimo</strong>
+                        <small>Registrar um novo empréstimo de dispositivo</small>
+                    </span>
+                    <span class="dashboard-action-arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+                <button class="dashboard-action-banner quick-action green" type="button" onclick="showScreen('return')">
+                    <span class="dashboard-action-visual">
+                        <i class="fas fa-laptop"></i>
+                        <span class="dashboard-action-badge"><i class="fas fa-rotate-left"></i></span>
+                    </span>
+                    <span class="dashboard-action-copy">
+                        <strong>Registrar devolução</strong>
+                        <small>Registrar a devolução de um dispositivo</small>
+                    </span>
+                    <span class="dashboard-action-arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+                <button class="dashboard-action-banner quick-action purple" type="button" onclick="openDeviceModal()" data-admin-only="true">
+                    <span class="dashboard-action-visual">
+                        <i class="fas fa-tablet-screen-button"></i>
+                        <span class="dashboard-action-badge"><i class="fas fa-plus"></i></span>
+                    </span>
+                    <span class="dashboard-action-copy">
+                        <strong>Adicionar dispositivo</strong>
+                        <small>Adicionar um novo dispositivo ao inventário</small>
+                    </span>
+                    <span class="dashboard-action-arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+            </div>
+
             <div class="content-grid">
                 <!-- In Use Now -->
                 <div class="card" id="dashboardInUseCard">
                     <div class="card-header">
-                        <div class="card-title">Em uso no momento</div>
-                        <button class="btn btn-small" style="background: #f1f5f9; color: #475569;" onclick="showScreen('active')">Ver todos</button>
+                        <div class="card-title">Empréstimos recentes</div>
+                        <button class="btn btn-small dashboard-link-button" onclick="showScreen('active')">Ver todos</button>
                     </div>
                     <div class="card-body" style="padding: 0;">
                         <table>
@@ -291,7 +358,8 @@
                     <!-- Alerts -->
                     <div class="card" id="dashboardAlertCard">
                         <div class="card-header">
-                            <div class="card-title">Alertas</div>
+                            <div class="card-title">Alertas e status</div>
+                            <button class="btn btn-small dashboard-link-button" onclick="showScreen('maintenance')">Ver todos</button>
                         </div>
                         <div class="card-body" id="loanDeadlineAlerts">
                             <div class="alert-item">
@@ -306,36 +374,19 @@
                         </div>
                     </div>
 
-                    <!-- Quick Actions -->
-                    <div class="card" id="dashboardActionsCard">
+                    <div class="card" id="dashboardAgendaCard">
                         <div class="card-header">
-                            <div class="card-title">Ações rápidas</div>
+                            <div class="card-title">Agenda de hoje</div>
+                            <button class="btn btn-small dashboard-link-button" onclick="showScreen('schedules')">Ver todos</button>
                         </div>
-                        <div class="card-body">
-                            <div class="quick-actions">
-                                <div class="quick-action primary" onclick="openGeneralLoanScreen()">
-                                    <i class="fas fa-plus"></i>
-                                    <span>Novo Empréstimo</span>
-                                    <span style="font-size: 11px; opacity: 0.9; margin-top: 4px; display: block;">Registrar saída de dispositivos</span>
-                                </div>
-                                <div class="quick-action success" onclick="showScreen('return')">
-                                    <i class="fas fa-undo"></i>
-                                    <span>Registrar Devolução</span>
-                                    <span style="font-size: 11px; opacity: 0.9; margin-top: 4px; display: block;">Registrar devolução de dispositivos</span>
-                                </div>
-                                <div class="quick-action purple" onclick="showScreen('history')">
-                                    <i class="fas fa-history"></i>
-                                    <span>Ver Histórico</span>
-                                    <span style="font-size: 11px; opacity: 0.9; margin-top: 4px; display: block;">Acessar registros anteriores</span>
-                                </div>
-                            </div>
-                        </div>
+                        <div class="card-body dashboard-agenda-list" id="dashboardTodayAgenda"></div>
                     </div>
+
                 </div>
             </div>
 
             <!-- Latest Loans -->
-            <div class="card" style="margin-top: 24px;" id="latestLoansCard">
+            <div class="card dashboard-secondary-loans" id="latestLoansCard">
                 <div class="card-header">
                     <div class="card-title">Últimos empréstimos registrados</div>
                     <button class="btn btn-small" style="background: #f1f5f9; color: #475569;" onclick="showScreen('history')">Ver todos</button>
@@ -358,9 +409,35 @@
                 </div>
             </div>
 
+            <div class="dashboard-insights-grid">
+                <section class="card dashboard-panorama-card">
+                    <div class="card-header">
+                        <div class="card-title">Panorama de dispositivos</div>
+                    </div>
+                    <div class="card-body" id="dashboardDevicePanorama"></div>
+                </section>
+                <section class="card dashboard-top-locations-card">
+                    <div class="card-header">
+                        <div class="card-title">Top locais com mais dispositivos</div>
+                        <button class="btn btn-small dashboard-link-button" onclick="showScreen('inventory')">Ver relatório</button>
+                    </div>
+                    <div class="card-body" id="dashboardTopLocations"></div>
+                </section>
+            </div>
+
             <div class="footer">
                 © 2024 Escola Percio - Todos os direitos reservados
             </div>
+        </div>
+
+        <div id="team-workspace" class="screen">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Avisos e tarefas</div>
+                    <div class="page-subtitle">Organize os afazeres e comunicados da equipe escolar</div>
+                </div>
+            </div>
+            <div id="profileDashboardPanel" class="dashboard-profile-panel"></div>
         </div>
 
         <!-- Novo Empréstimo Screen -->

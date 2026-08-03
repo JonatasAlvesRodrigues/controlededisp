@@ -339,13 +339,13 @@
             document.getElementById('dashboardInUseCard').style.display = isAlunoAccess() ? 'none' : '';
             document.getElementById('dashboardAlertCard').style.display = isAlunoAccess() ? 'none' : '';
             document.getElementById('latestLoansCard').style.display = isAlunoAccess() ? 'none' : '';
-            document.getElementById('dashboardActionsCard').style.display = isAlunoAccess() ? 'none' : '';
+            document.getElementById('dashboardActionsCard').style.display = '';
             const dashboardStatsGrid = document.getElementById('dashboardStatsGrid');
             if (dashboardStatsGrid) {
                 dashboardStatsGrid.style.display = isAlunoAccess() ? 'none' : '';
             }
 
-            const dashboardQuickActions = document.querySelectorAll('#dashboardActionsCard .quick-actions .quick-action');
+            const dashboardQuickActions = document.querySelectorAll('#dashboardActionsCard .quick-action');
             dashboardQuickActions.forEach((action, index) => {
                 action.style.display = isAlunoAccess() && index === 2 ? 'none' : '';
             });
@@ -570,6 +570,29 @@
                     const name = currentUserProfile?.name || currentUser.user_metadata?.name || email.split('@')[0];
                     document.getElementById('userName').textContent = name;
                     document.getElementById('userEmail').textContent = `${getRoleLabel()} - ${email}`;
+                }
+
+                const displayName = document.getElementById('userName').textContent || 'Usuário';
+                const displayRole = getRoleLabel();
+                const initials = displayName
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map(part => part.charAt(0).toUpperCase())
+                    .join('') || 'U';
+                const topUserName = document.getElementById('topUserName');
+                const topUserRole = document.getElementById('topUserRole');
+                const topUserAvatar = document.getElementById('topUserAvatar');
+                const sidebarUserAvatar = document.getElementById('sidebarUserAvatar');
+                const dashboardWelcome = document.getElementById('dashboardWelcome');
+                if (topUserName) topUserName.textContent = displayName;
+                if (topUserRole) topUserRole.textContent = displayRole;
+                if (topUserAvatar) topUserAvatar.textContent = initials;
+                if (sidebarUserAvatar) sidebarUserAvatar.textContent = initials;
+                if (dashboardWelcome) {
+                    const firstName = displayName.split(/\s+/).filter(Boolean)[0] || displayName;
+                    dashboardWelcome.textContent =
+                        `Olá, ${firstName}! Veja o resumo do controle de dispositivos da escola.`;
                 }
             }
 

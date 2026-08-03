@@ -186,7 +186,7 @@ function getRequestedDeviceIdFromUrl() {
             if (isAlunoAccess() && !['dashboard', 'loan', 'return', 'device-detail'].includes(screenId)) {
                 screenId = 'loan';
             }
-            if (['users', 'admin-prints', 'organization'].includes(screenId) && !canManageDevices()) {
+            if (['users', 'admin-prints', 'organization', 'team-workspace'].includes(screenId) && !canManageDevices()) {
                 screenId = 'dashboard';
             }
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -198,11 +198,52 @@ function getRequestedDeviceIdFromUrl() {
             closeSidebar();
         }
 
+        function handleGlobalSearchKeydown(event) {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            const input = event.currentTarget;
+            const searchTerm = (input?.value || '').trim();
+            if (!searchTerm) return;
+
+            const normalizedSearch = normalizeDeviceText(searchTerm);
+            const matchingLocation = getLocationInventoryGroups().find(location =>
+                normalizeDeviceText(location.name).includes(normalizedSearch)
+            );
+
+            if (matchingLocation && !isAlunoAccess()) {
+                showScreen('inventory');
+                const locationFilter = document.getElementById('inventoryLocationFilter');
+                if (locationFilter) {
+                    locationFilter.value = normalizeDeviceText(matchingLocation.name);
+                    updateLocationInventory();
+                }
+                return;
+            }
+
+            showScreen('devices');
+            const deviceSearch = document.getElementById('deviceSearchInput');
+            if (deviceSearch) {
+                deviceSearch.value = searchTerm;
+                applyDeviceFilters();
+                deviceSearch.focus();
+            }
+        }
+
+        document.addEventListener('keydown', event => {
+            if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') return;
+            const searchInput = document.getElementById('globalSearchInput');
+            if (!searchInput || isAlunoAccess()) return;
+            event.preventDefault();
+            searchInput.focus();
+            searchInput.select();
+        });
+
         // ------------------------------
         // 7. Atualizações de UI
         // ------------------------------
         function updateAll() {
             updateStats();
+            updateDashboardInsights();
             updateProfileDashboard();
             updateSelects();
             updateActiveLoans();
@@ -417,44 +458,108 @@ function getRequestedDeviceIdFromUrl() {
             updateLocationInventory();
         }
 
+        function updateDashboardInsights() {
+            const panorama = document.getElementById('dashboardDevicePanorama');
+            const topLocations = document.getElementById('dashboardTopLocations');
+            const todayAgenda = document.getElementById('dashboardTodayAgenda');
+            if (!panorama || !topLocations || !todayAgenda) return;
+
+            const total = data.devices.length;
+            const status = getInventoryStatusCounts(data.devices);
+            const statusItems = [
+                { label: 'Disponíveis', value: status.available, color: '#1764df' },
+                { label: 'Em uso', value: status.inUse, color: '#31b889' },
+                { label: 'Em manutenção', value: status.maintenance, color: '#f4b323' },
+                { label: 'Fora de uso', value: status.outOfUse, color: '#98a3b7' }
+            ];
+            let accumulatedPercentage = 0;
+            const gradientStops = statusItems.map(item => {
+                const start = accumulatedPercentage;
+                const percentage = total ? (item.value / total) * 100 : 0;
+                accumulatedPercentage += percentage;
+                return `${item.color} ${start.toFixed(2)}% ${accumulatedPercentage.toFixed(2)}%`;
+            }).join(', ');
+
+            panorama.innerHTML = `
+                <div
+                    class="dashboard-donut"
+                    style="background: conic-gradient(${gradientStops || '#e5eaf2 0 100%'})"
+                    aria-label="${total} dispositivos no total"
+                >
+                    <div class="dashboard-donut-center">
+                        <strong>${total}</strong>
+                        <span>Total</span>
+                    </div>
+                </div>
+                <div class="dashboard-panorama-legend">
+                    ${statusItems.map(item => {
+                        const percentage = total ? (item.value / total) * 100 : 0;
+                        return `
+                            <div class="dashboard-panorama-item">
+                                <span class="dashboard-panorama-label">
+                                    <i style="background: ${item.color};"></i>
+                                    ${escapeHtml(item.label)}
+                                </span>
+                                <strong>${item.value}</strong>
+                                <small>${percentage.toFixed(1).replace('.', ',')}%</small>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+
+            const locations = getLocationInventoryGroups()
+                .sort((a, b) => b.devices.length - a.devices.length)
+                .slice(0, 3);
+            const largestLocation = locations[0]?.devices.length || 1;
+            topLocations.innerHTML = locations.length
+                ? locations.map((location, index) => {
+                    const width = Math.max(8, (location.devices.length / largestLocation) * 100);
+                    const colors = ['blue', 'purple', 'green'];
+                    return `
+                        <div class="dashboard-location-row">
+                            <span class="dashboard-location-icon ${colors[index]}">
+                                <i class="fas fa-building"></i>
+                            </span>
+                            <span class="dashboard-location-name">${escapeHtml(location.name)}</span>
+                            <span class="dashboard-location-bar">
+                                <i style="width: ${width.toFixed(1)}%;"></i>
+                            </span>
+                            <strong>${location.devices.length}</strong>
+                        </div>
+                    `;
+                }).join('')
+                : '<div class="dashboard-insight-empty">Nenhum local cadastrado.</div>';
+
+            const today = new Date().getDay();
+            const reservations = [...(data.weeklyReservations || [])]
+                .filter(reservation => reservation.active && Number(reservation.weekday) === today)
+                .sort((a, b) => String(a.start_time).localeCompare(String(b.start_time)))
+                .slice(0, 4);
+            todayAgenda.innerHTML = reservations.length
+                ? reservations.map((reservation, index) => `
+                    <div class="dashboard-agenda-row">
+                        <i class="dashboard-agenda-dot color-${index % 3}"></i>
+                        <strong>${escapeHtml(formatReservationTime(reservation.start_time))}</strong>
+                        <span>
+                            ${escapeHtml(reservation.group_name)}
+                            <small>${escapeHtml(getReservationClassName(reservation))}</small>
+                        </span>
+                        <em>${escapeHtml(reservation.device_type)}</em>
+                    </div>
+                `).join('')
+                : '<div class="dashboard-insight-empty">Nenhum agendamento para hoje.</div>';
+        }
+
         function updateProfileDashboard() {
             const panel = document.getElementById('profileDashboardPanel');
             if (!panel) return;
 
-            const activeLoans = data.loans.filter(loan => !loan.returned);
-            const available = data.devices.filter(device => device.status === 'Disponível').length;
-            const maintenance = data.devices.filter(device => device.status === 'Manutenção').length;
-            const overdueLoans = activeLoans.filter(loan => getLoanDeadlineInfo(loan).key === 'overdue').length;
-
             if (isAlunoAccess()) {
-                panel.innerHTML = `
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="quick-actions">
-                                <div class="quick-action primary" onclick="openGeneralLoanScreen()">
-                                    <i class="fas fa-plus"></i>
-                                    <span>Novo empréstimo</span>
-                                    <span style="font-size: 11px; opacity: 0.9; margin-top: 4px; display: block;">Retirar dispositivos</span>
-                                </div>
-                                <div class="quick-action success" onclick="showScreen('return')">
-                                    <i class="fas fa-undo"></i>
-                                    <span>Devolução</span>
-                                    <span style="font-size: 11px; opacity: 0.9; margin-top: 4px; display: block;">Registrar retorno</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                panel.innerHTML = '';
                 return;
             }
 
-            const adminExtra = canManageDevices()
-                ? `<div class="quick-action purple" onclick="showScreen('users')">
-                        <i class="fas fa-user-shield"></i>
-                        <span>Usuários</span>
-                        <span style="font-size: 11px; opacity: 0.9; margin-top: 4px; display: block;">Gerenciar perfis</span>
-                   </div>`
-                : '';
             const adminNoticeTodoPanel = canManageDevices()
                 ? `
                     <div class="admin-workspace">
@@ -528,31 +633,7 @@ function getRequestedDeviceIdFromUrl() {
                 `
                 : '';
 
-            panel.innerHTML = `
-                <div class="card">
-                    <div class="card-body">
-                        <div class="alert-item" style="margin-bottom: 16px;">
-                            <div class="alert-icon info"><i class="fas fa-user-check"></i></div>
-                            <div class="alert-content">
-                                <div class="alert-title">Perfil: ${escapeHtml(getRoleLabel())}</div>
-                                <div class="alert-desc">${activeLoans.length} empréstimo(s) ativo(s), ${overdueLoans} atrasado(s), ${available} dispositivo(s) disponíveis e ${maintenance} em manutenção.</div>
-                            </div>
-                        </div>
-                        <div class="quick-actions">
-                            <div class="quick-action primary" onclick="openGeneralLoanScreen()">
-                                <i class="fas fa-plus"></i>
-                                <span>Novo empréstimo</span>
-                            </div>
-                            <div class="quick-action success" onclick="showScreen('return')">
-                                <i class="fas fa-undo"></i>
-                                <span>Devolução</span>
-                            </div>
-                            ${adminExtra}
-                        </div>
-                        ${adminNoticeTodoPanel}
-                    </div>
-                </div>
-            `;
+            panel.innerHTML = adminNoticeTodoPanel;
             if (canManageDevices()) {
                 updateAdminNoticeTodoPanel();
             }
