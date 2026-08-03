@@ -1,4 +1,57 @@
 // reports.js - application script.
+const optionalLibraryPromises = new Map();
+
+function loadOptionalLibrary(src, isReady) {
+    if (isReady()) {
+        return Promise.resolve();
+    }
+    if (optionalLibraryPromises.has(src)) {
+        return optionalLibraryPromises.get(src);
+    }
+
+    const promise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.onload = () => isReady()
+            ? resolve()
+            : reject(new Error(`A biblioteca carregada não ficou disponível: ${src}`));
+        script.onerror = () => reject(new Error(`Não foi possível carregar a biblioteca: ${src}`));
+        document.head.appendChild(script);
+    }).catch(error => {
+        optionalLibraryPromises.delete(src);
+        throw error;
+    });
+
+    optionalLibraryPromises.set(src, promise);
+    return promise;
+}
+
+async function ensurePdfLibraries() {
+    await loadOptionalLibrary(
+        'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+        () => Boolean(window.jspdf?.jsPDF)
+    );
+    await loadOptionalLibrary(
+        'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js',
+        () => Boolean(window.jspdf?.jsPDF?.API?.autoTable)
+    );
+}
+
+async function ensureLabelLibraries() {
+    await Promise.all([
+        ensurePdfLibraries(),
+        loadOptionalLibrary(
+            'https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js',
+            () => Boolean(window.QRious)
+        ),
+        loadOptionalLibrary(
+            'https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js',
+            () => Boolean(window.JsBarcode)
+        )
+    ]);
+}
+
 function getJsPdfInstance() {
             const jsPDF = window.jspdf?.jsPDF;
             if (!jsPDF) {
@@ -372,6 +425,7 @@ function getJsPdfInstance() {
                     return;
                 }
 
+                await ensureLabelLibraries();
                 const jsPDF = getJsPdfInstance();
                 const { width: labelW, height: labelH } = getSelectedLabelSize();
                 const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -824,8 +878,9 @@ function getJsPdfInstance() {
             });
         }
 
-        function generateDeviceReportPdf() {
+        async function generateDeviceReportPdf() {
             try {
+                await ensurePdfLibraries();
                 const jsPDF = getJsPdfInstance();
                 const selectedType = document.getElementById('reportDeviceType')?.value || '';
                 const filteredDevices = sortDevicesForDisplay(data.devices).filter(device => !selectedType || device.type === selectedType);
@@ -892,8 +947,9 @@ function getJsPdfInstance() {
             }
         }
 
-        function generateUsageReportPdf() {
+        async function generateUsageReportPdf() {
             try {
+                await ensurePdfLibraries();
                 const jsPDF = getJsPdfInstance();
                 const period = document.getElementById('reportUsagePeriod')?.value || 'weekly';
                 const statusFilter = document.getElementById('reportUsageStatus')?.value || '';
@@ -1120,8 +1176,9 @@ function getJsPdfInstance() {
             ];
         }
 
-        function generateFullBackupPdf() {
+        async function generateFullBackupPdf() {
             try {
+                await ensurePdfLibraries();
                 const jsPDF = getJsPdfInstance();
                 const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
                 const sections = buildFullBackupSections();

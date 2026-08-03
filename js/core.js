@@ -628,17 +628,10 @@
             try {
                 if ('serviceWorker' in navigator) {
                     const registrations = await navigator.serviceWorker.getRegistrations();
-                    await Promise.all(registrations.map((registration) => registration.unregister()));
+                    await Promise.all(registrations.map((registration) => registration.update()));
                 }
 
-                if ('caches' in window) {
-                    const keys = await caches.keys();
-                    await Promise.all(keys.map((key) => caches.delete(key)));
-                }
-
-                const url = new URL(window.location.href);
-                url.searchParams.set('v', Date.now().toString());
-                window.location.href = url.toString();
+                window.location.reload();
             } catch (error) {
                 console.error('Erro ao atualizar app:', error);
                 window.location.reload();
