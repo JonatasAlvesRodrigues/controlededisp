@@ -217,6 +217,9 @@
         // ------------------------------
         document.addEventListener('DOMContentLoaded', async () => {
             loadDarkModePreference();
+            document.addEventListener('click', handleUserMenuOutsideClick);
+            document.addEventListener('keydown', handleUserMenuKeydown);
+            window.addEventListener('resize', closeUserMenu);
             pendingDeviceDetailId = getRequestedDeviceIdFromUrl();
             ensureDeviceLabelFields();
             const reportUsageDate = document.getElementById('reportUsageDate');
@@ -249,6 +252,8 @@
         // 4. Autenticação
         // ------------------------------
         function showLogin() {
+            closeUserMenu();
+            closeUserProfileDialog();
             document.getElementById('loginContainer').classList.remove('hidden');
             document.getElementById('sidebar').classList.add('hidden');
             document.getElementById('mainContent').classList.add('hidden');
@@ -505,6 +510,8 @@
 
         async function logout() {
             try {
+                closeUserMenu();
+                closeUserProfileDialog();
                 // Se for acesso rápido, só limpar o localStorage
                 if (isQuickAccess) {
                     localStorage.removeItem('quickAccessUser');
@@ -622,6 +629,186 @@
 
         function closeSidebar() {
             document.body.classList.remove('sidebar-open');
+        }
+
+        function getCurrentUserMenuData() {
+            const name = document.getElementById('topUserName')?.textContent
+                || document.getElementById('userName')?.textContent
+                || 'Usuário';
+            const role = document.getElementById('topUserRole')?.textContent || getRoleLabel();
+            const email = isQuickAccess
+                ? 'Acesso rápido'
+                : (currentUser?.email || currentUserProfile?.email || 'Acesso ao sistema');
+            const initials = document.getElementById('topUserAvatar')?.textContent
+                || name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('')
+                || 'U';
+            return { name, role, email, initials };
+        }
+
+        function syncUserAccountMenu() {
+            const account = getCurrentUserMenuData();
+            const values = {
+                accountMenuAvatar: account.initials,
+                accountMenuName: account.name,
+                accountMenuRole: account.role,
+                accountMenuEmail: account.email,
+                profileModalAvatar: account.initials,
+                profileModalName: account.name,
+                profileModalRole: account.role,
+                profileModalEmail: account.email,
+                profileModalPermission: account.role
+            };
+            Object.entries(values).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = value;
+            });
+
+            const darkMode = document.body.classList.contains('dark-mode');
+            const themeLabel = document.getElementById('accountMenuThemeLabel');
+            const themeIcon = document.getElementById('accountMenuThemeIcon');
+            if (themeLabel) themeLabel.textContent = darkMode ? 'Modo claro' : 'Modo escuro';
+            if (themeIcon) themeIcon.className = darkMode ? 'fas fa-sun' : 'fas fa-moon';
+        }
+
+        function setUserMenuTriggersExpanded(expanded, activeTrigger = null) {
+            ['topbarUserMenuTrigger', 'sidebarUserMenuTrigger'].forEach(id => {
+                const trigger = document.getElementById(id);
+                if (trigger) trigger.setAttribute('aria-expanded', String(expanded && trigger === activeTrigger));
+            });
+        }
+
+        function positionUserMenu(trigger, source) {
+            const menu = document.getElementById('userAccountMenu');
+            if (!menu || !trigger) return;
+            const rect = trigger.getBoundingClientRect();
+            const menuWidth = menu.offsetWidth;
+            const menuHeight = menu.offsetHeight;
+            const viewportGap = 12;
+            let left;
+            let top;
+
+            if (source === 'sidebar') {
+                const fitsToRight = rect.right + menuWidth + 10 <= window.innerWidth;
+                left = fitsToRight ? rect.right + 8 : Math.max(viewportGap, Math.min(rect.left, window.innerWidth - menuWidth - viewportGap));
+                top = Math.max(viewportGap, Math.min(rect.bottom - menuHeight, window.innerHeight - menuHeight - viewportGap));
+            } else {
+                left = Math.max(viewportGap, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - viewportGap));
+                top = rect.bottom + 9;
+                if (top + menuHeight > window.innerHeight - viewportGap) {
+                    top = Math.max(viewportGap, rect.top - menuHeight - 9);
+                }
+            }
+
+            menu.style.left = `${Math.round(left)}px`;
+            menu.style.top = `${Math.round(top)}px`;
+
+            let correctedLeft = parseFloat(menu.style.left) || 0;
+            let correctedTop = parseFloat(menu.style.top) || 0;
+            for (let attempt = 0; attempt < 4; attempt++) {
+                const renderedRect = menu.getBoundingClientRect();
+                if (renderedRect.left < viewportGap) correctedLeft += viewportGap - renderedRect.left;
+                if (renderedRect.right > window.innerWidth - viewportGap) correctedLeft -= renderedRect.right - (window.innerWidth - viewportGap);
+                if (renderedRect.top < viewportGap) correctedTop += viewportGap - renderedRect.top;
+                if (renderedRect.bottom > window.innerHeight - viewportGap) correctedTop -= renderedRect.bottom - (window.innerHeight - viewportGap);
+                menu.style.left = `${correctedLeft}px`;
+                menu.style.top = `${correctedTop}px`;
+            }
+        }
+
+        function toggleUserMenu(event, source = 'topbar') {
+            event?.preventDefault();
+            event?.stopPropagation();
+            const menu = document.getElementById('userAccountMenu');
+            const trigger = event?.currentTarget;
+            if (!menu || !trigger) return;
+
+            const isOpenFromThisTrigger =
+                !menu.classList.contains('hidden') &&
+                menu.dataset.source === source;
+            if (isOpenFromThisTrigger) {
+                closeUserMenu();
+                return;
+            }
+
+            syncUserAccountMenu();
+            menu.dataset.source = source;
+            menu.classList.remove('hidden');
+            menu.setAttribute('aria-hidden', 'false');
+            setUserMenuTriggersExpanded(true, trigger);
+            positionUserMenu(trigger, source);
+            menu.querySelector('button')?.focus({ preventScroll: true });
+        }
+
+        function closeUserMenu() {
+            const menu = document.getElementById('userAccountMenu');
+            if (!menu) return;
+            menu.classList.add('hidden');
+            menu.setAttribute('aria-hidden', 'true');
+            menu.removeAttribute('data-source');
+            setUserMenuTriggersExpanded(false);
+        }
+
+        function handleUserMenuOutsideClick(event) {
+            const menu = document.getElementById('userAccountMenu');
+            if (!menu || menu.classList.contains('hidden')) return;
+            if (menu.contains(event.target) || event.target.closest?.('#topbarUserMenuTrigger, #sidebarUserMenuTrigger')) return;
+            closeUserMenu();
+        }
+
+        function handleUserMenuKeydown(event) {
+            if (event.key !== 'Escape') return;
+            const profileModal = document.getElementById('userProfileModal');
+            if (profileModal?.classList.contains('active')) {
+                closeUserProfileDialog();
+                return;
+            }
+            closeUserMenu();
+        }
+
+        function openUserProfileDialog() {
+            syncUserAccountMenu();
+            closeUserMenu();
+            const modal = document.getElementById('userProfileModal');
+            if (!modal) return;
+            modal.classList.add('active');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('modal-open');
+            modal.querySelector('.user-profile-close')?.focus({ preventScroll: true });
+        }
+
+        function closeUserProfileDialog() {
+            const modal = document.getElementById('userProfileModal');
+            if (!modal) return;
+            modal.classList.remove('active');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('modal-open');
+        }
+
+        function handleUserProfileOverlayClick(event) {
+            if (event.target?.id === 'userProfileModal') {
+                closeUserProfileDialog();
+            }
+        }
+
+        function openDashboardFromUserMenu() {
+            closeUserMenu();
+            closeSidebar();
+            showScreen('dashboard');
+        }
+
+        function toggleUserMenuTheme() {
+            toggleDarkMode();
+            syncUserAccountMenu();
+        }
+
+        function refreshFromUserMenu() {
+            closeUserMenu();
+            forceRefreshApp();
+        }
+
+        function logoutFromUserMenu() {
+            closeUserMenu();
+            logout();
         }
 
         async function forceRefreshApp() {

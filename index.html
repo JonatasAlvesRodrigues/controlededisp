@@ -177,14 +177,14 @@
         </nav>
 
         <div class="sidebar-footer">
-            <div class="user-info sidebar-user-card">
+            <button class="user-info sidebar-user-card" id="sidebarUserMenuTrigger" type="button" onclick="toggleUserMenu(event, 'sidebar')" aria-expanded="false" aria-controls="userAccountMenu">
                 <div class="user-avatar sidebar-user-avatar" id="sidebarUserAvatar">U</div>
                 <div class="user-details">
                     <div class="user-name" id="userName">Usuário</div>
                     <div class="user-email" id="userEmail">email@exemplo.com</div>
                 </div>
                 <i class="fas fa-chevron-down sidebar-user-chevron"></i>
-            </div>
+            </button>
             <div class="sidebar-footer-actions">
                 <button class="sidebar-footer-button" onclick="forceRefreshApp()" title="Atualizar versão">
                     <i class="fas fa-rotate"></i>
@@ -237,13 +237,46 @@
             <button class="topbar-icon-button" type="button" title="Alternar modo escuro" onclick="toggleDarkMode()">
                 <i class="fas fa-moon" id="darkModeIcon"></i>
             </button>
-            <div class="topbar-profile">
+            <button class="topbar-profile" id="topbarUserMenuTrigger" type="button" onclick="toggleUserMenu(event, 'topbar')" aria-expanded="false" aria-controls="userAccountMenu">
                 <div class="topbar-avatar" id="topUserAvatar">U</div>
                 <div class="topbar-user-copy">
                     <strong id="topUserName">Usuário</strong>
                     <span id="topUserRole">Perfil</span>
                 </div>
                 <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+
+        <div class="user-account-menu hidden" id="userAccountMenu" role="menu" aria-hidden="true">
+            <div class="user-account-menu-header">
+                <div class="user-account-menu-avatar" id="accountMenuAvatar">U</div>
+                <div>
+                    <strong id="accountMenuName">Usuário</strong>
+                    <span id="accountMenuRole">Perfil</span>
+                    <small id="accountMenuEmail">Acesso ao sistema</small>
+                </div>
+            </div>
+            <div class="user-account-menu-actions">
+                <button type="button" role="menuitem" onclick="openUserProfileDialog()">
+                    <i class="far fa-user"></i>
+                    <span><strong>Minha conta</strong><small>Ver informações do perfil</small></span>
+                </button>
+                <button type="button" role="menuitem" onclick="openDashboardFromUserMenu()">
+                    <i class="fas fa-house"></i>
+                    <span><strong>Ir ao Dashboard</strong><small>Voltar para a página inicial</small></span>
+                </button>
+                <button type="button" role="menuitem" onclick="toggleUserMenuTheme()">
+                    <i class="fas fa-moon" id="accountMenuThemeIcon"></i>
+                    <span><strong id="accountMenuThemeLabel">Modo escuro</strong><small>Alterar aparência do sistema</small></span>
+                </button>
+                <button type="button" role="menuitem" onclick="refreshFromUserMenu()">
+                    <i class="fas fa-rotate"></i>
+                    <span><strong>Atualizar sistema</strong><small>Buscar a versão mais recente</small></span>
+                </button>
+                <button class="danger" type="button" role="menuitem" onclick="logoutFromUserMenu()">
+                    <i class="fas fa-arrow-right-from-bracket"></i>
+                    <span><strong>Sair</strong><small>Encerrar esta sessão</small></span>
+                </button>
             </div>
         </div>
 
@@ -1593,6 +1626,43 @@
                             Ir para devolução
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-overlay" id="userProfileModal" aria-hidden="true" onclick="handleUserProfileOverlayClick(event)">
+            <div class="modal user-profile-modal" role="dialog" aria-modal="true" aria-labelledby="userProfileModalTitle">
+                <div class="modal-header">
+                    <div>
+                        <div class="modal-title" id="userProfileModalTitle">Minha conta</div>
+                        <div class="user-profile-modal-subtitle">Informações usadas para identificar seu acesso.</div>
+                    </div>
+                    <button class="user-profile-close" type="button" onclick="closeUserProfileDialog()" aria-label="Fechar">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="user-profile-summary">
+                        <div class="user-profile-avatar" id="profileModalAvatar">U</div>
+                        <div>
+                            <strong id="profileModalName">Usuário</strong>
+                            <span id="profileModalRole">Perfil</span>
+                        </div>
+                    </div>
+                    <div class="user-profile-details">
+                        <div>
+                            <i class="far fa-envelope"></i>
+                            <span><small>E-mail ou acesso</small><strong id="profileModalEmail">Acesso ao sistema</strong></span>
+                        </div>
+                        <div>
+                            <i class="fas fa-shield-halved"></i>
+                            <span><small>Nível de permissão</small><strong id="profileModalPermission">Perfil</strong></span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-full" type="button" onclick="closeUserProfileDialog()">
+                        <i class="fas fa-check"></i>
+                        Fechar
+                    </button>
                 </div>
             </div>
         </div>
