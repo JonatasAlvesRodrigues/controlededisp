@@ -53,6 +53,11 @@
         let organizationSelectedDeviceIds = new Set();
         let organizationActiveGroupName = '';
         let organizationDraftGroupName = '';
+        let mobileDeviceCardLimit = 10;
+        let mobileHistoryCardLimit = 10;
+        let mobileActiveLoanCardLimit = 10;
+        let mobileMaintenanceCardLimit = 10;
+        let mobileOrganizationDeviceLimit = 12;
         let pendingDeviceDetailId = null;
         let reservationReminderQueue = [];
         let activeReservationReminder = null;

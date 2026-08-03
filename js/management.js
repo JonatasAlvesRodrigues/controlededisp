@@ -625,8 +625,15 @@
             document.getElementById('history-table').innerHTML = html;
             renderLoanCards('history-cards', [...loans].sort((a, b) => b.id - a.id), {
                 showReleaser: true,
-                emptyMessage: 'Nenhum empréstimo registrado'
+                emptyMessage: 'Nenhum empréstimo registrado',
+                mobileLimit: mobileHistoryCardLimit,
+                loadMoreAction: 'loadMoreHistoryCards()'
             });
+        }
+
+        function loadMoreHistoryCards() {
+            mobileHistoryCardLimit += 10;
+            filterHistory();
         }
 
         function updateDevicesTable() {
@@ -719,7 +726,10 @@
             if (!container) return;
 
             const sortedDevices = getFilteredDevices();
-            const groupedDevices = groupDevicesByType(sortedDevices);
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
+            const visibleDevices = isMobile ? sortedDevices.slice(0, mobileDeviceCardLimit) : sortedDevices;
+            const groupedDevices = groupDevicesByType(visibleDevices);
+            const remainingDevices = sortedDevices.length - visibleDevices.length;
             const hasFilters = !!(document.getElementById('deviceSearchInput')?.value?.trim() || document.getElementById('deviceTypeFilter')?.value || deviceStatusFilter);
             let html = '';
 
@@ -808,7 +818,23 @@
                         </div>
                     </section>
                 `).join('');
+                if (remainingDevices > 0) {
+                    html += `
+                        <div class="mobile-load-more">
+                            <span>Exibindo ${visibleDevices.length} de ${sortedDevices.length} dispositivos</span>
+                            <button type="button" class="btn btn-secondary" onclick="loadMoreDeviceCards()">
+                                <i class="fas fa-chevron-down"></i>
+                                Carregar mais (${remainingDevices})
+                            </button>
+                        </div>
+                    `;
+                }
             }
 
             container.innerHTML = html;
+        }
+
+        function loadMoreDeviceCards() {
+            mobileDeviceCardLimit += 10;
+            updateDevicesCards();
         }

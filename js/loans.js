@@ -39,7 +39,9 @@ function getLoanInfo(loan) {
             const {
                 showReleaser = false,
                 showAction = false,
-                emptyMessage = 'Nenhum empréstimo registrado'
+                emptyMessage = 'Nenhum empréstimo registrado',
+                mobileLimit = 0,
+                loadMoreAction = ''
             } = options;
 
             if (!loans.length) {
@@ -51,7 +53,11 @@ function getLoanInfo(loan) {
                 return;
             }
 
-            container.innerHTML = loans.map(loan => {
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
+            const visibleLoans = isMobile && mobileLimit > 0 ? loans.slice(0, mobileLimit) : loans;
+            const remainingLoans = loans.length - visibleLoans.length;
+
+            container.innerHTML = visibleLoans.map(loan => {
                 const info = getLoanInfo(loan);
                 const pendingQuantity = getLoanPendingQuantity(loan);
                 const displayQuantity = loan.returned ? loan.quantity : pendingQuantity;
@@ -108,7 +114,15 @@ function getLoanInfo(loan) {
                         ${actionButton ? `<div class="loan-card-actions">${actionButton}</div>` : ''}
                     </div>
                 `;
-            }).join('');
+            }).join('') + (remainingLoans > 0 && loadMoreAction ? `
+                <div class="mobile-load-more">
+                    <span>Exibindo ${visibleLoans.length} de ${loans.length}</span>
+                    <button type="button" class="btn btn-secondary" onclick="${loadMoreAction}">
+                        <i class="fas fa-chevron-down"></i>
+                        Carregar mais (${remainingLoans})
+                    </button>
+                </div>
+            ` : '');
         }
 
         function updateActiveLoans() {
@@ -168,7 +182,17 @@ function getLoanInfo(loan) {
             }
             document.getElementById('all-active-loans').innerHTML = allHtml;
             renderLoanCards('active-loans-cards', activeLoans.slice(0, 5), { emptyMessage: 'Nenhum empréstimo ativo no momento' });
-            renderLoanCards('all-active-loans-cards', activeLoans, { showAction: true, emptyMessage: 'Nenhum empréstimo ativo no momento' });
+            renderLoanCards('all-active-loans-cards', activeLoans, {
+                showAction: true,
+                emptyMessage: 'Nenhum empréstimo ativo no momento',
+                mobileLimit: mobileActiveLoanCardLimit,
+                loadMoreAction: 'loadMoreActiveLoanCards()'
+            });
+        }
+
+        function loadMoreActiveLoanCards() {
+            mobileActiveLoanCardLimit += 10;
+            updateActiveLoans();
         }
 
         function updateLatestLoans() {

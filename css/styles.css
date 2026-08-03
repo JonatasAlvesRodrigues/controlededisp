@@ -4524,14 +4524,123 @@
             }
 
             .stats-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px;
             }
 
             .stat-card {
-                min-height: 92px;
+                min-height: 82px;
+                padding: 12px;
+                gap: 8px;
+            }
+
+            .stat-card:last-child {
+                grid-column: 1 / -1;
+            }
+
+            .stat-icon {
+                flex-basis: 40px;
+                width: 40px;
+                height: 40px;
+                border-radius: 11px;
+                font-size: 17px;
+            }
+
+            .stat-label {
+                font-size: 9px;
+            }
+
+            .stat-value {
+                font-size: 20px;
             }
 
             .dashboard-action-copy small {
+                display: none;
+            }
+
+            .dashboard-action-banner {
+                grid-template-columns: 58px minmax(0, 1fr) 30px;
+                min-height: 76px;
+                padding: 8px 10px 8px 4px;
+            }
+
+            .dashboard-action-visual,
+            #dashboardActionsCard .dashboard-action-visual {
+                width: 54px;
+                height: 60px;
+                font-size: 29px;
+            }
+
+            .dashboard-action-badge {
+                top: 7px;
+                right: 0;
+                width: 27px;
+                height: 27px;
+                border-width: 3px;
+            }
+
+            .dashboard-action-arrow {
+                width: 29px;
+                height: 29px;
+            }
+
+            .device-card-top {
+                flex-direction: row;
+                align-items: flex-start;
+            }
+
+            .device-card-meta,
+            .loan-card-body {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .device-card-actions {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .device-card-actions .btn {
+                padding: 10px 6px;
+                font-size: 11px;
+            }
+
+            .inventory-filter,
+            .inventory-overview,
+            .organization-toolbar,
+            .organization-actions {
+                grid-template-columns: 1fr;
+            }
+
+            .inventory-filter .form-group,
+            .inventory-filter select,
+            .organization-toolbar .form-group,
+            .organization-toolbar input,
+            .organization-toolbar select {
+                width: 100%;
+                min-width: 0;
+            }
+
+            .organization-actions .btn {
+                width: 100%;
+            }
+        }
+
+        .mobile-load-more {
+            display: grid;
+            grid-column: 1 / -1;
+            gap: 10px;
+            justify-items: center;
+            padding: 16px;
+            color: var(--text-muted);
+            border: 1px dashed var(--border);
+            border-radius: 14px;
+            background: var(--surface);
+            font-size: 12px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        @media (min-width: 769px) {
+            .mobile-load-more {
                 display: none;
             }
         }

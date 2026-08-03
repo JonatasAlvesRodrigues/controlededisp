@@ -196,6 +196,7 @@ function getRequestedDeviceIdFromUrl() {
             if (navItem) navItem.classList.add('active');
             if (screenId === 'loan') setLoanDueMinimum();
             closeSidebar();
+            window.scrollTo(0, 0);
         }
 
         function handleGlobalSearchKeydown(event) {
@@ -1274,7 +1275,10 @@ function getRequestedDeviceIdFromUrl() {
                 </tr>
             `).join('');
 
-            cards.innerHTML = entries.map(({ device, entry }) => `
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
+            const visibleEntries = isMobile ? entries.slice(0, mobileMaintenanceCardLimit) : entries;
+            const remainingEntries = entries.length - visibleEntries.length;
+            cards.innerHTML = visibleEntries.map(({ device, entry }) => `
                 <div class="device-card device-card-clickable" onclick="openDeviceDetails(${device.id})">
                     <div class="device-card-top">
                         <div class="device-card-title">
@@ -1292,7 +1296,20 @@ function getRequestedDeviceIdFromUrl() {
                     </div>
                     <div class="device-card-actions" onclick="event.stopPropagation()">${actionButtons(device)}</div>
                 </div>
-            `).join('');
+            `).join('') + (remainingEntries > 0 ? `
+                <div class="mobile-load-more">
+                    <span>Exibindo ${visibleEntries.length} de ${entries.length}</span>
+                    <button type="button" class="btn btn-secondary" onclick="loadMoreMaintenanceCards()">
+                        <i class="fas fa-chevron-down"></i>
+                        Carregar mais (${remainingEntries})
+                    </button>
+                </div>
+            ` : '');
+        }
+
+        function loadMoreMaintenanceCards() {
+            mobileMaintenanceCardLimit += 10;
+            updateMaintenanceCenter();
         }
 
         async function resolveMaintenance(deviceId) {
@@ -2411,7 +2428,10 @@ function getRequestedDeviceIdFromUrl() {
                 return;
             }
 
-            container.innerHTML = devices.map(device => {
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
+            const visibleDevices = isMobile ? devices.slice(0, mobileOrganizationDeviceLimit) : devices;
+            const remainingDevices = devices.length - visibleDevices.length;
+            container.innerHTML = visibleDevices.map(device => {
                 const parsedId = parseInt(device.id);
                 const checked = organizationSelectedDeviceIds.has(parsedId);
                 const badgeColor = getDeviceStatusBadgeColor(device.status);
@@ -2431,8 +2451,26 @@ function getRequestedDeviceIdFromUrl() {
                         </span>
                     </label>
                 `;
-            }).join('');
+            }).join('') + (remainingDevices > 0 ? `
+                <div class="mobile-load-more" style="grid-column: 1 / -1;">
+                    <span>Exibindo ${visibleDevices.length} de ${devices.length} dispositivos</span>
+                    <button type="button" class="btn btn-secondary" onclick="loadMoreOrganizationDevices()">
+                        <i class="fas fa-chevron-down"></i>
+                        Carregar mais (${remainingDevices})
+                    </button>
+                </div>
+            ` : '');
             renderOrganizationSummary();
+        }
+
+        function applyOrganizationDeviceFilters() {
+            mobileOrganizationDeviceLimit = 12;
+            renderOrganizationDevices();
+        }
+
+        function loadMoreOrganizationDevices() {
+            mobileOrganizationDeviceLimit += 12;
+            renderOrganizationDevices();
         }
 
         function updateOrganizationScreen() {
@@ -2592,6 +2630,7 @@ function getRequestedDeviceIdFromUrl() {
         }
 
         function applyDeviceFilters() {
+            mobileDeviceCardLimit = 10;
             updateDevicesTable();
             updateDevicesCards();
         }

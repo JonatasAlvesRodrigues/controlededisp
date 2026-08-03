@@ -1109,7 +1109,7 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Tipo</label>
-                            <select id="organizationTypeFilter" class="form-input" onchange="renderOrganizationDevices()">
+                            <select id="organizationTypeFilter" class="form-input" onchange="applyOrganizationDeviceFilters()">
                                 <option value="">Todos os tipos</option>
                                 <option value="Notebook">Notebook</option>
                                 <option value="Notebook Positivo (Novos)">Notebook Positivo (Novos)</option>
@@ -1121,7 +1121,7 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Buscar</label>
-                            <input type="text" id="organizationSearchInput" class="form-input" placeholder="Contador, patrimonio, serie ou ID" oninput="renderOrganizationDevices()">
+                            <input type="text" id="organizationSearchInput" class="form-input" placeholder="Contador, patrimonio, serie ou ID" oninput="applyOrganizationDeviceFilters()">
                         </div>
                     </div>
 
