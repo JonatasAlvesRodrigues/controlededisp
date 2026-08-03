@@ -213,6 +213,7 @@ function getRequestedDeviceIdFromUrl() {
             updateHistoryTable();
             updateDevicesTable();
             updateDevicesCards();
+            updateLocationInventory();
             updateOrganizationScreen();
             renderSelectedDeviceDetails();
             updateClassesList();
@@ -224,6 +225,157 @@ function getRequestedDeviceIdFromUrl() {
             syncLabelSizeControls();
             updateReturnSelect();
             applyRoleRestrictions();
+        }
+
+        function getInventoryStatusCounts(devices) {
+            return devices.reduce((counts, device) => {
+                const status = normalizeDeviceText(device.status);
+                if (status === 'disponivel') counts.available += 1;
+                else if (status === 'em uso') counts.inUse += 1;
+                else if (status === 'manutencao') counts.maintenance += 1;
+                else if (status === 'fora de uso') counts.outOfUse += 1;
+                return counts;
+            }, { available: 0, inUse: 0, maintenance: 0, outOfUse: 0 });
+        }
+
+        function getLocationInventoryGroups() {
+            const locations = new Map();
+
+            data.devices.forEach(device => {
+                const trimmedGroup = (device.group || '').trim();
+                const locationKey = normalizeDeviceText(trimmedGroup) || '__sem_agrupamento__';
+                if (!locations.has(locationKey)) {
+                    locations.set(locationKey, {
+                        name: trimmedGroup || 'Sem agrupamento',
+                        devices: []
+                    });
+                }
+                locations.get(locationKey).devices.push(device);
+            });
+
+            return [...locations.values()].sort((a, b) =>
+                a.name.localeCompare(b.name, 'pt-BR', { numeric: true, sensitivity: 'base' })
+            );
+        }
+
+        function getInventoryTypes(devices) {
+            const types = new Map();
+
+            devices.forEach(device => {
+                const typeName = (device.type || 'Outros').trim();
+                const typeKey = normalizeDeviceText(typeName);
+                if (!types.has(typeKey)) {
+                    types.set(typeKey, { name: typeName, devices: [] });
+                }
+                types.get(typeKey).devices.push(device);
+            });
+
+            return [...types.values()]
+                .map(type => ({
+                    ...type,
+                    status: getInventoryStatusCounts(type.devices)
+                }))
+                .sort((a, b) => {
+                    const orderDifference = getDeviceTypeOrder(a.name) - getDeviceTypeOrder(b.name);
+                    return orderDifference || a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' });
+                });
+        }
+
+        function renderInventoryStatusPill(label, value, colorClass) {
+            if (!value) return '';
+            return `<span class="inventory-status-pill ${colorClass}">${value} ${label}</span>`;
+        }
+
+        function updateLocationInventory() {
+            const overview = document.getElementById('inventoryOverview');
+            const grid = document.getElementById('inventoryLocationGrid');
+            if (!overview || !grid) return;
+
+            const searchTerm = normalizeDeviceText(
+                document.getElementById('inventorySearchInput')?.value || ''
+            );
+            const allLocations = getLocationInventoryGroups();
+            const allTypes = getInventoryTypes(data.devices);
+            const visibleLocations = allLocations.map(location => {
+                const types = getInventoryTypes(location.devices);
+                const locationMatches = normalizeDeviceText(location.name).includes(searchTerm);
+                const visibleTypes = !searchTerm || locationMatches
+                    ? types
+                    : types.filter(type => normalizeDeviceText(type.name).includes(searchTerm));
+                return { ...location, types: visibleTypes };
+            }).filter(location => location.types.length);
+
+            overview.innerHTML = `
+                <div class="inventory-overview-card">
+                    <span>Locais</span>
+                    <strong>${allLocations.length}</strong>
+                </div>
+                <div class="inventory-overview-card">
+                    <span>Dispositivos</span>
+                    <strong>${data.devices.length}</strong>
+                </div>
+                <div class="inventory-overview-card inventory-overview-types">
+                    <span>Totais por tipo</span>
+                    <div class="inventory-type-totals">
+                        ${allTypes.map(type => `
+                            <span>${escapeHtml(type.name)} <strong>${type.devices.length}</strong></span>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            if (!visibleLocations.length) {
+                grid.innerHTML = '<div class="admin-empty inventory-empty">Nenhum local ou tipo encontrado.</div>';
+                return;
+            }
+
+            grid.innerHTML = visibleLocations.map(location => {
+                const locationStatus = getInventoryStatusCounts(location.devices);
+                return `
+                    <section class="inventory-location-card">
+                        <div class="inventory-location-header">
+                            <div>
+                                <div class="inventory-location-title">
+                                    <i class="fas fa-location-dot"></i>
+                                    ${escapeHtml(location.name)}
+                                </div>
+                                <div class="inventory-location-status">
+                                    ${renderInventoryStatusPill('disponíveis', locationStatus.available, 'green')}
+                                    ${renderInventoryStatusPill('em uso', locationStatus.inUse, 'yellow')}
+                                    ${renderInventoryStatusPill('manutenção', locationStatus.maintenance, 'orange')}
+                                    ${renderInventoryStatusPill('fora de uso', locationStatus.outOfUse, 'gray')}
+                                </div>
+                            </div>
+                            <span class="inventory-location-total">${location.devices.length}</span>
+                        </div>
+                        <div class="inventory-type-list">
+                            ${location.types.map(type => `
+                                <div class="inventory-type-row">
+                                    <div class="inventory-type-main">
+                                        <span class="inventory-type-icon">
+                                            <i class="fas fa-${getDeviceIcon(type.name)}"></i>
+                                        </span>
+                                        <span>${escapeHtml(type.name)}</span>
+                                    </div>
+                                    <div class="inventory-type-detail">
+                                        ${renderInventoryStatusPill('disp.', type.status.available, 'green')}
+                                        ${renderInventoryStatusPill('em uso', type.status.inUse, 'yellow')}
+                                        ${renderInventoryStatusPill('manut.', type.status.maintenance, 'orange')}
+                                        ${renderInventoryStatusPill('fora', type.status.outOfUse, 'gray')}
+                                        <strong class="inventory-type-count">${type.devices.length}</strong>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </section>
+                `;
+            }).join('');
+        }
+
+        function clearLocationInventorySearch() {
+            const input = document.getElementById('inventorySearchInput');
+            if (input) input.value = '';
+            updateLocationInventory();
         }
 
         function updateProfileDashboard() {

@@ -328,7 +328,7 @@
         }
 
         function applyRoleRestrictions() {
-            const hiddenForAluno = ['history', 'active', 'schedules', 'maintenance', 'devices', 'organization', 'classes', 'teachers'];
+            const hiddenForAluno = ['history', 'active', 'schedules', 'maintenance', 'devices', 'inventory', 'organization', 'classes', 'teachers'];
             hiddenForAluno.forEach(screenId => {
                 const navItem = document.querySelector(`.nav-item[data-screen="${screenId}"]`);
                 if (navItem) {

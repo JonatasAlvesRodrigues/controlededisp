@@ -155,6 +155,10 @@
                 <i class="fas fa-laptop"></i>
                 <span>Dispositivos</span>
             </div>
+            <div class="nav-item" onclick="showScreen('inventory')" data-screen="inventory">
+                <i class="fas fa-building"></i>
+                <span>Inventário por Local</span>
+            </div>
             <div class="nav-item" onclick="showScreen('organization')" data-screen="organization" data-admin-only="true">
                 <i class="fas fa-layer-group"></i>
                 <span>Organizacao</span>
@@ -961,6 +965,40 @@
                     <div id="devices-cards" class="device-card-list"></div>
                 </div>
             </div>
+        </div>
+
+        <!-- Inventory by Location Screen -->
+        <div id="inventory" class="screen">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Inventário por Local</div>
+                    <div class="page-subtitle">Quantidade de cada tipo de dispositivo por sala, base ou carrinho</div>
+                </div>
+            </div>
+
+            <div class="card inventory-filter-card">
+                <div class="card-body">
+                    <div class="inventory-filter">
+                        <div class="form-group">
+                            <label class="form-label">Pesquisar local ou tipo</label>
+                            <input
+                                type="text"
+                                id="inventorySearchInput"
+                                class="form-input"
+                                placeholder="Ex: Sala de Informática, Gestão ou Desktop"
+                                oninput="updateLocationInventory()"
+                            >
+                        </div>
+                        <button type="button" class="btn btn-secondary" onclick="clearLocationInventorySearch()">
+                            <i class="fas fa-eraser"></i>
+                            Limpar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="inventory-overview" id="inventoryOverview"></div>
+            <div class="inventory-location-grid" id="inventoryLocationGrid"></div>
         </div>
 
         <!-- Organization Screen -->
