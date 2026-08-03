@@ -947,6 +947,170 @@ function getJsPdfInstance() {
             }
         }
 
+        function drawUsageReportHeader(doc) {
+            const pageWidth = doc.internal.pageSize.getWidth();
+            doc.setFillColor(5, 33, 92);
+            doc.rect(0, 0, pageWidth, 30, 'F');
+            doc.setFillColor(7, 49, 122);
+            doc.triangle(0, 30, 122, 0, 0, 0, 'F');
+
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255);
+            doc.setFontSize(15);
+            doc.text('Escola Percio', 12, 12);
+            doc.setFontSize(9.5);
+            doc.text('Controle de Dispositivos', 12, 19);
+            doc.setDrawColor(16, 197, 184);
+            doc.setLineWidth(0.8);
+            doc.line(12, 22.5, 59, 22.5);
+
+            doc.setDrawColor(42, 116, 255);
+            doc.setFillColor(239, 246, 255);
+            doc.setLineWidth(1.6);
+            doc.roundedRect(pageWidth - 48, 5, 31, 18, 2, 2, 'FD');
+            doc.setFillColor(218, 232, 255);
+            doc.rect(pageWidth - 44, 8, 23, 11, 'F');
+            doc.setFillColor(22, 91, 218);
+            doc.triangle(pageWidth - 51, 24, pageWidth - 13, 24, pageWidth - 18, 21, 'F');
+            doc.setDrawColor(34, 211, 238);
+            doc.setLineWidth(0.7);
+            doc.line(pageWidth - 44, 11, pageWidth - 24, 11);
+            doc.line(pageWidth - 44, 14, pageWidth - 28, 14);
+            doc.setFillColor(16, 185, 129);
+            doc.circle(pageWidth - 22, 17, 2.3, 'F');
+            doc.setDrawColor(255);
+            doc.setLineWidth(0.5);
+            doc.line(pageWidth - 23, 17, pageWidth - 22.2, 17.8);
+            doc.line(pageWidth - 22.2, 17.8, pageWidth - 20.8, 16.2);
+        }
+
+        function drawUsageInfoCard(doc, x, y, width, label, value, accent) {
+            doc.setFillColor(255);
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.3);
+            doc.roundedRect(x, y, width, 13, 2.4, 2.4, 'FD');
+            doc.setFillColor(...accent);
+            doc.roundedRect(x + 3, y + 3, 7, 7, 1.5, 1.5, 'F');
+            doc.setTextColor(255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(6.5);
+            doc.text('i', x + 6.5, y + 7.8, { align: 'center' });
+            doc.setTextColor(100, 116, 139);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(5.2);
+            doc.text(label, x + 13, y + 5);
+            doc.setTextColor(15, 47, 104);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(6.4);
+            doc.text(doc.splitTextToSize(String(value), width - 16).slice(0, 2), x + 13, y + 9);
+        }
+
+        function drawUsageMetricCard(doc, x, y, width, value, label, accent, symbol) {
+            doc.setFillColor(255);
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.3);
+            doc.roundedRect(x, y, width, 16, 2.4, 2.4, 'FD');
+            doc.setFillColor(...accent);
+            doc.roundedRect(x + 3, y + 3, 9, 10, 2, 2, 'F');
+            doc.setTextColor(255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.text(symbol, x + 7.5, y + 9.4, { align: 'center' });
+            doc.setTextColor(8, 27, 66);
+            doc.setFontSize(12);
+            doc.text(String(value), x + 15, y + 8.4);
+            doc.setTextColor(100, 116, 139);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(5.2);
+            doc.text(label, x + 15, y + 12.3);
+        }
+
+        function drawUsageSummaryCard(doc, x, y, width, height, title, items, accent, totalLoans) {
+            doc.setFillColor(255);
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.3);
+            doc.roundedRect(x, y, width, height, 2.4, 2.4, 'FD');
+            doc.setFillColor(...accent);
+            doc.roundedRect(x + 3, y + 3, 6, 6, 1.4, 1.4, 'F');
+            doc.setTextColor(255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(5.5);
+            doc.text('=', x + 6, y + 7.1, { align: 'center' });
+            doc.setTextColor(8, 27, 66);
+            doc.setFontSize(7.5);
+            doc.text(title, x + 11, y + 7.3);
+
+            doc.setTextColor(100, 116, 139);
+            doc.setFontSize(4.6);
+            doc.text(title.includes('sala') ? 'Sala' : 'Professor', x + 3, y + 13);
+            doc.text('Empréstimos', x + width * 0.55, y + 13, { align: 'center' });
+            doc.text('Quantidade total', x + width - 3, y + 13, { align: 'right' });
+
+            const visibleItems = items.slice(0, 13);
+            const maxQuantity = Math.max(1, ...visibleItems.map(item => item.quantity));
+            const rowHeight = 6;
+            visibleItems.forEach((item, index) => {
+                const rowY = y + 18 + index * rowHeight;
+                doc.setDrawColor(241, 245, 249);
+                doc.line(x + 3, rowY + 1.5, x + width - 3, rowY + 1.5);
+                doc.setTextColor(30, 41, 59);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(5);
+                doc.text(doc.splitTextToSize(item.label || '-', width * 0.42)[0], x + 3, rowY);
+                doc.text(String(item.loans), x + width * 0.55, rowY, { align: 'center' });
+                const barX = x + width * 0.61;
+                const barWidth = width * 0.21;
+                doc.setFillColor(226, 232, 240);
+                doc.roundedRect(barX, rowY - 1.6, barWidth, 1.8, 0.8, 0.8, 'F');
+                doc.setFillColor(...accent);
+                doc.roundedRect(barX, rowY - 1.6, Math.max(0.8, barWidth * item.quantity / maxQuantity), 1.8, 0.8, 0.8, 'F');
+                doc.text(String(item.quantity), x + width - 3, rowY, { align: 'right' });
+            });
+
+            const footerY = y + height - 8;
+            doc.setFillColor(accent[0] > 20 ? 240 : 239, accent[1] > 150 ? 253 : 246, accent[2] > 150 ? 255 : 246);
+            doc.roundedRect(x + 3, footerY, width - 6, 5.5, 1.3, 1.3, 'F');
+            doc.setTextColor(...accent);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(5.3);
+            doc.text('Total de empréstimos', x + 9, footerY + 3.7);
+            doc.setFillColor(...accent);
+            doc.roundedRect(x + width - 15, footerY + 1, 10, 3.7, 1, 1, 'F');
+            doc.setTextColor(255);
+            doc.text(String(totalLoans), x + width - 10, footerY + 3.5, { align: 'center' });
+        }
+
+        function drawUsageDetailTitle(doc, y, continuation = false) {
+            doc.setFillColor(112, 63, 205);
+            doc.roundedRect(8, y - 4.7, 6, 6, 1.3, 1.3, 'F');
+            doc.setTextColor(255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(5.5);
+            doc.text('=', 11, y - 0.7, { align: 'center' });
+            doc.setTextColor(112, 63, 205);
+            doc.setFontSize(8.5);
+            doc.text('Registros detalhados', 17, y);
+            if (continuation) {
+                doc.setTextColor(100, 116, 139);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(6);
+                doc.text('(continuação)', 55, y);
+            }
+        }
+
+        function drawUsageReportFooter(doc, pageNumber, pageCount) {
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.3);
+            doc.line(8, pageHeight - 13, pageWidth - 8, pageHeight - 13);
+            doc.setTextColor(71, 85, 105);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(5.8);
+            doc.text('Escola Percio - Controle de Dispositivos', 10, pageHeight - 7);
+            doc.text(`Página ${pageNumber} de ${pageCount}`, pageWidth - 10, pageHeight - 7, { align: 'right' });
+        }
+
         async function generateUsageReportPdf() {
             try {
                 await ensurePdfLibraries();
@@ -988,92 +1152,110 @@ function getJsPdfInstance() {
                     return teacherName;
                 });
 
-                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-                const title = period === 'monthly' ? 'Relatório Mensal de Uso' : 'Relatório Semanal de Uso';
                 const rows = buildLoanReportRows(reportLoans);
                 const statusLabel = getLoanReportStatusLabel(statusFilter);
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const title = period === 'monthly' ? 'Relatório Mensal de Uso' : 'Relatório Semanal de Uso';
+                const accentBlue = [20, 101, 235];
+                const accentGreen = [16, 185, 108];
 
+                drawUsageReportHeader(doc);
+                doc.setTextColor(8, 27, 66);
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(16);
-                doc.text(title, 14, 16);
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(10);
-                doc.text(`Período: ${range.label}`, 14, 22);
-                doc.text(`Status: ${statusLabel}`, 14, 28);
-                doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 34);
-                doc.text(`Registros: ${reportLoans.length} | Quantidade total: ${totalQuantity} | Turmas: ${uniqueClasses} | Professores: ${uniqueTeachers}`, 14, 40);
+                doc.setFontSize(15);
+                doc.text(title, 10, 42);
 
-                const summaryHeadStyle = { fillColor: [30, 64, 175], textColor: 255, fontStyle: 'bold' };
-                const summaryStyles = { fontSize: 8, cellPadding: 2, overflow: 'linebreak' };
+                const infoWidth = (pageWidth - 24) / 3;
+                const periodLabel = `${formatDateBR(range.start)} até ${formatDateBR(range.end)}`;
+                drawUsageInfoCard(doc, 8, 48, infoWidth, 'Período:', periodLabel, accentBlue);
+                drawUsageInfoCard(doc, 12 + infoWidth, 48, infoWidth, 'Status:', statusLabel, accentBlue);
+                drawUsageInfoCard(doc, 16 + infoWidth * 2, 48, infoWidth, 'Gerado em:', new Date().toLocaleString('pt-BR'), accentBlue);
 
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text('Resumo por sala', 14, 48);
-                doc.autoTable({
-                    startY: 52,
-                    head: [['Sala', 'Empréstimos', 'Quantidade total']],
-                    body: roomSummary.length
-                        ? roomSummary.map(item => [item.label, String(item.loans), String(item.quantity)])
-                        : [['-', '0', '0']],
-                    theme: 'grid',
-                    styles: summaryStyles,
-                    headStyles: summaryHeadStyle,
-                    margin: { left: 14, right: 14 }
-                });
+                const metricWidth = (pageWidth - 28) / 4;
+                drawUsageMetricCard(doc, 8, 66, metricWidth, reportLoans.length, 'Registros', accentBlue, '#');
+                drawUsageMetricCard(doc, 12 + metricWidth, 66, metricWidth, totalQuantity, 'Quantidade total', accentGreen, '=');
+                drawUsageMetricCard(doc, 16 + metricWidth * 2, 66, metricWidth, uniqueClasses, 'Turmas', [112, 63, 205], 'T');
+                drawUsageMetricCard(doc, 20 + metricWidth * 3, 66, metricWidth, uniqueTeachers, 'Professores', [249, 115, 22], 'P');
 
-                const afterRooms = doc.lastAutoTable?.finalY || 52;
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text('Resumo por professor', 14, afterRooms + 10);
-                doc.autoTable({
-                    startY: afterRooms + 14,
-                    head: [['Professor', 'Empréstimos', 'Quantidade total']],
-                    body: teacherSummary.length
-                        ? teacherSummary.map(item => [item.label, String(item.loans), String(item.quantity)])
-                        : [['-', '0', '0']],
-                    theme: 'grid',
-                    styles: summaryStyles,
-                    headStyles: { fillColor: [5, 150, 105], textColor: 255, fontStyle: 'bold' },
-                    margin: { left: 14, right: 14 }
-                });
+                const summaryTop = 87;
+                const summaryHeight = 110;
+                const summaryWidth = (pageWidth - 20) / 2;
+                drawUsageSummaryCard(doc, 8, summaryTop, summaryWidth, summaryHeight, 'Resumo por sala', roomSummary, accentBlue, reportLoans.length);
+                drawUsageSummaryCard(doc, 12 + summaryWidth, summaryTop, summaryWidth, summaryHeight, 'Resumo por professor', teacherSummary, accentGreen, reportLoans.length);
+
+                const detailTitleY = 215;
+                drawUsageDetailTitle(doc, detailTitleY);
 
                 doc.autoTable({
-                    startY: (doc.lastAutoTable?.finalY || afterRooms) + 12,
+                    startY: detailTitleY + 4,
                     head: [[
-                        '#',
-                        'Data/Hora',
-                        'Turma/Sala',
-                        'Professor',
-                        'Tipo disp.',
-                        'Tipo saída',
-                        'Qtd.',
-                        'Responsável',
-                        'Status',
-                        'Obs.'
+                        '#', 'Data/Hora', 'Turma/Sala', 'Professor', 'Tipo disp.',
+                        'Tipo saída', 'Qtd.', 'Responsável', 'Status', 'Obs.'
                     ]],
                     body: rows,
                     theme: 'grid',
-                    styles: { fontSize: 7, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
-                    headStyles: { fillColor: [5, 150, 105], textColor: 255, fontStyle: 'bold' },
-                    columnStyles: {
-                        0: { cellWidth: 10 },
-                        1: { cellWidth: 26 },
-                        2: { cellWidth: 28 },
-                        3: { cellWidth: 30 },
-                        4: { cellWidth: 24 },
-                        5: { cellWidth: 28 },
-                        6: { cellWidth: 14, halign: 'center' },
-                        7: { cellWidth: 26 },
-                        8: { cellWidth: 18 },
-                        9: { cellWidth: 'auto' }
+                    margin: { top: 47, right: 8, bottom: 18, left: 8 },
+                    styles: {
+                        font: 'helvetica',
+                        fontSize: 5,
+                        cellPadding: 1.35,
+                        minCellHeight: 8.5,
+                        textColor: [30, 41, 59],
+                        lineColor: [226, 232, 240],
+                        lineWidth: 0.25,
+                        overflow: 'linebreak',
+                        valign: 'middle'
                     },
-                    didDrawPage: (dataArg) => {
-                        doc.setFontSize(10);
-                        doc.text('Escola Percio - Controle de Dispositivos', 14, 8);
-                        const pageCount = doc.getNumberOfPages();
-                        doc.text(`Página ${dataArg.pageNumber} de ${pageCount}`, 265, 8, { align: 'right' });
+                    headStyles: {
+                        fillColor: [112, 63, 205],
+                        textColor: 255,
+                        fontStyle: 'bold',
+                        halign: 'center',
+                        minCellHeight: 8
+                    },
+                    alternateRowStyles: { fillColor: [250, 251, 253] },
+                    columnStyles: {
+                        0: { cellWidth: 6, halign: 'center' },
+                        1: { cellWidth: 22 },
+                        2: { cellWidth: 20 },
+                        3: { cellWidth: 22 },
+                        4: { cellWidth: 18 },
+                        5: { cellWidth: 20 },
+                        6: { cellWidth: 9, halign: 'center' },
+                        7: { cellWidth: 20 },
+                        8: { cellWidth: 17, halign: 'center' },
+                        9: { cellWidth: 40 }
+                    },
+                    didParseCell: hook => {
+                        if (hook.section === 'body' && hook.column.index === 8) {
+                            hook.cell.styles.fontStyle = 'bold';
+                            const status = String(hook.cell.raw || '');
+                            if (status === 'Devolvido') {
+                                hook.cell.styles.fillColor = [225, 248, 235];
+                                hook.cell.styles.textColor = [21, 128, 61];
+                            } else if (status === 'Em uso') {
+                                hook.cell.styles.fillColor = [219, 234, 254];
+                                hook.cell.styles.textColor = [29, 78, 216];
+                            } else {
+                                hook.cell.styles.fillColor = [254, 226, 226];
+                                hook.cell.styles.textColor = [185, 28, 28];
+                            }
+                        }
+                    },
+                    didDrawPage: hook => {
+                        if (hook.pageNumber > 1) {
+                            drawUsageReportHeader(doc);
+                            drawUsageDetailTitle(doc, 41, true);
+                        }
                     }
                 });
+
+                const pageCount = doc.getNumberOfPages();
+                for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
+                    doc.setPage(pageNumber);
+                    drawUsageReportFooter(doc, pageNumber, pageCount);
+                }
 
                 const safePeriod = period === 'monthly' ? 'mensal' : 'semanal';
                 const safeStatus = statusFilter || 'todos_status';
