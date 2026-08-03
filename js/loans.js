@@ -528,7 +528,7 @@ function getLoanInfo(loan) {
             e.preventDefault();
             const classId = parseInt(document.getElementById('loanClass').value);
             const teacherId = parseInt(document.getElementById('loanTeacher').value);
-            const deviceType = document.getElementById('loanDeviceType').value;
+            let deviceType = document.getElementById('loanDeviceType').value;
             const releaser = document.getElementById('loanReleaser').value;
             const obs = document.getElementById('loanObs').value;
             const dueAtValue = document.getElementById('loanDueAt').value;
@@ -536,8 +536,12 @@ function getLoanInfo(loan) {
             let quantity = 0;
             let groupName = '';
             let selectedLoanDevices = [];
+            const selectedGroupName = currentLoanType === 'full'
+                ? document.getElementById('loanGroup').value
+                : '';
+            const isTechCartLoan = currentLoanType === 'full' && isTechCartGroup(selectedGroupName);
 
-            if (isFixedDevice(deviceType)) {
+            if (isFixedDevice(deviceType) && !isTechCartLoan) {
                 alert('Desktops e Desktop Gestão são fixos na sala de informática e não podem ser emprestados.');
                 return;
             }
@@ -575,18 +579,33 @@ function getLoanInfo(loan) {
                     selectedLoanDevices = [specificDevice];
                 }
             } else {
-                groupName = document.getElementById('loanGroup').value;
+                groupName = selectedGroupName;
                 if (!groupName) {
                     alert('Selecione um agrupamento para emprestar a base completa.');
                     return;
                 }
-                const loanableDevices = getAvailableDevicesForLoan(deviceType, Number.MAX_SAFE_INTEGER, groupName);
+                const loanableDevices = isTechCartLoan
+                    ? sortDevicesForDisplay(data.devices).filter(device =>
+                        device.group === groupName &&
+                        device.status === 'Disponível'
+                    )
+                    : getAvailableDevicesForLoan(deviceType, Number.MAX_SAFE_INTEGER, groupName);
                 selectedLoanDevices = loanableDevices;
                 if (!loanableDevices.length) {
                     alert('Esse agrupamento não possui dispositivos que possam ser emprestados.');
                     return;
                 }
                 quantity = loanableDevices.filter(d => d.status === 'Disponível').length || loanableDevices.length;
+
+                if (isTechCartLoan) {
+                    const deviceTypes = [...new Set(loanableDevices.map(device => device.type).filter(Boolean))];
+                    deviceType = deviceTypes.length === 1 ? deviceTypes[0] : 'Carrinho TEC';
+                    const confirmed = confirm(
+                        `O agrupamento "${groupName}" contém ${quantity} dispositivo(s) e normalmente permanece fixo.\n\n` +
+                        'Tem certeza de que deseja registrar o empréstimo do Carrinho TEC completo?'
+                    );
+                    if (!confirmed) return;
+                }
             }
 
             const now = new Date();

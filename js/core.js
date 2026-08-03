@@ -57,12 +57,15 @@
         let reservationReminderQueue = [];
         let activeReservationReminder = null;
         const reservationLoanRegistrationsInProgress = new Set();
+        let loanDurationReminderQueue = [];
+        let activeLoanDurationReminder = null;
         const DEVICE_MAINTENANCE_HISTORY_KEY = 'deviceMaintenanceHistory';
         const ADMIN_NOTICE_TODO_KEY = 'adminNoticeTodoItems';
         const ADMIN_PRINT_FILES_KEY = 'adminPrintFiles';
         const LABEL_SIZE_KEY = 'patrimonyLabelSize';
         const ADMIN_PRINT_FILE_MAX_BYTES = 4 * 1024 * 1024;
         const RESERVATION_REMINDER_STORAGE_KEY = 'weeklyReservationRemindersSeen';
+        const LOAN_DURATION_REMINDER_STORAGE_KEY = 'loanDurationRemindersSeen';
         let adminNoticeTodoTab = 'todo';
         let adminNoticeTodoRemoteAvailable = null;
         let adminPrintFilesRemoteAvailable = null;
@@ -116,6 +119,8 @@
                 appAlertReturnFocus.focus();
             }
             appAlertReturnFocus = null;
+            setTimeout(showNextLongRunningLoanReminder, 200);
+            setTimeout(showNextReservationReminder, 200);
         }
 
         function showAppAlert(message, options = {}) {
@@ -217,6 +222,7 @@
                 updateLoanDeadlineAlerts();
                 updateActiveLoans();
                 checkScheduledReservationNotifications();
+                checkLongRunningLoanNotifications();
             }, 30000);
 
             // Registrar Service Worker para PWA

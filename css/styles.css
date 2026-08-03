@@ -737,6 +737,27 @@
             margin-top: 28px;
         }
 
+        .loan-duration-reminder-modal {
+            border-color: #dc2626;
+        }
+
+        .loan-duration-reminder-icon {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        body.dark-mode .loan-duration-reminder-icon {
+            background: rgba(220, 38, 38, 0.2);
+            color: #fca5a5;
+        }
+
+        .loan-duration-reminder-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 28px;
+        }
+
         .schedule-item.completed {
             border-left-color: #16a34a;
             background: rgba(220, 252, 231, 0.72);
@@ -752,6 +773,10 @@
             }
 
             .reservation-reminder-actions {
+                grid-template-columns: 1fr;
+            }
+
+            .loan-duration-reminder-actions {
                 grid-template-columns: 1fr;
             }
         }

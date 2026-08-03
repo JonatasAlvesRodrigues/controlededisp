@@ -224,6 +224,7 @@ function scheduleDataReload(delay = 250) {
                 data = { classes, teachers, devices, loans, loanDevices, deviceMaintenanceHistory, deviceChangeHistory, userProfiles, adminNoticeTodos, adminPrintFiles, weeklyReservations };
                 updateAll();
                 checkScheduledReservationNotifications();
+                checkLongRunningLoanNotifications();
                 await verifyDeviceSchema();
                 await verifyDeviceLabelSchema();
                 if (pendingDeviceDetailId) {

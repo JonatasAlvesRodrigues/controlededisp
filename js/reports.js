@@ -459,6 +459,141 @@ function getJsPdfInstance() {
             return Number.isNaN(parsed.getTime()) ? null : parsed;
         }
 
+        const LONG_RUNNING_LOAN_THRESHOLD_MS = 2 * 60 * 60 * 1000;
+
+        function formatLoanElapsedTime(milliseconds) {
+            const totalMinutes = Math.max(0, Math.floor(milliseconds / 60000));
+            const days = Math.floor(totalMinutes / 1440);
+            const hours = Math.floor((totalMinutes % 1440) / 60);
+            const minutes = totalMinutes % 60;
+            return [
+                days ? `${days}d` : '',
+                hours ? `${hours}h` : '',
+                minutes ? `${minutes}min` : ''
+            ].filter(Boolean).join(' ') || '0min';
+        }
+
+        function getSeenLongRunningLoanReminders() {
+            try {
+                const parsed = JSON.parse(
+                    localStorage.getItem(LOAN_DURATION_REMINDER_STORAGE_KEY) || '{}'
+                );
+                const activeLoanIds = new Set(
+                    data.loans.filter(loan => !loan.returned).map(loan => String(loan.id))
+                );
+                return Object.fromEntries(
+                    Object.entries(parsed).filter(([loanId]) => activeLoanIds.has(loanId))
+                );
+            } catch (error) {
+                return {};
+            }
+        }
+
+        function checkLongRunningLoanNotifications(referenceTime = Date.now()) {
+            if (!currentUser || !(data.loans || []).length) return;
+
+            const seen = getSeenLongRunningLoanReminders();
+            const queuedLoanIds = new Set(
+                loanDurationReminderQueue.map(item => String(item.loan.id))
+            );
+            if (activeLoanDurationReminder) {
+                queuedLoanIds.add(String(activeLoanDurationReminder.loan.id));
+            }
+            data.loans
+                .filter(loan => !loan.returned)
+                .map(loan => ({
+                    loan,
+                    startDate: parseLoanDateTime(loan.date_time)
+                }))
+                .filter(item =>
+                    item.startDate &&
+                    referenceTime - item.startDate.getTime() >= LONG_RUNNING_LOAN_THRESHOLD_MS
+                )
+                .sort((a, b) => a.startDate - b.startDate)
+                .forEach(item => {
+                    const loanId = String(item.loan.id);
+                    if (seen[loanId] || queuedLoanIds.has(loanId)) return;
+
+                    queuedLoanIds.add(loanId);
+                    loanDurationReminderQueue.push({
+                        ...item,
+                        detectedAt: referenceTime
+                    });
+                });
+
+            showNextLongRunningLoanReminder();
+        }
+
+        function showNextLongRunningLoanReminder() {
+            if (
+                activeLoanDurationReminder ||
+                activeReservationReminder ||
+                !loanDurationReminderQueue.length
+            ) return;
+
+            const appAlertOverlay = document.getElementById('appAlertOverlay');
+            if (appAlertOverlay?.classList.contains('active')) return;
+
+            activeLoanDurationReminder = loanDurationReminderQueue.shift();
+            const currentLoan = data.loans.find(loan =>
+                parseInt(loan.id) === parseInt(activeLoanDurationReminder.loan.id) &&
+                !loan.returned
+            );
+            if (!currentLoan) {
+                activeLoanDurationReminder = null;
+                showNextLongRunningLoanReminder();
+                return;
+            }
+
+            const startDate = parseLoanDateTime(currentLoan.date_time);
+            if (!startDate) {
+                activeLoanDurationReminder = null;
+                showNextLongRunningLoanReminder();
+                return;
+            }
+            activeLoanDurationReminder.loan = currentLoan;
+            activeLoanDurationReminder.startDate = startDate;
+            const seen = getSeenLongRunningLoanReminders();
+            seen[String(currentLoan.id)] = Date.now();
+            localStorage.setItem(
+                LOAN_DURATION_REMINDER_STORAGE_KEY,
+                JSON.stringify(seen)
+            );
+
+            const className = data.classes.find(item =>
+                parseInt(item.id) === parseInt(currentLoan.class_id)
+            )?.name || 'Turma não informada';
+            const teacherName = data.teachers.find(item =>
+                parseInt(item.id) === parseInt(currentLoan.teacher_id)
+            )?.name || 'Professor não informado';
+            const elapsedTime = formatLoanElapsedTime(Date.now() - startDate.getTime());
+            const pendingQuantity = getLoanPendingQuantity(currentLoan);
+
+            document.getElementById('loanDurationReminderTitle').textContent =
+                `${className} está com o empréstimo há ${elapsedTime}`;
+            document.getElementById('loanDurationReminderMessage').textContent =
+                `${teacherName} · ${pendingQuantity} dispositivo(s) pendente(s). ` +
+                'Confira se os equipamentos já podem ser devolvidos.';
+            const modal = document.getElementById('loanDurationReminderModal');
+            modal.classList.add('active');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeLongRunningLoanReminder() {
+            const modal = document.getElementById('loanDurationReminderModal');
+            modal.classList.remove('active');
+            modal.setAttribute('aria-hidden', 'true');
+            activeLoanDurationReminder = null;
+            setTimeout(showNextLongRunningLoanReminder, 200);
+            setTimeout(showNextReservationReminder, 200);
+        }
+
+        function openLongRunningLoanReturn() {
+            const loanId = activeLoanDurationReminder?.loan?.id;
+            closeLongRunningLoanReminder();
+            if (loanId) startReturnForLoan(loanId);
+        }
+
         function formatDateBR(date) {
             if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '-';
             return date.toLocaleDateString('pt-BR');

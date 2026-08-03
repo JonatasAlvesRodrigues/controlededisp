@@ -1067,13 +1067,17 @@ function getRequestedDeviceIdFromUrl() {
 
             // Grupos
             const groups = [...new Set(data.devices
-                .filter(d => !isFixedDevice(d.type))
+                .filter(d => !isFixedDevice(d.type) || isTechCartGroup(d.group))
                 .map(d => d.group)
                 .filter(Boolean)
             )].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }));
             let groupOptions = '<option value="">Selecione um agrupamento</option>';
             groups.forEach(g => {
-                const availableCount = data.devices.filter(d => !isFixedDevice(d.type) && d.group === g && d.status === 'DisponÃ­vel').length;
+                const availableCount = data.devices.filter(d =>
+                    (!isFixedDevice(d.type) || isTechCartGroup(g)) &&
+                    d.group === g &&
+                    d.status === 'DisponÃ­vel'
+                ).length;
                 groupOptions += `<option value="${escapeHtml(g)}">${escapeHtml(g)}${availableCount ? ` (${availableCount} disponiveis)` : ''}</option>`;
             });
             document.getElementById('loanGroup').innerHTML = groupOptions;
@@ -1385,7 +1389,11 @@ function getRequestedDeviceIdFromUrl() {
         }
 
         function showNextReservationReminder() {
-            if (activeReservationReminder || !reservationReminderQueue.length) return;
+            if (
+                activeReservationReminder ||
+                activeLoanDurationReminder ||
+                !reservationReminderQueue.length
+            ) return;
 
             activeReservationReminder = reservationReminderQueue.shift();
             const { reservation, occurrence } = activeReservationReminder;
@@ -1498,6 +1506,7 @@ function getRequestedDeviceIdFromUrl() {
             modal.setAttribute('aria-hidden', 'true');
             activeReservationReminder = null;
             setTimeout(showNextReservationReminder, 200);
+            setTimeout(showNextLongRunningLoanReminder, 200);
         }
 
         function openSchedulesFromReminder() {
@@ -1525,6 +1534,10 @@ function getRequestedDeviceIdFromUrl() {
 
         function isFixedDevice(type) {
             return type === 'Desktop' || type === 'Desktop Gestão';
+        }
+
+        function isTechCartGroup(groupName) {
+            return normalizeDeviceText(groupName) === 'carrinho tec';
         }
 
         function getDeviceStatusBadgeColor(status) {

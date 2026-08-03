@@ -1405,6 +1405,29 @@
             </div>
         </div>
 
+        <div class="modal-overlay" id="loanDurationReminderModal" aria-hidden="true">
+            <div class="modal reservation-reminder-modal loan-duration-reminder-modal" role="dialog" aria-modal="true" aria-labelledby="loanDurationReminderTitle">
+                <div class="reservation-reminder-content">
+                    <div class="reservation-reminder-icon loan-duration-reminder-icon">
+                        <i class="fas fa-hourglass-half"></i>
+                    </div>
+                    <div class="reservation-reminder-kicker">Empréstimo demorado</div>
+                    <div class="reservation-reminder-title" id="loanDurationReminderTitle">Empréstimo há mais de 2 horas</div>
+                    <div class="reservation-reminder-message" id="loanDurationReminderMessage"></div>
+                    <div class="loan-duration-reminder-actions">
+                        <button type="button" class="btn btn-secondary btn-lg" onclick="closeLongRunningLoanReminder()">
+                            <i class="fas fa-check"></i>
+                            Entendi
+                        </button>
+                        <button type="button" class="btn btn-primary btn-lg" onclick="openLongRunningLoanReturn()">
+                            <i class="fas fa-rotate-left"></i>
+                            Ir para devolução
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="app-alert-overlay" id="appAlertOverlay" aria-hidden="true">
             <div class="app-alert info" id="appAlertBox" role="dialog" aria-modal="true" aria-labelledby="appAlertTitle">
                 <div class="app-alert-header">
