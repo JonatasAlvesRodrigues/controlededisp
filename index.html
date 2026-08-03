@@ -980,18 +980,20 @@
                 <div class="card-body">
                     <div class="inventory-filter">
                         <div class="form-group">
-                            <label class="form-label">Pesquisar local ou tipo</label>
-                            <input
-                                type="text"
-                                id="inventorySearchInput"
-                                class="form-input"
-                                placeholder="Ex: Sala de Informática, Gestão ou Desktop"
-                                oninput="updateLocationInventory()"
-                            >
+                            <label class="form-label">Local</label>
+                            <select id="inventoryLocationFilter" class="form-input" onchange="updateLocationInventory()">
+                                <option value="">Todos os locais</option>
+                            </select>
                         </div>
-                        <button type="button" class="btn btn-secondary" onclick="clearLocationInventorySearch()">
+                        <div class="form-group">
+                            <label class="form-label">Tipo de dispositivo</label>
+                            <select id="inventoryTypeFilter" class="form-input" onchange="updateLocationInventory()">
+                                <option value="">Todos os tipos</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-secondary" onclick="clearLocationInventoryFilters()">
                             <i class="fas fa-eraser"></i>
-                            Limpar
+                            Limpar filtros
                         </button>
                     </div>
                 </div>

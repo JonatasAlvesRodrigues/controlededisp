@@ -291,19 +291,56 @@ function getRequestedDeviceIdFromUrl() {
             const grid = document.getElementById('inventoryLocationGrid');
             if (!overview || !grid) return;
 
-            const searchTerm = normalizeDeviceText(
-                document.getElementById('inventorySearchInput')?.value || ''
-            );
             const allLocations = getLocationInventoryGroups();
             const allTypes = getInventoryTypes(data.devices);
-            const visibleLocations = allLocations.map(location => {
-                const types = getInventoryTypes(location.devices);
-                const locationMatches = normalizeDeviceText(location.name).includes(searchTerm);
-                const visibleTypes = !searchTerm || locationMatches
-                    ? types
-                    : types.filter(type => normalizeDeviceText(type.name).includes(searchTerm));
-                return { ...location, types: visibleTypes };
-            }).filter(location => location.types.length);
+            const locationFilter = document.getElementById('inventoryLocationFilter');
+            const typeFilter = document.getElementById('inventoryTypeFilter');
+            let selectedLocation = locationFilter?.value || '';
+            let selectedType = typeFilter?.value || '';
+
+            if (locationFilter) {
+                locationFilter.innerHTML = `
+                    <option value="">Todos os locais</option>
+                    ${allLocations.map(location => {
+                        const value = normalizeDeviceText(location.name);
+                        return `<option value="${escapeHtml(value)}">${escapeHtml(location.name)}</option>`;
+                    }).join('')}
+                `;
+                if ([...locationFilter.options].some(option => option.value === selectedLocation)) {
+                    locationFilter.value = selectedLocation;
+                } else {
+                    selectedLocation = '';
+                }
+            }
+
+            if (typeFilter) {
+                typeFilter.innerHTML = `
+                    <option value="">Todos os tipos</option>
+                    ${allTypes.map(type => {
+                        const value = normalizeDeviceText(type.name);
+                        return `<option value="${escapeHtml(value)}">${escapeHtml(type.name)}</option>`;
+                    }).join('')}
+                `;
+                if ([...typeFilter.options].some(option => option.value === selectedType)) {
+                    typeFilter.value = selectedType;
+                } else {
+                    selectedType = '';
+                }
+            }
+
+            const visibleLocations = allLocations
+                .filter(location =>
+                    !selectedLocation ||
+                    normalizeDeviceText(location.name) === selectedLocation
+                )
+                .map(location => ({
+                    ...location,
+                    types: getInventoryTypes(location.devices).filter(type =>
+                        !selectedType ||
+                        normalizeDeviceText(type.name) === selectedType
+                    )
+                }))
+                .filter(location => location.types.length);
 
             overview.innerHTML = `
                 <div class="inventory-overview-card">
@@ -372,9 +409,11 @@ function getRequestedDeviceIdFromUrl() {
             }).join('');
         }
 
-        function clearLocationInventorySearch() {
-            const input = document.getElementById('inventorySearchInput');
-            if (input) input.value = '';
+        function clearLocationInventoryFilters() {
+            const locationFilter = document.getElementById('inventoryLocationFilter');
+            const typeFilter = document.getElementById('inventoryTypeFilter');
+            if (locationFilter) locationFilter.value = '';
+            if (typeFilter) typeFilter.value = '';
             updateLocationInventory();
         }
 
