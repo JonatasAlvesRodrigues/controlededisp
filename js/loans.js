@@ -333,11 +333,20 @@ function getLoanInfo(loan) {
                 if (device.type !== deviceType) return false;
                 if (isFixedDevice(device.type)) return false;
                 if (device.status !== 'Disponível') return false;
-                if (groupName && device.group !== groupName) return false;
+                if (groupName && normalizeDeviceText(device.group) !== normalizeDeviceText(groupName)) return false;
                 return true;
             });
 
             return availableDevices.slice(0, quantity);
+        }
+
+        function getAvailableDevicesFromGroup(groupName) {
+            const allowFixedDevices = isTechCartGroup(groupName);
+            return sortDevicesForDisplay(data.devices).filter(device =>
+                normalizeDeviceText(device.group) === normalizeDeviceText(groupName) &&
+                device.status === 'Disponível' &&
+                (allowFixedDevices || !isFixedDevice(device.type))
+            );
         }
 
         async function updateLoanDeviceStatuses(devices, status) {
@@ -685,21 +694,18 @@ function getLoanInfo(loan) {
                     alert('Selecione um agrupamento para emprestar a base completa.');
                     return;
                 }
-                const loanableDevices = isTechCartLoan
-                    ? sortDevicesForDisplay(data.devices).filter(device =>
-                        device.group === groupName &&
-                        device.status === 'Disponível'
-                    )
-                    : getAvailableDevicesForLoan(deviceType, Number.MAX_SAFE_INTEGER, groupName);
+                const loanableDevices = getAvailableDevicesFromGroup(groupName);
                 selectedLoanDevices = loanableDevices;
                 if (!loanableDevices.length) {
-                    alert('Esse agrupamento não possui dispositivos que possam ser emprestados.');
+                    alert('Essa base não possui dispositivos disponíveis para empréstimo. Verifique se os aparelhos estão marcados como “Disponível”.');
                     return;
                 }
                 quantity = loanableDevices.filter(d => d.status === 'Disponível').length || loanableDevices.length;
 
+                const deviceTypes = [...new Set(loanableDevices.map(device => device.type).filter(Boolean))];
+                deviceType = deviceTypes.length === 1 ? deviceTypes[0] : 'Diversos';
+
                 if (isTechCartLoan) {
-                    const deviceTypes = [...new Set(loanableDevices.map(device => device.type).filter(Boolean))];
                     deviceType = deviceTypes.length === 1 ? deviceTypes[0] : 'Carrinho TEC';
                     const confirmed = confirm(
                         `O agrupamento "${groupName}" contém ${quantity} dispositivo(s) e normalmente permanece fixo.\n\n` +
