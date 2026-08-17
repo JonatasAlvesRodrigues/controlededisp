@@ -115,6 +115,10 @@ function getLoanInfo(loan) {
                                 <span>${loan.date_time}</span>
                             </div>
                             <div class="loan-card-field">
+                                <small>Devolução</small>
+                                <span>${loan.return_date_time || '—'}</span>
+                            </div>
+                            <div class="loan-card-field">
                                 <small>Responsável</small>
                                 <span>${loan.releaser || '-'}</span>
                             </div>

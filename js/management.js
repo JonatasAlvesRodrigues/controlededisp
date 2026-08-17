@@ -595,7 +595,7 @@
         function updateHistoryTableWithData(loans) {
             let html = '';
             if (loans.length === 0) {
-                html = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum empréstimo registrado</td></tr>';
+                html = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum empréstimo registrado</td></tr>';
             } else {
                 loans.sort((a, b) => b.id - a.id).forEach(loan => {
                     const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
@@ -617,6 +617,7 @@
                             <td style="font-weight: 600;">${className}</td>
                             <td>${teacherName}</td>
                             <td style="font-weight: 600;">${loan.quantity}</td>
+                            <td>${loan.return_date_time || '—'}</td>
                             <td><span class="badge ${badgeColor}">${badgeText}</span></td>
                         </tr>
                     `;
