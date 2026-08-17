@@ -218,6 +218,14 @@ function getLoanInfo(loan) {
             });
         }
 
+        // Há dispositivos cadastrados em versões antigas com o texto do status
+        // salvo em uma codificação diferente ("DisponÃ­vel"). Não use igualdade
+        // literal aqui: esses aparelhos continuam sendo disponíveis.
+        function isDeviceAvailable(device) {
+            const status = String(device?.status || '').trim();
+            return normalizeDeviceText(status) === 'disponivel' || status === 'DisponÃ­vel';
+        }
+
         function loadMoreActiveLoanCards() {
             mobileActiveLoanCardLimit += 10;
             updateActiveLoans();
@@ -285,7 +293,7 @@ function getLoanInfo(loan) {
             if (!requireLoanOperationPermission()) return;
             const device = data.devices.find(item => parseInt(item.id) === parseInt(deviceId));
             if (!device) return;
-            if (device.status !== 'Disponível' || isFixedDevice(device.type)) {
+            if (!isDeviceAvailable(device) || isFixedDevice(device.type)) {
                 alert('Este dispositivo não está disponível para empréstimo rápido.');
                 return;
             }
@@ -334,7 +342,7 @@ function getLoanInfo(loan) {
             const availableDevices = sortDevicesForDisplay(data.devices).filter(device => {
                 if (device.type !== deviceType) return false;
                 if (isFixedDevice(device.type)) return false;
-                if (device.status !== 'Disponível') return false;
+                if (!isDeviceAvailable(device)) return false;
                 if (groupName && normalizeDeviceText(device.group) !== normalizeDeviceText(groupName)) return false;
                 return true;
             });
@@ -346,7 +354,7 @@ function getLoanInfo(loan) {
             const allowFixedDevices = isTechCartGroup(groupName);
             return sortDevicesForDisplay(data.devices).filter(device =>
                 normalizeDeviceText(device.group) === normalizeDeviceText(groupName) &&
-                device.status === 'Disponível' &&
+                isDeviceAvailable(device) &&
                 (allowFixedDevices || !isFixedDevice(device.type))
             );
         }
@@ -681,7 +689,7 @@ function getLoanInfo(loan) {
                     );
                     if (
                         !specificDevice ||
-                        specificDevice.status !== 'Disponível' ||
+                        !isDeviceAvailable(specificDevice) ||
                         specificDevice.type !== deviceType
                     ) {
                         alert('O notebook selecionado não está mais disponível. Atualize a lista e tente novamente.');
@@ -709,7 +717,7 @@ function getLoanInfo(loan) {
                     alert('Essa base não possui dispositivos disponíveis para empréstimo. Verifique se os aparelhos estão marcados como “Disponível”.');
                     return;
                 }
-                quantity = loanableDevices.filter(d => d.status === 'Disponível').length || loanableDevices.length;
+                quantity = loanableDevices.filter(isDeviceAvailable).length || loanableDevices.length;
 
                 const deviceTypes = [...new Set(loanableDevices.map(device => device.type).filter(Boolean))];
                 deviceType = deviceTypes.length === 1 ? deviceTypes[0] : 'Diversos';
