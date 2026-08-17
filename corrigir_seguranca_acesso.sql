@@ -7,6 +7,25 @@
 ALTER TABLE public.user_profiles
     ALTER COLUMN role SET DEFAULT 'aluno';
 
+-- Compatibilidade com versões anteriores do painel de avisos e afazeres.
+ALTER TABLE IF EXISTS public.admin_notice_todos
+    ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'normal',
+    ADD COLUMN IF NOT EXISTS due_date DATE;
+
+DO $$
+BEGIN
+    IF to_regclass('public.admin_notice_todos') IS NOT NULL
+       AND NOT EXISTS (
+            SELECT 1
+            FROM pg_constraint
+            WHERE conname = 'admin_notice_todos_priority_check'
+       ) THEN
+        ALTER TABLE public.admin_notice_todos
+            ADD CONSTRAINT admin_notice_todos_priority_check
+            CHECK (priority IN ('low', 'normal', 'high'));
+    END IF;
+END $$;
+
 CREATE OR REPLACE FUNCTION public.handle_new_user_profile()
 RETURNS TRIGGER AS $$
 BEGIN
