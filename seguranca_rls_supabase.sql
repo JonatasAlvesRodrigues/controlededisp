@@ -133,41 +133,31 @@ USING (public.is_access_admin());
 
 CREATE POLICY "Operacao atualiza status devices"
 ON public.devices FOR UPDATE
-TO anon, authenticated
-USING (true)
-WITH CHECK (true);
+TO authenticated
+USING (public.is_access_staff())
+WITH CHECK (public.is_access_staff());
 
 CREATE POLICY "Leitura geral loans"
 ON public.loans FOR SELECT
 TO anon, authenticated
 USING (true);
 
-CREATE POLICY "Operacao cria loans"
-ON public.loans FOR INSERT
-TO anon, authenticated
-WITH CHECK (true);
-
 CREATE POLICY "Operacao devolve loans"
 ON public.loans FOR UPDATE
-TO anon, authenticated
-USING (true)
-WITH CHECK (true);
+TO authenticated
+USING (public.is_access_staff())
+WITH CHECK (public.is_access_staff());
 
 CREATE POLICY "Leitura geral loan_devices"
 ON public.loan_devices FOR SELECT
 TO anon, authenticated
 USING (true);
 
-CREATE POLICY "Operacao cria loan_devices"
-ON public.loan_devices FOR INSERT
-TO anon, authenticated
-WITH CHECK (true);
-
 CREATE POLICY "Operacao atualiza devolucao loan_devices"
 ON public.loan_devices FOR UPDATE
-TO anon, authenticated
-USING (true)
-WITH CHECK (true);
+TO authenticated
+USING (public.is_access_staff())
+WITH CHECK (public.is_access_staff());
 
 CREATE POLICY "Leitura geral manutencao"
 ON public.device_maintenance_history FOR SELECT

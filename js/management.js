@@ -9,8 +9,8 @@
             } else {
                 data.classes.forEach(c => {
                     html += `<tr>
-                        <td><i class="fas fa-door-open"></i> ${c.name}</td>
-                        <td>${c.shift}</td>
+                        <td><i class="fas fa-door-open"></i> ${escapeHtml(c.name)}</td>
+                        <td>${escapeHtml(c.shift)}</td>
                         <td>${c.students || '-'}</td>
                         <td>
                             <button class="btn btn-small btn-primary" onclick="editClass(${c.id})" title="Editar">
@@ -39,8 +39,8 @@
                         <div class="simple-card">
                             <div class="simple-card-header">
                                 <div>
-                                    <div class="simple-card-title"><i class="fas fa-door-open"></i> ${c.name}</div>
-                                    <div class="simple-card-subtitle">${c.shift}</div>
+                                    <div class="simple-card-title"><i class="fas fa-door-open"></i> ${escapeHtml(c.name)}</div>
+                                    <div class="simple-card-subtitle">${escapeHtml(c.shift)}</div>
                                 </div>
                                 <span class="badge green">${c.students || '-'} alunos</span>
                             </div>
@@ -68,8 +68,8 @@
             } else {
                 data.teachers.forEach(t => {
                     html += `<tr>
-                        <td><i class="fas fa-chalkboard-teacher"></i> ${t.name}</td>
-                        <td>${t.subject || '-'}</td>
+                        <td><i class="fas fa-chalkboard-teacher"></i> ${escapeHtml(t.name)}</td>
+                        <td>${escapeHtml(t.subject || '-')}</td>
                         <td>
                             <button class="btn btn-small btn-primary" onclick="editTeacher(${t.id})" title="Editar">
                                 <i class="fas fa-edit"></i>
@@ -97,8 +97,8 @@
                         <div class="simple-card">
                             <div class="simple-card-header">
                                 <div>
-                                    <div class="simple-card-title"><i class="fas fa-chalkboard-teacher"></i> ${t.name}</div>
-                                    <div class="simple-card-subtitle">${t.subject || 'Sem disciplina informada'}</div>
+                                    <div class="simple-card-title"><i class="fas fa-chalkboard-teacher"></i> ${escapeHtml(t.name)}</div>
+                                    <div class="simple-card-subtitle">${escapeHtml(t.subject || 'Sem disciplina informada')}</div>
                                 </div>
                             </div>
                             <div class="simple-card-actions">

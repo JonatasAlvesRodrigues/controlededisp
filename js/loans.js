@@ -276,11 +276,13 @@ function getLoanInfo(loan) {
         }
 
         function openGeneralLoanScreen() {
+            if (!requireLoanOperationPermission()) return;
             clearSpecificLoanSelection();
             showScreen('loan');
         }
 
         function startLoanFromDevice(deviceId) {
+            if (!requireLoanOperationPermission()) return;
             const device = data.devices.find(item => parseInt(item.id) === parseInt(deviceId));
             if (!device) return;
             if (device.status !== 'Disponível' || isFixedDevice(device.type)) {
@@ -636,6 +638,7 @@ function getLoanInfo(loan) {
         // ------------------------------
         document.getElementById('loanForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            if (!requireLoanOperationPermission()) return;
             const classId = parseInt(document.getElementById('loanClass').value);
             const teacherId = parseInt(document.getElementById('loanTeacher').value);
             let deviceType = document.getElementById('loanDeviceType').value;

@@ -83,6 +83,12 @@ DECLARE
     unique_device_count INTEGER;
     unavailable_devices TEXT;
 BEGIN
+    IF NOT public.is_access_staff() THEN
+        RAISE EXCEPTION USING
+            ERRCODE = 'P0001',
+            MESSAGE = 'STAFF_AUTHENTICATION_REQUIRED';
+    END IF;
+
     IF p_class_id IS NULL OR p_teacher_id IS NULL THEN
         RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'RESPONSIBLE_REQUIRED';
     END IF;
@@ -225,4 +231,4 @@ REVOKE ALL ON FUNCTION public.register_device_loan(
 GRANT EXECUTE ON FUNCTION public.register_device_loan(
     BIGINT, BIGINT, TEXT, INTEGER, TEXT, TEXT, TEXT,
     TIMESTAMP WITH TIME ZONE, TEXT, TEXT, BIGINT[], BIGINT
-) TO anon, authenticated;
+) TO authenticated;

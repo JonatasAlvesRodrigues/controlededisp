@@ -228,6 +228,7 @@ function updateReturnSelect() {
         }
 
         function startReturnFromDevice(deviceId) {
+            if (!requireLoanOperationPermission()) return;
             const device = data.devices.find(item => parseInt(item.id) === parseInt(deviceId));
             if (!device) return;
             const activeLoan = getDeviceRelatedLoans(device).find(loan =>
@@ -434,6 +435,7 @@ function updateReturnSelect() {
         }
 
         async function confirmReturn() {
+            if (!requireLoanOperationPermission()) return;
             const loanId = parseInt(document.getElementById('returnLoan').value);
             if (!loanId) return;
             const loan = data.loans.find(item => parseInt(item.id) === loanId);

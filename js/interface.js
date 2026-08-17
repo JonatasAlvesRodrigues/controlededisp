@@ -1462,7 +1462,12 @@ function getRequestedDeviceIdFromUrl() {
                     d.group === g &&
                     d.status === 'DisponÃ­vel'
                 ).length;
-                groupOptions += `<option value="${escapeHtml(g)}">${escapeHtml(g)}${availableCount ? ` (${availableCount} disponiveis)` : ''}</option>`;
+                const normalizedAvailableCount = data.devices.filter(d =>
+                    (!isFixedDevice(d.type) || isTechCartGroup(g)) &&
+                    normalizeDeviceText(d.group) === normalizeDeviceText(g) &&
+                    normalizeDeviceText(d.status) === 'disponivel'
+                ).length;
+                groupOptions += `<option value="${escapeHtml(g)}">${escapeHtml(g)}${normalizedAvailableCount ? ` (${normalizedAvailableCount} disponiveis)` : ''}</option>`;
             });
             document.getElementById('loanGroup').innerHTML = groupOptions;
 
@@ -2384,6 +2389,7 @@ function getRequestedDeviceIdFromUrl() {
                 }
                 const item = map.get(groupName);
                 item.total += 1;
+                if (normalizeDeviceText(device.status) === 'disponivel') item.available += 1;
                 if (device.status === 'DisponÃ­vel') item.available += 1;
                 if (device.status === 'Em uso') item.inUse += 1;
                 item.types.add(device.type || 'Outros');
@@ -2507,7 +2513,7 @@ function getRequestedDeviceIdFromUrl() {
             container.innerHTML = `
                 <span class="badge ${groupName ? 'blue' : 'gray'}">${groupName ? escapeHtml(groupName) : 'Informe um agrupamento'}</span>
                 <span>${selectedDevices.length} dispositivo(s) selecionado(s)</span>
-                <span>${selectedAvailable} disponivel(is) para emprestimo</span>
+                <span>${selectedDevices.filter(device => normalizeDeviceText(device.status) === 'disponivel').length} disponivel(is) para emprestimo</span>
                 ${typeText ? `<span>${escapeHtml(typeText)}</span>` : ''}
             `;
         }

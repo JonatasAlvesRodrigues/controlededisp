@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
     name TEXT,
-    role TEXT NOT NULL DEFAULT 'funcionario',
+    role TEXT NOT NULL DEFAULT 'aluno',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
     CONSTRAINT user_profiles_role_check CHECK (role IN ('admin', 'funcionario', 'aluno'))
@@ -34,7 +34,7 @@ BEGIN
         NEW.id,
         NEW.email,
         COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
-        COALESCE(NULLIF(NEW.raw_user_meta_data->>'role', ''), 'funcionario')
+        'aluno'
     )
     ON CONFLICT (id) DO UPDATE SET
         email = EXCLUDED.email,

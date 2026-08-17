@@ -298,6 +298,16 @@
             return !isQuickAccess && (isAdminAccess() || isFuncionarioAccess());
         }
 
+        function canManageLoanOperations() {
+            return !isQuickAccess && (isAdminAccess() || isFuncionarioAccess());
+        }
+
+        function requireLoanOperationPermission() {
+            if (canManageLoanOperations()) return true;
+            alert('Entre com uma conta de funcionário ou administrador para registrar empréstimos e devoluções. O acesso rápido é somente para consulta.');
+            return false;
+        }
+
         function getRoleLabel(role = currentAccessRole) {
             const normalized = normalizeRole(role);
             if (normalized.includes('aluno')) return 'Aluno';
@@ -360,9 +370,13 @@
                 dashboardStatsGrid.style.display = isAlunoAccess() ? 'none' : '';
             }
 
+            document.querySelectorAll('[data-screen="loan"], [data-screen="return"], [data-mobile-screen="loan"]').forEach(element => {
+                element.style.display = canManageLoanOperations() ? '' : 'none';
+            });
+
             const dashboardQuickActions = document.querySelectorAll('#dashboardActionsCard .quick-action');
             dashboardQuickActions.forEach((action, index) => {
-                action.style.display = isAlunoAccess() && index === 2 ? 'none' : '';
+                action.style.display = !canManageLoanOperations() && index < 2 ? 'none' : '';
             });
 
             const historyButtons = document.querySelectorAll('[onclick*="showScreen(\'history\')"]');
@@ -474,13 +488,13 @@
                             id: signUpData.user.id,
                             email,
                             name,
-                            role: 'funcionario'
+                            role: 'aluno'
                         });
                         if (profileError) {
                             console.warn('Perfil de acesso não foi criado automaticamente:', profileError);
                         }
                     }
-                    alert('Conta criada com sucesso! Verifique seu email para confirmar o cadastro.');
+                    alert('Conta criada com sucesso! Verifique seu email para confirmar o cadastro. Um administrador precisará liberar seu acesso operacional.');
                 } catch (error) {
                     alert('Erro ao criar conta: ' + error.message);
                 }
@@ -620,7 +634,7 @@
             }
 
             applyRoleRestrictions();
-            showScreen(isAlunoAccess() ? 'loan' : 'dashboard');
+            showScreen('dashboard');
         }
 
         function toggleSidebar() {

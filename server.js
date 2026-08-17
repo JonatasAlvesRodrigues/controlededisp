@@ -6,14 +6,29 @@ const PORT = 8000;
 
 const server = http.createServer((req, res) => {
     const requestUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-    let filePath = '.' + decodeURIComponent(requestUrl.pathname);
+    const requestPath = decodeURIComponent(requestUrl.pathname);
+    const workspaceRoot = path.resolve(__dirname);
+    const filePath = path.resolve(workspaceRoot, `.${requestPath}`);
 
-    if (filePath === './') {
-        filePath = './index.html';
+    if (filePath === workspaceRoot) {
+        res.writeHead(302, { Location: '/index.html' });
+        return res.end();
     }
 
-    if (/^\.\/dispositivo\/\d+\/?$/.test(filePath)) {
-        filePath = './index.html';
+    if (/^\/dispositivo\/\d+\/?$/.test(requestPath)) {
+        return fs.readFile(path.join(workspaceRoot, 'index.html'), (error, content) => {
+            if (error) {
+                res.writeHead(500);
+                return res.end('Server Error');
+            }
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(content, 'utf-8');
+        });
+    }
+
+    if (!filePath.startsWith(`${workspaceRoot}${path.sep}`) || filePath.includes(`${path.sep}.git${path.sep}`)) {
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
+        return res.end('Forbidden');
     }
 
     const extname = String(path.extname(filePath)).toLowerCase();
