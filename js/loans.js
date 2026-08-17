@@ -690,6 +690,12 @@ function getLoanInfo(loan) {
                     }
                     quantity = 1;
                     selectedLoanDevices = [specificDevice];
+                } else {
+                    selectedLoanDevices = getAvailableDevicesForLoan(deviceType, quantity);
+                    if (selectedLoanDevices.length < quantity) {
+                        alert(`Não há ${quantity} dispositivo(s) do tipo ${deviceType} disponíveis para este empréstimo.`);
+                        return;
+                    }
                 }
             } else {
                 groupName = selectedGroupName;
