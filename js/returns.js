@@ -318,8 +318,10 @@ function updateReturnSelect() {
                 .map(item => data.devices.find(device => parseInt(device.id) === item.deviceId))
                 .filter(Boolean);
 
-            await updateLoanDeviceStatuses(returnedDevices, 'Disponível');
-            await updateLoanDeviceStatuses(damagedDevices, 'Manutenção');
+            // O Supabase libera os aparelhos pelo gatilho de devolução. Esta
+            // tentativa mantém compatibilidade com instalações ainda antigas,
+            // mas não interrompe uma devolução que já foi registrada no banco.
+            await updateReturnedDeviceStatuses(returnedDevices, damagedDevices);
             await Promise.all(damagedDevices.map(device =>
                 recordDeviceMaintenanceEvent(device, device.status, 'Manutenção', combinedReturnObs)
             ));
@@ -386,7 +388,7 @@ function updateReturnSelect() {
             if (error) throw error;
 
             const affectedDevices = pendingEntries.map(({ device }) => device);
-            await updateLoanDeviceStatuses(affectedDevices, 'Disponível');
+            await updateReturnedDeviceStatuses(affectedDevices);
         }
 
         async function recordReportedDamagedDevices(devices, returnObservations) {

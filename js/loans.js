@@ -366,6 +366,17 @@ function getLoanInfo(loan) {
             if (error) throw error;
         }
 
+        async function updateReturnedDeviceStatuses(returnedDevices = [], damagedDevices = []) {
+            try {
+                await updateLoanDeviceStatuses(returnedDevices, 'Disponível');
+                await updateLoanDeviceStatuses(damagedDevices, 'Manutenção');
+            } catch (error) {
+                // A atualização definitiva ocorre no gatilho de loan_devices.
+                // Não exiba uma devolução como falha se ela já foi salva.
+                console.warn('Status dos dispositivos será sincronizado pelo banco:', error);
+            }
+        }
+
         function getLinkedDevicesForLoan(loanId) {
             const linkedDeviceIds = (data.loanDevices || [])
                 .filter(item => parseInt(item.loan_id) === parseInt(loanId))

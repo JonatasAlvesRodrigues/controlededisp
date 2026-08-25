@@ -232,3 +232,67 @@ GRANT EXECUTE ON FUNCTION public.register_device_loan(
     BIGINT, BIGINT, TEXT, INTEGER, TEXT, TEXT, TEXT,
     TIMESTAMP WITH TIME ZONE, TEXT, TEXT, BIGINT[], BIGINT
 ) TO authenticated;
+
+-- A devolução é sincronizada no banco para que o aparelho volte a ficar
+-- disponível mesmo se o navegador for fechado após concluir o empréstimo.
+CREATE OR REPLACE FUNCTION public.sync_device_status_after_return()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF COALESCE(NEW.return_status, 'pending') <> 'pending'
+       AND NOT EXISTS (
+           SELECT 1
+           FROM public.loan_devices AS pending_link
+           JOIN public.loans AS pending_loan ON pending_loan.id = pending_link.loan_id
+           WHERE pending_link.device_id = NEW.device_id
+             AND pending_link.id <> NEW.id
+             AND COALESCE(pending_link.return_status, 'pending') = 'pending'
+             AND COALESCE(pending_loan.returned, false) = false
+       ) THEN
+        UPDATE public.devices
+        SET status = CASE
+            WHEN NEW.return_status = 'damaged' THEN U&'Manuten\00E7\00E3o'
+            ELSE U&'Dispon\00EDvel'
+        END
+        WHERE id = NEW.device_id
+          AND status <> U&'Fora de uso';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public;
+
+DROP TRIGGER IF EXISTS sync_device_status_after_return_trigger ON public.loan_devices;
+CREATE TRIGGER sync_device_status_after_return_trigger
+AFTER UPDATE OF return_status ON public.loan_devices
+FOR EACH ROW
+WHEN (OLD.return_status IS DISTINCT FROM NEW.return_status)
+EXECUTE FUNCTION public.sync_device_status_after_return();
+
+CREATE OR REPLACE FUNCTION public.return_pending_devices_with_loan()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.returned IS TRUE AND OLD.returned IS DISTINCT FROM NEW.returned THEN
+        UPDATE public.loan_devices
+        SET
+            return_status = 'returned',
+            returned_at = COALESCE(returned_at, NOW()),
+            return_observations = COALESCE(
+                return_observations,
+                NULLIF(NEW.return_observations, '')
+            )
+        WHERE loan_id = NEW.id
+          AND COALESCE(return_status, 'pending') = 'pending';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public;
+
+DROP TRIGGER IF EXISTS return_pending_devices_with_loan_trigger ON public.loans;
+CREATE TRIGGER return_pending_devices_with_loan_trigger
+AFTER UPDATE OF returned ON public.loans
+FOR EACH ROW
+WHEN (NEW.returned IS TRUE AND OLD.returned IS DISTINCT FROM NEW.returned)
+EXECUTE FUNCTION public.return_pending_devices_with_loan();

@@ -7,7 +7,7 @@ RETURNS TRIGGER AS $$
 BEGIN
     -- A devolução pode ser parcial. Só libera o aparelho quando ele não
     -- estiver pendente em outro empréstimo ainda aberto.
-    IF NEW.return_status <> 'pending'
+    IF COALESCE(NEW.return_status, 'pending') <> 'pending'
        AND NOT EXISTS (
            SELECT 1
            FROM public.loan_devices AS pending_link
@@ -40,6 +40,38 @@ AFTER UPDATE OF return_status ON public.loan_devices
 FOR EACH ROW
 WHEN (OLD.return_status IS DISTINCT FROM NEW.return_status)
 EXECUTE FUNCTION public.sync_device_status_after_return();
+
+-- Protege empréstimos antigos e qualquer fluxo que encerre o empréstimo antes
+-- de atualizar seus vínculos individualmente. Ao concluir o empréstimo, todos
+-- os aparelhos ainda pendentes são devolvidos e o gatilho acima os libera.
+CREATE OR REPLACE FUNCTION public.return_pending_devices_with_loan()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.returned IS TRUE AND OLD.returned IS DISTINCT FROM NEW.returned THEN
+        UPDATE public.loan_devices
+        SET
+            return_status = 'returned',
+            returned_at = COALESCE(returned_at, NOW()),
+            return_observations = COALESCE(
+                return_observations,
+                NULLIF(NEW.return_observations, '')
+            )
+        WHERE loan_id = NEW.id
+          AND COALESCE(return_status, 'pending') = 'pending';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public;
+
+DROP TRIGGER IF EXISTS return_pending_devices_with_loan_trigger ON public.loans;
+CREATE TRIGGER return_pending_devices_with_loan_trigger
+AFTER UPDATE OF returned ON public.loans
+FOR EACH ROW
+WHEN (NEW.returned IS TRUE AND OLD.returned IS DISTINCT FROM NEW.returned)
+EXECUTE FUNCTION public.return_pending_devices_with_loan();
 
 -- Corrige somente os registros já presos em "Em uso" que não pertencem a
 -- nenhum empréstimo aberto. Dispositivos realmente emprestados permanecem assim.
