@@ -36,6 +36,7 @@ Execute os scripts nesta ordem:
 11. `agendamentos_reservas_semanais.sql`
 12. `finalizar_config.sql` se quiser popular os dados de exemplo
 13. `seguranca_rls_supabase.sql`
+14. `corrigir_politicas_emprestimos.sql` se a RLS já tiver sido executada antes desta correção
 
 ## Observações
 

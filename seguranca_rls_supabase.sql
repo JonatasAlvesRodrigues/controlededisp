@@ -142,6 +142,11 @@ ON public.loans FOR SELECT
 TO anon, authenticated
 USING (true);
 
+CREATE POLICY "Operacao cria loans"
+ON public.loans FOR INSERT
+TO authenticated
+WITH CHECK (public.is_access_staff());
+
 CREATE POLICY "Operacao devolve loans"
 ON public.loans FOR UPDATE
 TO authenticated
@@ -152,6 +157,11 @@ CREATE POLICY "Leitura geral loan_devices"
 ON public.loan_devices FOR SELECT
 TO anon, authenticated
 USING (true);
+
+CREATE POLICY "Operacao cria loan_devices"
+ON public.loan_devices FOR INSERT
+TO authenticated
+WITH CHECK (public.is_access_staff());
 
 CREATE POLICY "Operacao atualiza devolucao loan_devices"
 ON public.loan_devices FOR UPDATE
