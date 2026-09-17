@@ -383,10 +383,20 @@ function getJsPdfInstance() {
 
             drawInfo('MODELO / MARCA', modelBrand, innerX, infoY);
             drawInfo('N. DE SERIE', serial, innerX + infoColW + infoGap, infoY);
-            drawInfo('N. CONTADOR', counterNumber, innerX + (infoColW + infoGap) * 2, infoY, infoColW, {
-                fontSize: 7,
-                minFontSize: 4.8,
-                bold: true
+            const counterX = innerX + (infoColW + infoGap) * 2;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(4.8);
+            doc.text('N. CONTADOR', counterX, infoY);
+            doc.setFont('helvetica', 'bold');
+            const counterLines = String(counterNumber || '-')
+                .toUpperCase()
+                .replace(/\s+NOTEBOOK\s+/, '\nNOTEBOOK ')
+                .split('\n');
+            counterLines.forEach((line, index) => {
+                fitPdfText(doc, line, counterX, infoY + 5 + index * 4.5, infoColW, {
+                    fontSize: 7.4,
+                    minFontSize: 5.6
+                });
             });
             if (!compactLabel) {
                 drawInfo('LOCAL', location, innerX, infoY + 10, wideInfoColW);
