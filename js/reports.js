@@ -370,14 +370,14 @@ function getJsPdfInstance() {
             const infoGap = 2.5;
             const infoColW = (innerW - infoGap * 2) / 3;
             const wideInfoColW = (innerW - infoGap) / 2;
-            const drawInfo = (label, value, ix, iy, fieldWidth = infoColW, textOptions = {}) => {
+            const drawInfo = (label, value, ix, iy, fieldWidth = infoColW) => {
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(4.8);
                 doc.text(label, ix, iy);
-                doc.setFont('helvetica', textOptions.bold ? 'bold' : 'normal');
+                doc.setFont('helvetica', 'normal');
                 fitPdfText(doc, String(value || '-').toUpperCase(), ix, iy + 5, fieldWidth, {
-                    fontSize: textOptions.fontSize || 6.2,
-                    minFontSize: textOptions.minFontSize || 4.2
+                    fontSize: 6.2,
+                    minFontSize: 4.2
                 });
             };
 
@@ -388,15 +388,12 @@ function getJsPdfInstance() {
             doc.setFontSize(4.8);
             doc.text('N. CONTADOR', counterX, infoY);
             doc.setFont('helvetica', 'bold');
-            const counterLines = String(counterNumber || '-')
+            const counterLabel = String(counterNumber || '-')
                 .toUpperCase()
-                .replace(/\s+NOTEBOOK\s+/, '\nNOTEBOOK ')
-                .split('\n');
-            counterLines.forEach((line, index) => {
-                fitPdfText(doc, line, counterX, infoY + 5 + index * 4.5, infoColW, {
-                    fontSize: 7.4,
-                    minFontSize: 5.6
-                });
+                .replace(/^BASE\s+(\d+)\s+NOTEBOOK\s+(\d+)$/, 'BASE $1 • N $2');
+            fitPdfText(doc, counterLabel, counterX, infoY + 5, infoColW, {
+                fontSize: 8,
+                minFontSize: 6
             });
             if (!compactLabel) {
                 drawInfo('LOCAL', location, innerX, infoY + 10, wideInfoColW);
