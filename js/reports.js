@@ -370,17 +370,24 @@ function getJsPdfInstance() {
             const infoGap = 2.5;
             const infoColW = (innerW - infoGap * 2) / 3;
             const wideInfoColW = (innerW - infoGap) / 2;
-            const drawInfo = (label, value, ix, iy, fieldWidth = infoColW) => {
+            const drawInfo = (label, value, ix, iy, fieldWidth = infoColW, textOptions = {}) => {
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(4.8);
                 doc.text(label, ix, iy);
-                doc.setFont('helvetica', 'normal');
-                fitPdfText(doc, String(value || '-').toUpperCase(), ix, iy + 5, fieldWidth, { fontSize: 6.2, minFontSize: 4.2 });
+                doc.setFont('helvetica', textOptions.bold ? 'bold' : 'normal');
+                fitPdfText(doc, String(value || '-').toUpperCase(), ix, iy + 5, fieldWidth, {
+                    fontSize: textOptions.fontSize || 6.2,
+                    minFontSize: textOptions.minFontSize || 4.2
+                });
             };
 
             drawInfo('MODELO / MARCA', modelBrand, innerX, infoY);
             drawInfo('N. DE SERIE', serial, innerX + infoColW + infoGap, infoY);
-            drawInfo('N. CONTADOR', counterNumber, innerX + (infoColW + infoGap) * 2, infoY);
+            drawInfo('N. CONTADOR', counterNumber, innerX + (infoColW + infoGap) * 2, infoY, infoColW, {
+                fontSize: 7,
+                minFontSize: 4.8,
+                bold: true
+            });
             if (!compactLabel) {
                 drawInfo('LOCAL', location, innerX, infoY + 10, wideInfoColW);
                 drawInfo('CADASTRO', createdAt, innerX + wideInfoColW + infoGap, infoY + 10, wideInfoColW);
