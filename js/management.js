@@ -361,7 +361,7 @@
                 ? 'Ex: Sala 17, Sala de Informática ou Gestão'
                 : 'Ex: Base 1, Carrinho A, Sala 17';
             if (imeiGroup && imeiInput) {
-                const isTablet = type === 'Tablet';
+                const isTablet = type === 'Tablet' || type === 'Tablets Novos';
                 imeiGroup.style.display = isTablet ? 'block' : 'none';
                 imeiInput.required = isTablet;
                 if (!isTablet) {
@@ -522,7 +522,7 @@
                 type: selectedDeviceType,
                 serial_number: serialNumber || null,
                 patrimony: document.getElementById('devicePatrimony').value || null,
-                imei: document.getElementById('deviceType').value === 'Tablet' ? (imei || null) : null,
+                imei: ['Tablet', 'Tablets Novos'].includes(document.getElementById('deviceType').value) ? (imei || null) : null,
                 counter_number: counterNumber,
                 group: document.getElementById('deviceGroup').value,
                 status: document.getElementById('deviceStatus').value,
@@ -686,7 +686,7 @@
                         </td>
                         <td>${d.serial_number || '-'}</td>
                         <td>${d.patrimony || '-'}</td>
-                        <td>${d.type === 'Tablet' ? (d.imei || '-') : '-'}</td>
+                        <td>${['Tablet', 'Tablets Novos'].includes(d.type) ? (d.imei || '-') : '-'}</td>
                         <td>${d.counter_number || '-'}</td>
                         <td>${d.group}</td>
                         <td><span class="badge ${badgeColor}">${d.status}</span></td>
@@ -804,7 +804,7 @@
                                                 <small>Patrimônio</small>
                                                 <span>${d.patrimony || '-'}</span>
                                             </div>
-                                            ${d.type === 'Tablet' ? `
+                                            ${['Tablet', 'Tablets Novos'].includes(d.type) ? `
                                                 <div class="device-card-field">
                                                     <small>IMEI</small>
                                                     <span>${d.imei || '-'}</span>

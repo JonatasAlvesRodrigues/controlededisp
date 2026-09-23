@@ -864,7 +864,7 @@ function getJsPdfInstance() {
                 device.patrimony || '-',
                 device.counter_number || '-',
                 device.group || '-',
-                device.type === 'Tablet' ? (device.imei || '-') : '-',
+                ['Tablet', 'Tablets Novos'].includes(device.type) ? (device.imei || '-') : '-',
                 device.status || '-',
                 device.observations || '-'
             ]));

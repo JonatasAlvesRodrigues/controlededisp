@@ -1916,7 +1916,7 @@ function getRequestedDeviceIdFromUrl() {
         }
 
         function getDeviceIcon(type) {
-            if (type === 'Tablet') return 'tablet-alt';
+            if (type === 'Tablet' || type === 'Tablets Novos') return 'tablet-alt';
             if (type === 'Desktop' || type === 'Desktop Gestão') return 'desktop';
             return 'laptop';
         }
@@ -2268,7 +2268,7 @@ function getRequestedDeviceIdFromUrl() {
                             ${renderDetailInfoItem('Patrimônio', device.patrimony)}
                             ${renderDetailInfoItem('Marca', device.brand)}
                             ${renderDetailInfoItem('Modelo', device.model)}
-                            ${device.type === 'Tablet' ? renderDetailInfoItem('IMEI', device.imei) : ''}
+                            ${['Tablet', 'Tablets Novos'].includes(device.type) ? renderDetailInfoItem('IMEI', device.imei) : ''}
                             ${renderDetailInfoItem('Número contador / S/N', device.counter_number)}
                             ${renderDetailInfoItem('Agrupamento / Sala', device.group)}
                             ${renderDetailInfoItem('Escola', getLabelSchoolName(device))}
