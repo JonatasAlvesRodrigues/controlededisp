@@ -466,10 +466,19 @@
         async function deleteDevice(deviceId) {
             if (!requireDeviceAdminPermission()) return;
 
-            if (!confirm('Tem certeza que deseja remover este dispositivo?')) return;
+            const device = data.devices.find(d => parseInt(d.id) === parseInt(deviceId));
+            const deviceIdentity = device?.patrimony || device?.counter_number || device?.serial_number || `ID ${deviceId}`;
+            const confirmation = prompt(
+                `Esta ação exclui permanentemente o dispositivo ${deviceIdentity}.\n\nDigite EXCLUIR para confirmar.`
+            );
+            if (confirmation !== 'EXCLUIR') {
+                if (confirmation !== null) {
+                    alert('Exclusão cancelada. Digite exatamente EXCLUIR para confirmar.');
+                }
+                return;
+            }
 
             try {
-                const device = data.devices.find(d => parseInt(d.id) === parseInt(deviceId));
                 const { error } = await client.from('devices').delete().eq('id', deviceId);
                 if (error) throw error;
                 if (device) {
@@ -710,18 +719,12 @@
                             <button class="btn btn-small btn-primary" onclick="event.stopPropagation(); editDevice(${d.id})" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            ${isDesktop ? `
-                                <button class="btn btn-small" style="background: #fef3c7; color: #92400e;" onclick="event.stopPropagation(); toggleMaintenance(${d.id})" title="Colocar/Retirar de Manutenção">
-                                    <i class="fas fa-wrench"></i>
-                                </button>
-                            ` : `
-                                <button class="btn btn-small" style="background: #fef3c7; color: #92400e;" onclick="event.stopPropagation(); toggleMaintenance(${d.id})" title="Colocar/Retirar de Manutenção">
-                                    <i class="fas fa-wrench"></i>
-                                </button>
-                                <button class="btn btn-small" style="background: #fee2e2; color: #991b1b;" onclick="event.stopPropagation(); deleteDevice(${d.id})" title="Remover">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            `}
+                            <button class="btn btn-small" style="background: #fef3c7; color: #92400e;" onclick="event.stopPropagation(); toggleMaintenance(${d.id})" title="Colocar/Retirar de Manutenção">
+                                <i class="fas fa-wrench"></i>
+                            </button>
+                            <button class="btn btn-small" style="background: #fee2e2; color: #991b1b;" onclick="event.stopPropagation(); deleteDevice(${d.id})" title="Excluir dispositivo">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </td>
                     </tr>`;
                 });
@@ -754,9 +757,9 @@
                                 const badgeColor = getDeviceStatusBadgeColor(d.status);
                                 const icon = getDeviceIcon(d.type);
                                 const isDesktop = isFixedDevice(d.type);
-                                const deleteButton = isDesktop ? '' : `<button class="btn btn-danger btn-small" onclick="event.stopPropagation(); deleteDevice(${d.id})">
+                                const deleteButton = `<button class="btn btn-danger btn-small" onclick="event.stopPropagation(); deleteDevice(${d.id})">
                                     <i class="fas fa-trash"></i>
-                                    Remover
+                                    Excluir
                                 </button>`;
 
                                 if (isMobile) {
@@ -787,6 +790,7 @@
                                                     Etiqueta
                                                 </button>
                                                 ${adminAction}
+                                                ${canManageDevices() ? deleteButton : ''}
                                             </div>
                                         </div>
                                     `;
