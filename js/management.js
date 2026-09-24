@@ -380,13 +380,15 @@
             const modal = document.getElementById('deviceModal');
             const modalTitle = document.getElementById('modalTitle');
             const form = document.getElementById('deviceForm');
+            const patrimonyInput = document.getElementById('devicePatrimony');
+            const patrimonyScanner = document.getElementById('devicePatrimonyScanner');
             
             if (device) {
                 modalTitle.textContent = 'Editar Dispositivo';
                 document.getElementById('deviceId').value = device.id;
                 document.getElementById('deviceType').value = device.type;
                 document.getElementById('deviceSerial').value = device.serial_number || '';
-                document.getElementById('devicePatrimony').value = device.patrimony || '';
+                patrimonyInput.value = device.patrimony || '';
                 document.getElementById('deviceImei').value = device.imei || '';
                 document.getElementById('deviceBrand').value = device.brand || '';
                 document.getElementById('deviceModel').value = device.model || '';
@@ -400,6 +402,7 @@
                 lastAutoCounterSuggestion = '';
                 document.getElementById('deviceId').value = '';
                 document.getElementById('deviceSerial').value = '';
+                patrimonyInput.value = '';
                 document.getElementById('deviceImei').value = '';
                 document.getElementById('deviceBrand').value = '';
                 document.getElementById('deviceModel').value = '';
@@ -408,6 +411,12 @@
             }
 
             document.getElementById('deviceType').value = device?.type || 'Notebook';
+            patrimonyInput.readOnly = !device;
+            patrimonyInput.placeholder = device ? 'Ex: 2026.000.000.00' : 'Gerado automaticamente ao salvar';
+            if (patrimonyScanner) {
+                patrimonyScanner.hidden = !device;
+                patrimonyScanner.disabled = !device;
+            }
             handleDeviceTypeChange(isFixedDevice(device?.type) && device?.status === 'Em uso' ? 'Disponível' : (device?.status || 'Disponível'));
             if (!device) {
                 updateAutoCounterSuggestion(true);
@@ -521,7 +530,7 @@
             const deviceData = {
                 type: selectedDeviceType,
                 serial_number: serialNumber || null,
-                patrimony: document.getElementById('devicePatrimony').value || null,
+                patrimony: deviceId ? (document.getElementById('devicePatrimony').value || null) : null,
                 imei: ['Tablet', 'Tablets Novos'].includes(document.getElementById('deviceType').value) ? (imei || null) : null,
                 counter_number: counterNumber,
                 group: document.getElementById('deviceGroup').value,
@@ -555,7 +564,7 @@
                     const { data: createdDevice, error } = await client.from('devices').insert(deviceData).select().single();
                     if (error) throw error;
                     await recordDeviceChangeEvent('created', createdDevice, null, createdDevice, 'Dispositivo criado');
-                    alert('Dispositivo criado com sucesso!');
+                    alert(`Dispositivo criado com sucesso! Patrimônio gerado: ${createdDevice.patrimony || '-'}`);
                 }
                 
                 closeDeviceModal();
