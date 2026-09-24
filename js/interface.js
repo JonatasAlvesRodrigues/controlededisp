@@ -2440,6 +2440,22 @@ function getRequestedDeviceIdFromUrl() {
             renderOrganizationSummary();
         }
 
+        function startNewOrganizationGroup() {
+            if (!requireDeviceAdminPermission()) return;
+
+            organizationActiveGroupName = '';
+            organizationDraftGroupName = '';
+            organizationSelectedDeviceIds = new Set();
+            const input = document.getElementById('organizationGroupName');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+            renderOrganizationGroups();
+            renderOrganizationDevices();
+            renderOrganizationSummary();
+        }
+
         function toggleOrganizationDevice(deviceId, checked) {
             const parsedId = parseInt(deviceId);
             if (checked) {
