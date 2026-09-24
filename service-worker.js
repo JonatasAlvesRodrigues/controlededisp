@@ -1,4 +1,4 @@
-const CACHE_NAME = 'controle-dispositivos-v38';
+const CACHE_NAME = 'controle-dispositivos-v39';
 const APP_SHELL = [
     './',
     './index.html',
