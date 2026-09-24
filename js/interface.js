@@ -2633,15 +2633,11 @@ function getRequestedDeviceIdFromUrl() {
             }
 
             const selectedDevices = data.devices.filter(device => selectedIds.includes(parseInt(device.id)));
-            const devicesInActiveGroup = activeGroupName
-                ? data.devices.filter(device => normalizeDeviceText(device.group) === normalizeDeviceText(activeGroupName))
-                : [];
-            const selectedIdSet = new Set(selectedIds.map(id => parseInt(id)));
             const devicesToMoveIntoGroup = selectedDevices.filter(device => device.group !== groupName);
-            const devicesToMoveOut = devicesInActiveGroup.filter(device =>
-                !selectedIdSet.has(parseInt(device.id)) &&
-                normalizeDeviceText(device.group) !== normalizeDeviceText('Fora')
-            );
+            // Ao criar uma nova sala/base, os dispositivos nao selecionados
+            // permanecem no agrupamento atual. Assim, a organizacao em lote
+            // nao envia itens automaticamente para "Fora".
+            const devicesToMoveOut = [];
             const totalChanges = devicesToMoveIntoGroup.length + devicesToMoveOut.length;
 
             if (!totalChanges) {
@@ -2658,14 +2654,6 @@ function getRequestedDeviceIdFromUrl() {
                     if (error) throw error;
                 }
 
-                if (devicesToMoveOut.length) {
-                    const { error } = await client
-                        .from('devices')
-                        .update({ group: 'Fora' })
-                        .in('id', devicesToMoveOut.map(device => device.id));
-                    if (error) throw error;
-                }
-
                 await Promise.all([
                     ...devicesToMoveIntoGroup.map(device =>
                         recordDeviceChangeEvent('updated', device, device, { ...device, group: groupName }, `Movido para ${groupName} pela organizacao`)
@@ -2678,8 +2666,7 @@ function getRequestedDeviceIdFromUrl() {
                 organizationActiveGroupName = groupName;
                 organizationDraftGroupName = groupName;
                 organizationSelectedDeviceIds = new Set(selectedIds.map(id => parseInt(id)));
-                const outMessage = devicesToMoveOut.length ? ` ${devicesToMoveOut.length} removido(s) para Fora.` : '';
-                await showAppAlert(`${devicesToMoveIntoGroup.length} dispositivo(s) em ${groupName}.${outMessage}`, { type: 'success' });
+                await showAppAlert(`${devicesToMoveIntoGroup.length} dispositivo(s) em ${groupName}.`, { type: 'success' });
                 await loadData();
             } catch (error) {
                 console.error('Erro ao salvar organizacao:', error);
