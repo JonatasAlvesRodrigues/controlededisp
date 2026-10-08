@@ -220,7 +220,10 @@ function getRequestedDeviceIdFromUrl() {
                 const isMenuScreen = item.dataset.mobileMenu === 'true' && !primaryMobileScreens.includes(screenId);
                 item.classList.toggle('active', isDirectScreen || isMenuScreen);
             });
-            if (screenId === 'loan') setLoanDueMinimum();
+            if (screenId === 'loan') {
+                setLoanDueMinimum();
+                if (typeof renderLoanDevicePicker === 'function') renderLoanDevicePicker();
+            }
             refreshScreenView(screenId);
             closeSidebar();
             window.scrollTo(0, 0);

@@ -424,6 +424,7 @@
                                     <th>Professor</th>
                                     <th>Tipo de saída</th>
                                     <th>Quantidade</th>
+                                    <th>Dispositivos</th>
                                     <th>Retirada em</th>
                                     <th>Status</th>
                                 </tr>
@@ -479,6 +480,7 @@
                                 <th>Turma</th>
                                 <th>Professor</th>
                                 <th>Quantidade</th>
+                                <th>Dispositivos</th>
                                 <th>Data/Hora</th>
                                 <th>Responsável</th>
                                 <th>Status</th>
@@ -559,7 +561,7 @@
                             </div>
                             <div class="form-group" id="quantityGroup">
                                 <label class="form-label">Quantidade de Dispositivos</label>
-                                <input type="number" id="loanQuantity" class="form-input" min="1" placeholder="Digite a quantidade">
+                                <input type="number" id="loanQuantity" class="form-input" min="1" placeholder="Digite a quantidade" oninput="renderLoanDevicePicker()">
                             </div>
                             <div class="form-group" id="groupGroup" style="display: none;">
                                 <label class="form-label">Selecionar Agrupamento</label>
@@ -569,7 +571,7 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Tipo de Dispositivo</label>
-                                <select id="loanDeviceType" class="form-input" required>
+                                <select id="loanDeviceType" class="form-input" onchange="renderLoanDevicePicker()" required>
                                     <option value="Notebook">Notebook</option>
                                     <option value="Notebook Positivo (Novos)">Notebook Positivo (Novos)</option>
                                     <option value="Notebook Ultra">Notebook Ultra</option>
@@ -578,6 +580,12 @@
                                 </select>
                                 <small class="loan-note">Desktops e Desktop Gestão são fixos na sala de informática e não entram em empréstimo.</small>
                                 <small class="field-hint" id="loanSpecificDeviceNotice" style="display: none;"></small>
+                            </div>
+                            <div class="form-group full" id="loanDevicePickerGroup">
+                                <label class="form-label">Escolher dispositivos (opcional)</label>
+                                <div class="loan-device-picker-summary" id="loanDevicePickerSummary"></div>
+                                <div class="loan-device-picker" id="loanDevicePicker"></div>
+                                <small class="field-hint">Selecione os aparelhos que serão emprestados. Quando houver seleção, ela define a quantidade e identifica cada dispositivo no histórico.</small>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Responsável pela Liberação</label>
@@ -803,6 +811,7 @@
                                 <th>Professor</th>
                                 <th>Tipo</th>
                                 <th>Quantidade</th>
+                                <th>Dispositivos</th>
                                 <th>Retirada em</th>
                                 <th>Prazo</th>
                                 <th>Responsável</th>
@@ -912,6 +921,7 @@
                                 <th>Turma</th>
                                 <th>Professor</th>
                                 <th>Quantidade</th>
+                                <th>Dispositivos</th>
                                 <th>Devolução</th>
                                 <th>Status</th>
                             </tr>

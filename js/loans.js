@@ -1,4 +1,6 @@
 // loans.js - application script.
+let loanDevicePickerLastType = '';
+
 function getLoanInfo(loan) {
             const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
             const teacherName = data.teachers.find(t => t.id === loan.teacher_id)?.name || '-';
@@ -76,7 +78,7 @@ function getLoanInfo(loan) {
                 if (isMobile && compactMobile) {
                     const linkedDevice = getLoanDeviceEntries(loan.id)[0]?.device;
                     const deviceLabel = linkedDevice
-                        ? (linkedDevice.counter_number || linkedDevice.patrimony || linkedDevice.serial_number || linkedDevice.type)
+                        ? getLoanDevicesPlainText(loan, 1)
                         : `${displayQuantity} ${displayQuantity === 1 ? 'dispositivo' : 'dispositivos'}`;
                     return `
                         <div class="dashboard-loan-row">
@@ -122,6 +124,10 @@ function getLoanInfo(loan) {
                                 <small>Responsável</small>
                                 <span>${loan.releaser || '-'}</span>
                             </div>
+                            <div class="loan-card-field loan-card-devices" style="grid-column: 1 / -1;">
+                                <small>Dispositivos deste empréstimo</small>
+                                ${renderLoanDevices(loan)}
+                            </div>
                             ${loan.due_at ? `
                                 <div class="loan-card-field" style="grid-column: 1 / -1;">
                                     <small>Previsão de devolução</small>
@@ -154,7 +160,7 @@ function getLoanInfo(loan) {
             let html = '';
             
             if (activeLoans.length === 0) {
-                html = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum empréstimo ativo no momento</td></tr>';
+                html = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum empréstimo ativo no momento</td></tr>';
             } else {
                 activeLoans.slice(0, 5).forEach(loan => {
                     const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
@@ -169,6 +175,7 @@ function getLoanInfo(loan) {
                             <td>${teacherName}</td>
                             <td>${loanTypeLabel}</td>
                             <td style="font-weight: 600;">${pendingQuantity}</td>
+                            <td>${renderLoanDevices(loan)}</td>
                             <td>${loan.date_time}</td>
                             <td><span class="badge ${deadline.badgeColor}">${escapeHtml(deadline.shortLabel)}</span></td>
                         </tr>
@@ -181,7 +188,7 @@ function getLoanInfo(loan) {
             // Todos os empréstimos ativos
             let allHtml = '';
             if (activeLoans.length === 0) {
-                allHtml = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum empréstimo ativo no momento</td></tr>';
+                allHtml = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum empréstimo ativo no momento</td></tr>';
             } else {
                 activeLoans.forEach(loan => {
                     const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
@@ -196,6 +203,7 @@ function getLoanInfo(loan) {
                             <td>${teacherName}</td>
                             <td>${loanTypeLabel}</td>
                             <td style="font-weight: 600;">${pendingQuantity}</td>
+                            <td>${renderLoanDevices(loan)}</td>
                             <td>${loan.date_time}</td>
                             <td><span class="badge ${deadline.badgeColor}">${escapeHtml(deadline.shortLabel)}</span></td>
                             <td>${loan.releaser}</td>
@@ -236,7 +244,7 @@ function getLoanInfo(loan) {
             let html = '';
             
             if (latestLoans.length === 0) {
-                html = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum empréstimo registrado</td></tr>';
+                html = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum empréstimo registrado</td></tr>';
             } else {
                 latestLoans.forEach(loan => {
                     const className = data.classes.find(c => c.id === loan.class_id)?.name || '-';
@@ -257,6 +265,7 @@ function getLoanInfo(loan) {
                             <td style="font-weight: 600;">${className}</td>
                             <td>${teacherName}</td>
                             <td style="font-weight: 600;">${loan.quantity}</td>
+                            <td>${renderLoanDevices(loan)}</td>
                             <td>${loan.date_time}</td>
                             <td>${loan.releaser}</td>
                             <td><span class="badge ${badgeColor}">${badgeText}</span></td>
@@ -309,6 +318,7 @@ function getLoanInfo(loan) {
             const notice = document.getElementById('loanSpecificDeviceNotice');
             notice.textContent = `Dispositivo selecionado: ${getDeviceIdentityLabel(device)}`;
             notice.style.display = 'block';
+            renderLoanDevicePicker();
             document.getElementById('loanClass').focus();
         }
 
@@ -326,6 +336,7 @@ function getLoanInfo(loan) {
             });
             document.getElementById('quantityGroup').style.display = type === 'quantity' ? 'block' : 'none';
             document.getElementById('groupGroup').style.display = type === 'full' ? 'block' : 'none';
+            renderLoanDevicePicker();
         }
 
         function toLocalDateTimeInputValue(date) {
@@ -348,6 +359,63 @@ function getLoanInfo(loan) {
             });
 
             return availableDevices.slice(0, quantity);
+        }
+
+        function getSelectedLoanDevicesFromPicker() {
+            return [...document.querySelectorAll('#loanDevicePicker input[type="checkbox"]:checked')]
+                .map(input => parseInt(input.value))
+                .map(id => data.devices.find(device => parseInt(device.id) === id))
+                .filter(Boolean);
+        }
+
+        function renderLoanDevicePicker() {
+            const group = document.getElementById('loanDevicePickerGroup');
+            const list = document.getElementById('loanDevicePicker');
+            const summary = document.getElementById('loanDevicePickerSummary');
+            const typeInput = document.getElementById('loanDeviceType');
+            if (!group || !list || !summary || !typeInput) return;
+
+            const isQuantityLoan = currentLoanType === 'quantity';
+            group.style.display = isQuantityLoan ? '' : 'none';
+            if (!isQuantityLoan) return;
+
+            const selectedIds = new Set(getSelectedLoanDevicesFromPicker().map(device => parseInt(device.id)));
+            if (pendingSpecificLoanDeviceId) selectedIds.add(parseInt(pendingSpecificLoanDeviceId));
+            const deviceType = typeInput.value;
+            if (loanDevicePickerLastType && loanDevicePickerLastType !== deviceType && !pendingSpecificLoanDeviceId) {
+                selectedIds.clear();
+            }
+            loanDevicePickerLastType = deviceType;
+            const availableDevices = sortDevicesForDisplay(data.devices).filter(device =>
+                device.type === deviceType && isDeviceAvailable(device) && !isFixedDevice(device.type)
+            );
+            const selectedCount = selectedIds.size;
+            const quantityInput = document.getElementById('loanQuantity');
+            if (selectedCount && quantityInput && !pendingSpecificLoanDeviceId) quantityInput.value = selectedCount;
+
+            summary.textContent = selectedCount
+                ? `${selectedCount} dispositivo(s) selecionado(s): somente estes serão emprestados.`
+                : 'Nenhum dispositivo selecionado: o sistema escolherá automaticamente os disponíveis pela quantidade informada.';
+            if (!availableDevices.length) {
+                list.innerHTML = '<div class="loan-device-picker-empty">Nenhum dispositivo disponível para este tipo.</div>';
+                return;
+            }
+
+            list.innerHTML = availableDevices.map(device => {
+                const selected = selectedIds.has(parseInt(device.id));
+                const forced = parseInt(device.id) === parseInt(pendingSpecificLoanDeviceId);
+                return `<label class="loan-device-choice ${selected ? 'selected' : ''}">
+                    <input type="checkbox" value="${device.id}" ${selected ? 'checked' : ''} ${forced ? 'disabled' : ''} onchange="handleLoanDevicePickerChange(this)">
+                    <span><strong>${escapeHtml(device.type)}</strong><small>${escapeHtml(getDeviceIdentityLabel(device))}${device.group ? ` · ${escapeHtml(device.group)}` : ''}</small></span>
+                </label>`;
+            }).join('');
+        }
+
+        function handleLoanDevicePickerChange(input) {
+            const quantityInput = document.getElementById('loanQuantity');
+            const selectedCount = document.querySelectorAll('#loanDevicePicker input[type="checkbox"]:checked').length;
+            if (quantityInput) quantityInput.value = selectedCount || '';
+            renderLoanDevicePicker();
         }
 
         function getAvailableDevicesFromGroup(groupName) {
@@ -394,10 +462,35 @@ function getLoanInfo(loan) {
                 .filter(entry => entry.device);
         }
 
+        function getLoanDeviceStatusLabel(link, loan) {
+            const status = getLoanDeviceReturnStatus(link, loan);
+            if (status === 'returned') return 'Devolvido';
+            if (status === 'damaged') return 'Com danos';
+            return 'Em uso';
+        }
+
+        function getLoanDevicesPlainText(loan, limit = 0) {
+            const entries = getLoanDeviceEntries(loan.id);
+            if (!entries.length) return `${loan.device_type || 'Dispositivo'} (${loan.quantity || 0})`;
+            const labels = entries.map(({ device }) => `${device.type || 'Dispositivo'}: ${getDeviceIdentityLabel(device)}`);
+            if (limit > 0 && labels.length > limit) return `${labels.slice(0, limit).join(' | ')} +${labels.length - limit}`;
+            return labels.join(' | ');
+        }
+
+        function renderLoanDevices(loan) {
+            const entries = getLoanDeviceEntries(loan.id);
+            if (!entries.length) {
+                return `<span class="loan-devices-legacy">${escapeHtml(loan.device_type || 'Dispositivo')}: ${escapeHtml(String(loan.quantity || 0))} dispositivo(s) <small>(sem identificacao individual)</small></span>`;
+            }
+            return `<div class="loan-devices-list">${entries.map(({ link, device }) => {
+                const status = getLoanDeviceReturnStatus(link, loan);
+                const color = status === 'pending' ? 'yellow' : status === 'damaged' ? 'red' : 'green';
+                return `<div class="loan-device-entry"><span>${escapeHtml(device.type || 'Dispositivo')} — ${escapeHtml(getDeviceIdentityLabel(device))}</span><span class="badge ${color}">${escapeHtml(getLoanDeviceStatusLabel(link, loan))}</span></div>`;
+            }).join('')}</div>`;
+        }
+
         function shouldShowLoanDeviceNumbers(loan) {
-            return loan?.loan_type === 'full' ||
-                loan?.loan_type === 'specific' ||
-                String(loan?.observations || '').includes('Empréstimo iniciado pelo QR do dispositivo');
+            return getLoanDeviceEntries(loan?.id).length > 0;
         }
 
         function getLoanDeviceReturnStatus(link, loan = null) {
@@ -710,7 +803,21 @@ function getLoanInfo(loan) {
                     quantity = 1;
                     selectedLoanDevices = [specificDevice];
                 } else {
-                    selectedLoanDevices = getAvailableDevicesForLoan(deviceType, quantity);
+                    const manuallySelectedDevices = getSelectedLoanDevicesFromPicker();
+                    if (manuallySelectedDevices.length) {
+                        const hasInvalidSelection = manuallySelectedDevices.some(device =>
+                            device.type !== deviceType || !isDeviceAvailable(device) || isFixedDevice(device.type)
+                        );
+                        if (hasInvalidSelection) {
+                            alert('Um dos dispositivos selecionados não está mais disponível. Atualize a seleção e tente novamente.');
+                            renderLoanDevicePicker();
+                            return;
+                        }
+                        selectedLoanDevices = manuallySelectedDevices;
+                        quantity = selectedLoanDevices.length;
+                    } else {
+                        selectedLoanDevices = getAvailableDevicesForLoan(deviceType, quantity);
+                    }
                     if (selectedLoanDevices.length < quantity) {
                         alert(`Não há ${quantity} dispositivo(s) do tipo ${deviceType} disponíveis para este empréstimo.`);
                         return;
@@ -821,6 +928,7 @@ function getLoanInfo(loan) {
                 );
                 this.reset();
                 clearSpecificLoanSelection();
+                renderLoanDevicePicker();
                 if (!isAlunoAccess()) {
                     showScreen('dashboard');
                 }
