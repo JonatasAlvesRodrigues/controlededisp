@@ -905,10 +905,33 @@ function getRequestedDeviceIdFromUrl() {
         function readFileAsDataUrl(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
+                reader.onload = () => {
+                    if (typeof reader.result !== 'string' || !reader.result.startsWith('data:')) {
+                        reject(new Error('O arquivo foi lido em um formato inválido.'));
+                        return;
+                    }
+                    resolve(reader.result);
+                };
                 reader.onerror = () => reject(new Error('Nao foi possivel ler o arquivo.'));
                 reader.readAsDataURL(file);
             });
+        }
+
+        function dataUrlToBlob(dataUrl) {
+            const parts = String(dataUrl || '').match(/^data:([^;,]+)?(;base64)?,(.*)$/s);
+            if (!parts) throw new Error('O conteudo salvo do arquivo e invalido.');
+
+            const mimeType = parts[1] || 'application/octet-stream';
+            const content = parts[3] || '';
+            if (parts[2]) {
+                const binary = atob(content);
+                const bytes = new Uint8Array(binary.length);
+                for (let index = 0; index < binary.length; index += 1) {
+                    bytes[index] = binary.charCodeAt(index);
+                }
+                return new Blob([bytes], { type: mimeType });
+            }
+            return new Blob([decodeURIComponent(content)], { type: mimeType });
         }
 
         async function addAdminPrintFile(event) {
@@ -934,6 +957,9 @@ function getRequestedDeviceIdFromUrl() {
             let pendingFile = null;
             try {
                 const fileData = await readFileAsDataUrl(file);
+                if ((file.type || '').includes('pdf') && !fileData.includes('base64,')) {
+                    throw new Error('O PDF nao foi convertido corretamente. Selecione o arquivo novamente.');
+                }
                 const newFile = {
                     id: Date.now(),
                     title,
@@ -1045,12 +1071,27 @@ function getRequestedDeviceIdFromUrl() {
             }
 
             if ((file.mime_type || '').includes('pdf')) {
-                win.location.href = file.file_data;
-                if (shouldPrint) {
-                    setTimeout(() => {
-                        try { win.print(); } catch (error) {}
-                    }, 1000);
+                let pdfUrl;
+                try {
+                    pdfUrl = URL.createObjectURL(dataUrlToBlob(file.file_data));
+                } catch (error) {
+                    win.close();
+                    alert('Nao foi possivel abrir este PDF. Envie-o novamente.');
+                    return;
                 }
+                win.document.write(`
+                    <html><head><title>${title}</title></head>
+                    <body style="margin:0; height:100vh; overflow:hidden;">
+                        <iframe id="pdfViewer" src="${pdfUrl}" title="${fileName}" style="border:0; width:100%; height:100%;"></iframe>
+                        <script>
+                            window.addEventListener('beforeunload', function() { URL.revokeObjectURL('${pdfUrl}'); });
+                            document.getElementById('pdfViewer').addEventListener('load', function() {
+                                ${shouldPrint ? 'try { this.contentWindow.print(); } catch (error) { window.print(); }' : ''}
+                            });
+                        <\/script>
+                    </body></html>
+                `);
+                win.document.close();
                 return;
             }
 
