@@ -631,6 +631,12 @@ function getLoanInfo(loan) {
             }
             if (
                 message.includes('register_device_loan') &&
+                message.includes('permission denied')
+            ) {
+                return 'O banco ainda nao liberou o registro de emprestimos com dispositivos selecionados. Execute o arquivo corrigir_permissao_registro_emprestimo.sql no SQL Editor do Supabase.';
+            }
+            if (
+                message.includes('register_device_loan') &&
                 (message.includes('schema cache') || message.includes('Could not find'))
             ) {
                 return 'A proteção contra registros simultâneos ainda não foi instalada no banco. Execute o arquivo protecao_emprestimos_simultaneos.sql no Supabase.';
