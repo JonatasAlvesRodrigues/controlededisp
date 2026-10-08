@@ -386,9 +386,12 @@ function getLoanInfo(loan) {
                 selectedIds.clear();
             }
             loanDevicePickerLastType = deviceType;
-            const availableDevices = sortDevicesForDisplay(data.devices).filter(device =>
-                device.type === deviceType && isDeviceAvailable(device) && !isFixedDevice(device.type)
-            );
+            const typedDevices = [...data.devices]
+                .filter(device =>
+                    normalizeDeviceText(device.type) === normalizeDeviceText(deviceType) &&
+                    !isFixedDevice(device.type)
+                )
+                .sort((a, b) => getDeviceIdentityLabel(a).localeCompare(getDeviceIdentityLabel(b), 'pt-BR', { numeric: true, sensitivity: 'base' }));
             const selectedCount = selectedIds.size;
             const quantityInput = document.getElementById('loanQuantity');
             if (selectedCount && quantityInput && !pendingSpecificLoanDeviceId) quantityInput.value = selectedCount;
@@ -396,17 +399,18 @@ function getLoanInfo(loan) {
             summary.textContent = selectedCount
                 ? `${selectedCount} dispositivo(s) selecionado(s): somente estes serão emprestados.`
                 : 'Nenhum dispositivo selecionado: o sistema escolherá automaticamente os disponíveis pela quantidade informada.';
-            if (!availableDevices.length) {
-                list.innerHTML = '<div class="loan-device-picker-empty">Nenhum dispositivo disponível para este tipo.</div>';
+            if (!typedDevices.length) {
+                list.innerHTML = '<div class="loan-device-picker-empty">Nenhum dispositivo cadastrado para este tipo.</div>';
                 return;
             }
 
-            list.innerHTML = availableDevices.map(device => {
-                const selected = selectedIds.has(parseInt(device.id));
+            list.innerHTML = typedDevices.map(device => {
+                const available = isDeviceAvailable(device);
+                const selected = selectedIds.has(parseInt(device.id)) && available;
                 const forced = parseInt(device.id) === parseInt(pendingSpecificLoanDeviceId);
-                return `<label class="loan-device-choice ${selected ? 'selected' : ''}">
-                    <input type="checkbox" value="${device.id}" ${selected ? 'checked' : ''} ${forced ? 'disabled' : ''} onchange="handleLoanDevicePickerChange(this)">
-                    <span><strong>${escapeHtml(device.type)}</strong><small>${escapeHtml(getDeviceIdentityLabel(device))}${device.group ? ` · ${escapeHtml(device.group)}` : ''}</small></span>
+                return `<label class="loan-device-choice ${selected ? 'selected' : ''} ${available ? '' : 'unavailable'}">
+                    <input type="checkbox" value="${device.id}" ${selected ? 'checked' : ''} ${(!available || forced) ? 'disabled' : ''} onchange="handleLoanDevicePickerChange(this)">
+                    <span><strong>${escapeHtml(device.type)}</strong><small>${escapeHtml(getDeviceIdentityLabel(device))}${device.group ? ` · ${escapeHtml(device.group)}` : ''}${available ? '' : ' · Indisponível'}</small></span>
                 </label>`;
             }).join('');
         }

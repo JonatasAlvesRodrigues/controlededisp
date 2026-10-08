@@ -2364,6 +2364,11 @@ html {
             background: rgba(37, 99, 235, 0.08);
         }
 
+        .loan-device-choice.unavailable {
+            opacity: 0.58;
+            cursor: not-allowed;
+        }
+
         .loan-device-choice input {
             margin-top: 3px;
             accent-color: var(--primary);
